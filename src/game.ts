@@ -656,9 +656,10 @@ export class Game {
     const vamp = this.items.omnivamp + this.fxStat('omnivamp') + (hit.source === 'auto' ? this.items.lifesteal + this.fxStat('lifesteal') : 0);
     if (vamp > 0) this.heal(dealt * vamp);
     e.hp -= total;
-    for (const fx of this.itemFx) fx.onDealt?.(e, hit, dealt);
     this.float(e.pos, String(Math.round(total)), hit.crit ? 'crit' : magic > physical ? 'magic' : 'physical');
+    // kill before the procs: a proc that lands on the corpse returns at the deadFor check above instead of killing twice
     if (e.hp <= 0) this.killEnemy(e);
+    for (const fx of this.itemFx) fx.onDealt?.(e, hit, dealt);
   }
 
   /** `nonLethal` damage leaves the champion at 1 HP at worst (Baron's whip). */

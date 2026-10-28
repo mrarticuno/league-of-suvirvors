@@ -1,6 +1,6 @@
 // Rune meta-progression: points earned from kills, permanent unlocks and the page equipped per champion.
 // Pure functions (they return new objects); storage is passed in so tests run without a browser.
-import { RUNES, type TreeId } from './runes';
+import { RUNES, SHARDS, TREES, type TreeId } from './runes';
 
 export const KILLS_PER_POINT = 100;
 export const NODE_COST_STEP = 8; // the n-th node unlocked in a tree costs 8 × n
@@ -99,27 +99,37 @@ export function equipShard(page: Page, row: number, index: number, shardRows: nu
 }
 
 const known = (id: unknown): id is string => typeof id === 'string' && id in RUNES;
+const tree = (t: unknown) => (typeof t === 'string' && t in TREES ? (t as TreeId) : null);
 
-/** Keeps only well-formed fields and known rune ids (the catalog may change between versions). */
+/** Keeps only well-formed fields, known ids, and runes that fit the slot they sit in (the catalog may change). */
 function sanitize(raw: Partial<Progress>): Progress {
   const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) && v >= 0 ? v : 0);
+  const shardRows = (raw.shardRows ?? []).filter((r) => SHARD_ROW_COST[r] !== undefined);
   const pages: Record<string, Page> = {};
   for (const [champ, pg] of Object.entries(raw.pages ?? {})) {
+    if (!pg || typeof pg !== 'object') continue;
+    const primary = tree(pg.primary);
+    const secondary = tree(pg.secondary) === primary ? null : tree(pg.secondary);
+    const fits = (id: unknown, t: TreeId | null, row: (r: number) => boolean): id is string =>
+      known(id) && RUNES[id].tree === t && row(RUNES[id].row);
     const e = emptyPage();
     pages[champ] = {
-      primary: pg.primary ?? null,
-      keystone: known(pg.keystone) ? pg.keystone : null,
-      primaryRunes: e.primaryRunes.map((_, i) => (known(pg.primaryRunes?.[i]) ? pg.primaryRunes[i] : null)),
-      secondary: pg.secondary ?? null,
-      secondaryRunes: (pg.secondaryRunes ?? []).filter(known).slice(-2),
-      shards: e.shards.map((_, i) => (typeof pg.shards?.[i] === 'number' ? pg.shards[i] : null)),
+      primary,
+      keystone: fits(pg.keystone, primary, (r) => r === 0) ? pg.keystone : null,
+      primaryRunes: e.primaryRunes.map((_, i) => (fits(pg.primaryRunes?.[i], primary, (r) => r === i + 1) ? pg.primaryRunes[i] : null)),
+      secondary,
+      secondaryRunes: (pg.secondaryRunes ?? []).filter((id) => fits(id, secondary, (r) => r > 0)).slice(-2),
+      shards: e.shards.map((_, i) => {
+        const v = pg.shards?.[i];
+        return typeof v === 'number' && shardRows.includes(i) && SHARDS[i][v] ? v : null;
+      }),
     };
   }
   return {
     points: num(raw.points),
     killRemainder: num(raw.killRemainder),
     unlocked: (raw.unlocked ?? []).filter(known),
-    shardRows: (raw.shardRows ?? []).filter((r) => SHARD_ROW_COST[r] !== undefined),
+    shardRows,
     pages,
   };
 }

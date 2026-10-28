@@ -144,3 +144,18 @@ describe('persistence', () => {
     expect(() => saveProgress(emptyProgress(), boom)).not.toThrow();
   });
 });
+
+describe('persistence: foreign pages', () => {
+  it('unknown trees, runes in the wrong slot, secondary equal to primary, bad shards and null pages are cleaned', () => {
+    const pages = {
+      a: { primary: 'ferocity', keystone: 'conqueror', primaryRunes: ['absorb-life', null, null], secondary: 'ferocity', secondaryRunes: ['cheap-shot'], shards: [0, 7, 1] },
+      b: { primary: 'precision', keystone: 'electrocute', primaryRunes: ['cheap-shot', 'legend-haste', null], secondary: 'precision', secondaryRunes: ['absorb-life'], shards: [null, null, null] },
+      c: null,
+    };
+    const s = memory({ 'los.runes.v1': JSON.stringify({ ...emptyProgress(), shardRows: [0, 1], pages }) });
+    const p = loadProgress(s);
+    expect(p.pages.a).toMatchObject({ primary: null, keystone: null, primaryRunes: [null, null, null], secondary: null, secondaryRunes: [], shards: [0, null, null] });
+    expect(p.pages.b).toMatchObject({ primary: 'precision', keystone: null, primaryRunes: [null, 'legend-haste', null], secondary: null, secondaryRunes: [] });
+    expect(p.pages.c).toBeUndefined();
+  });
+});
