@@ -27,7 +27,7 @@ const SKILLS = {
     name: 'Flair', maxRank: 5, anim: 'spell1_gun', icon: `${ICON}/spell/SamiraQ.png`,
     cooldown: [6, 5, 4, 3, 2], cost: [30, 30, 30, 30, 30],
     damage: [0, 5, 10, 15, 20], adRatio: [0.95, 1.025, 1.1, 1.175, 1.25], critMultiplier: 1.25,
-    range: 950, aim: 950, speed: 2600, width: 120, slashRange: 340, slashCone: Math.cos(Math.PI / 4), castTime: 0.25,
+    range: 950, aim: 950, speed: 2600, width: 120, slashRange: 340, slashCone: 0, /* cos of the half angle: 180° in front */ slashFxOffset: 165, castTime: 0.25,
   },
   W: {
     name: 'Blade Whirl', maxRank: 5, anim: 'spell2', icon: `${ICON}/spell/SamiraW.png`,
@@ -255,9 +255,10 @@ function samiraKit(g: Game): ChampionKit {
         const c = crit();
         const damage = (q.damage[r] + q.adRatio[r] * g.ad) * (c ? q.critMultiplier + g.items.critDamage : 1);
         if (qBlade) {
-          // an enemy in front when the cast started: slash with the blade in a cone instead of shooting
-          // (the arc system is authored facing -Z, hence the half turn)
-          g.vfx.play(FX.qSlash, g.pos.clone().setY(0), facingQuat(Math.atan2(dir.x, dir.z) + Math.PI));
+          // an enemy in front when the cast started: slash with the blade in a half circle instead of shooting.
+          // The arc system is authored facing -Z with its tips ~slashFxOffset behind its origin: half turn, then
+          // push it forward so the arc starts at Samira
+          g.vfx.play(FX.qSlash, g.pos.clone().addScaledVector(dir, q.slashFxOffset).setY(0), facingQuat(Math.atan2(dir.x, dir.z) + Math.PI));
           audio.play('samira_Q_slash');
           for (const e of g.enemiesNear(g.pos, q.slashRange, near)) {
             if (e.deadFor >= 0 || !inCone(e, dir)) continue;

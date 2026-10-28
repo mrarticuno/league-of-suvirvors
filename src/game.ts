@@ -660,7 +660,7 @@ export class Game {
     const { melee, id } = this.champ;
     const fx = melee!.vfx;
     const i = this.attackIndex % fx.swing.length;
-    // swing systems are authored facing -Z: half turn so the arc opens toward the target
+    // swing meshes carry a 180° birth rotation (authored from the target back): half turn so the arc opens toward it
     this.vfx.playAt(crit ? fx.crit : fx.swing[i], this.pos.clone().setY(0), this.facing + Math.PI);
     this.vfx.hit(crit ? fx.critHit : fx.hit[i], target.pos, this.facing);
     audio.play(`${id}_melee${crit ? '_crit' : ''}_hit`);

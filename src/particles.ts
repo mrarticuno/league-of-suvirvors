@@ -83,6 +83,9 @@ uniform sampler2D map; uniform sampler2D colorTex; uniform sampler2D erosionTex;
 uniform float alphaRef; uniform float slice;
 varying vec2 vUv; varying vec4 vColor; varying float vLife; varying float vErode;
 void main() {
+#ifdef USE_CLAMP
+  if (vUv.x < 0.0 || vUv.x > 1.0 || vUv.y < 0.0 || vUv.y > 1.0) discard;
+#endif
   vec4 c = texture2D(map, vUv) * vColor;
 #ifdef USE_COLORTEX
   c *= texture2D(colorTex, vec2(vLife, 0.5));
@@ -105,6 +108,8 @@ function material(e: Bin) {
     slice: { value: e.alphaErosionDefinition?.erosionSliceWidth ?? 0.1 },
     colorTex: { value: null }, erosionTex: { value: null }, multTex: { value: null },
   };
+  // clamped emitters (e.g. a swipe sliding across once) must not repeat; textures are shared, so clip in the shader
+  if (e.uvScrollClamp || e.texAddressModeBase === 2) defines.USE_CLAMP = '';
   const colorTex = textures.get(e.particleColorTexture);
   if (colorTex) { defines.USE_COLORTEX = ''; uniforms.colorTex.value = colorTex; }
   const erosion = textures.get(e.alphaErosionDefinition?.erosionMapName);
@@ -115,6 +120,8 @@ function material(e: Bin) {
   // most particle textures are DXT1 with an opaque black background
   return new THREE.ShaderMaterial({
     vertexShader, fragmentShader, uniforms, defines, transparent: true, depthWrite: false, side: THREE.DoubleSide,
+    // ground-layer meshes lie on the terrain plane: bias them toward the camera so they don't z-fight (flicker) with it
+    polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -8,
     blending: e.blendMode === 1 ? THREE.NormalBlending : THREE.AdditiveBlending,
   });
 }
