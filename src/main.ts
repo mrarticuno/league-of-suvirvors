@@ -67,6 +67,7 @@ addEventListener('keydown', (e) => {
   if (hud.choosing && /^[1-9]$/.test(k)) hud.key(Number(k));
   if (game.paused || game.over) return;
   if (['q', 'w', 'e', 'r'].includes(k)) game.cast(k.toUpperCase() as SkillKey, cursor);
+  if (k === 'd') game.flash(cursor);
   if (k === 't') {
     game.autoAttack = !game.autoAttack;
     game.manualTarget = null;

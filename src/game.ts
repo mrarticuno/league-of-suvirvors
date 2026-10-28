@@ -19,6 +19,7 @@ import { compact, TimeWindow } from './util';
 import { loadVfx, Vfx, type MissileFx } from './vfx';
 
 const SPAWN_RADIUS = 1800;
+const FLASH = { range: 400, cooldown: 120 };
 const DESPAWN_RADIUS = 3600;
 const GRID_CELL = 150;
 const GRID_SLACK = 60; // enemies keep moving after the grid is built; queries widen by this much
@@ -120,6 +121,7 @@ export class Game {
   private shieldUntil = 0;
   choices: Choice[] = []; // rune popups waiting to be shown
   bonusRunePoints = 0; // extra rune points earned this run (Treasure Hunter)
+  flashReady = 0; // Hextech Flashtraption cooldown end (run time)
   private fxCache = new Map<string, ItemEffect>(); // effect state outlives evolutions of the other slots
   private blueprintDropped = false; // at most one blueprint per run
   private blueprint: THREE.Object3D | null = null; // scroll lying on the ground
@@ -207,7 +209,7 @@ export class Game {
       enemies: [], aliveCount: 0, epics: [], nextId: 0, missiles: [], floaters: [], nextEvent: 0, spawnBudget: 0,
       nextHordeAt: HORDE.every, legendary: -1, blueprintDropped: false,
       stasis: 0, stasisEnd: null, stunned: 0, stunLength: 0, airborne: true, arena: null,
-      page, shield: 0, shieldUntil: 0, choices: [], bonusRunePoints: 0,
+      page, shield: 0, shieldUntil: 0, choices: [], bonusRunePoints: 0, flashReady: 0,
     });
     this.runeFx = runeEffects(this, page); // fresh every run: rune stacks never carry over
     this.spawnLog.clear();
@@ -333,6 +335,18 @@ export class Game {
   }
   isSlowed(e: Enemy) { return e.slowUntil > this.time; }
   inWater() { return this.map.inWater(this.pos.x, this.pos.z); }
+
+  get hasFlash() { return [...this.page.primaryRunes, ...this.page.secondaryRunes].includes('hextech-flashtraption'); }
+  /** Hextech Flashtraption: blink up to FLASH.range towards `point`. */
+  flash(point: THREE.Vector3) {
+    if (!this.hasFlash || this.time < this.flashReady || !this.alive || this.stasis > 0 || this.stunned > 0) return;
+    const step = this.tmp.copy(point).sub(this.pos).setY(0);
+    if (step.length() > FLASH.range) step.setLength(FLASH.range);
+    this.pos.add(step);
+    this.collidePlayer();
+    this.faceTowards(point);
+    this.flashReady = this.time + FLASH.cooldown;
+  }
 
   float(pos: THREE.Vector3, text: string, kind: Floater['kind']) {
     if (this.floaters.length < 150) this.floaters.push({ pos: pos.clone(), text, kind, age: 0 });
