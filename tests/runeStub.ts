@@ -20,6 +20,6 @@ export function stubGame(over: Record<string, unknown> = {}) {
 }
 
 export const enemy = (tier: Enemy['def']['tier'] = 'minion', hp = 100, maxHp = 100) =>
-  ({ def: { tier, radius: 50 }, hp, maxHp, pos: { x: 0, z: 0, distanceTo: () => 0 } }) as unknown as Enemy;
+  ({ def: { tier, radius: 50 }, hp, maxHp, deadFor: -1, pos: { x: 0, z: 0, distanceTo: () => 0 } }) as unknown as Enemy;
 
 export const fx = (id: string, g: Game) => RUNES[id].effect!(g);
