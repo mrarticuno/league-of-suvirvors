@@ -179,3 +179,19 @@ export class WorldMap {
 }
 
 const chunkKey = (x: number, z: number) => `${Math.floor(x / CHUNK)},${Math.floor(z / CHUNK)}`;
+
+const loader = new THREE.TextureLoader();
+const loadTex = (name: string) =>
+  new Promise<THREE.Texture>((ok, err) => loader.load(`assets/map/tex/${name}.png`, ok, undefined, err));
+
+/** Loads the five chunk textures (SessionKind ground + river water). */
+export async function loadMapTextures(): Promise<{ textures: Record<SessionKind, THREE.Texture>; water: THREE.Texture }> {
+  const [river, lane, jungle, base, water] = await Promise.all(
+    ['ground_river', 'ground_lane', 'ground_jungle', 'ground_base', 'water'].map(loadTex),
+  );
+  for (const t of [river, lane, jungle, base, water]) {
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    t.colorSpace = THREE.SRGBColorSpace;
+  }
+  return { textures: { river, lane, jungle, base }, water };
+}

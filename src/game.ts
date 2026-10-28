@@ -5,6 +5,7 @@ import {
   MAX_CHAMPION_LEVEL, MAX_ENEMIES, POOL, RUN_LENGTH, SKILL_KEYS, xpToNext, type EnemyDef, type SkillKey,
 } from './data';
 import { combine, MAX_ITEMS, sumStats, type Item } from './items';
+import { loadMapTextures, WorldMap } from './map';
 import { loadVfx, Vfx, type MissileFx } from './vfx';
 
 const B = EZREAL.base;
@@ -117,8 +118,14 @@ export class Game {
   private spawnLog: number[] = [];
   private killLog: number[] = [];
   nextHordeAt = HORDE.every;
+  private map!: WorldMap;
   private focusRing = new THREE.Mesh(ringGeo, glow(0xff3030));
   private vfx = new Vfx(this.scene);
+
+  constructor() {
+    // same colour as the background, hides the edge of the loaded chunks
+    this.scene.fog = new THREE.Fog(0x0b1410, 5000, 9500);
+  }
 
   async load(onProgress: (done: number, total: number) => void) {
     const ids = [EZREAL.model, ...new Set(Object.values(ENEMIES).map((e) => e.model))];
@@ -131,7 +138,8 @@ export class Game {
       }),
     ]);
     this.scene.background = new THREE.Color(0x0b1410);
-    this.scene.add(makeGround());
+    const { textures, water } = await loadMapTextures();
+    this.map = new WorldMap(this.scene, textures, {}, Math.random, water);
     this.focusRing.visible = false;
     this.scene.add(this.focusRing);
     this.reset();
@@ -145,6 +153,7 @@ export class Game {
     for (const f of this.effects) f.mesh.removeFromParent();
     this.arena?.mesh.removeFromParent();
     this.pull?.removeFromParent();
+    this.map?.dispose(); // the next ensureChunks regenerates the chunks
     this.vfx?.clear();
     this.player?.dispose();
     Object.assign(this, {
@@ -262,6 +271,7 @@ export class Game {
       if (this.over) this.player.update(dt); // let the death animation finish
       return;
     }
+    this.map.ensureChunks(this.pos);
     this.time += dt;
     this.spawn(dt);
     this.horde();
@@ -269,6 +279,7 @@ export class Game {
     this.updateEnemies(dt);
     this.updateMissiles(dt);
     this.updateArena(dt);
+    this.map.update(dt);
     this.vfx.update(dt);
     for (const f of this.floaters) f.age += dt;
     this.floaters = this.floaters.filter((f) => f.age < 0.9);
@@ -329,6 +340,7 @@ export class Game {
         const max = BARON.arenaRadius - B.radius;
         if (off.length() > max) this.pos.copy(this.arena.center).addScaledVector(off.normalize(), max);
       }
+      this.map.collideCircle(this.pos, B.radius);
       if (this.windup < 0) {
         this.facing = Math.atan2(move.x, move.z);
         this.animLock = 0;
@@ -702,6 +714,7 @@ export class Game {
     }
     this.separate();
     for (const e of this.enemies) {
+      if (e.deadFor < 0) this.map.collideCircle(e.pos, e.def.radius);
       e.actor.root.position.copy(e.pos);
       const marked = e.markedUntil > this.time && e.deadFor < 0;
       if (marked && !e.markMesh) {
@@ -970,26 +983,3 @@ function makeArena(radius: number) {
   return g;
 }
 
-function makeGround() {
-  // Procedural Summoner's Rift-ish jungle floor; tiled across a large plane
-  const c = document.createElement('canvas');
-  c.width = c.height = 512;
-  const g = c.getContext('2d')!;
-  g.fillStyle = '#2f4a2a';
-  g.fillRect(0, 0, 512, 512);
-  for (let i = 0; i < 2500; i++) {
-    const v = Math.random();
-    g.fillStyle = v < 0.5 ? 'rgba(70,100,50,0.25)' : v < 0.85 ? 'rgba(30,50,25,0.3)' : 'rgba(110,95,60,0.25)';
-    const s = 4 + Math.random() * 18;
-    g.beginPath();
-    g.arc(Math.random() * 512, Math.random() * 512, s, 0, Math.PI * 2);
-    g.fill();
-  }
-  const tex = new THREE.CanvasTexture(c);
-  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-  tex.repeat.set(80, 80);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  const ground = new THREE.Mesh(new THREE.PlaneGeometry(60000, 60000).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ map: tex }));
-  ground.name = 'ground';
-  return ground;
-}
