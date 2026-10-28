@@ -1,0 +1,28 @@
+import { runeList } from './def';
+
+export const RESOLVE = runeList('resolve', [
+  ['grasp-of-the-undying', 'Aperto dos Mortos-Vivos', 0, 'Styles/Resolve/GraspOfTheUndying/GraspOfTheUndying.png',
+    'A cada 4s em combate, o próximo ataque causa +3,5% da sua Vida máxima como dano, cura 1,3% e concede +5 de Vida permanente na partida.'],
+  ['aftershock', 'Pós-choque', 0, 'Styles/Resolve/VeteranAftershock/VeteranAftershock.png',
+    'Ao ser atordoado, recebe +35 de Armadura por 2,5s e então explode, causando dano em área. Recarga de 20s.'],
+  ['guardian', 'Guardião', 0, 'Styles/Resolve/Guardian/Guardian.png',
+    'Abaixo de 30% da Vida, recebe um escudo de 50 + 10% da Vida adicional por 2s. Recarga de 70s.'],
+  ['demolish', 'Demolir', 1, 'Styles/Resolve/Demolish/Demolish.png',
+    'O primeiro acerto em um épico a cada 45s causa +10% de dano.'],
+  ['font-of-life', 'Fonte da Vida', 1, 'Styles/Resolve/FontOfLife/FontOfLife.png',
+    'Acertar um elite ou épico com habilidade cura 1% da sua Vida máxima em 2s.'],
+  ['shield-bash', 'Golpe de Escudo', 1, 'Styles/Resolve/MirrorShell/MirrorShell.png',
+    'Receber um escudo faz o próximo ataque causar dano extra.'],
+  ['conditioning', 'Condicionamento', 2, 'Styles/Resolve/Conditioning/Conditioning.png',
+    'Após 5 min de partida: +8 de Armadura e +3% de Armadura.'],
+  ['second-wind', 'Ventos Revigorantes', 2, 'Styles/Resolve/SecondWind/SecondWind.png',
+    'Ao receber dano, regenera 4 + 3% da Vida faltante em 10s.'],
+  ['bone-plating', 'Osso Revestido', 2, 'Styles/Resolve/BonePlating/BonePlating.png',
+    'Ao receber dano, os próximos 3 golpes em até 1,5s causam 30–60 a menos. Recarga de 55s.'],
+  ['overgrowth', 'Crescimento Excessivo', 3, 'Styles/Resolve/Overgrowth/Overgrowth.png',
+    '+3 de Vida máxima a cada 100 abates; a partir de 1.200 abates, +3,5% de Vida máxima.'],
+  ['revitalize', 'Revitalizar', 3, 'Styles/Resolve/Revitalize/Revitalize.png',
+    '+5% de cura e escudos recebidos (+10% abaixo de 40% da Vida).'],
+  ['unflinching', 'Inabalável', 3, 'Styles/Sorcery/Unflinching/Unflinching.png',
+    '+20% de Tenacidade (atordoamentos duram menos).'],
+]);

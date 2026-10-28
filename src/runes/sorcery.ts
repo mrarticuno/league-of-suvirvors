@@ -1,0 +1,28 @@
+import { runeList } from './def';
+
+export const SORCERY = runeList('sorcery', [
+  ['summon-aery', 'Invocar Aery', 0, 'Styles/Sorcery/SummonAery/SummonAery.png',
+    'Acertos enviam Aery para causar dano adaptativo extra ao alvo. Recarga de 2s.'],
+  ['arcane-comet', 'Cometa Arcano', 0, 'Styles/Sorcery/ArcaneComet/ArcaneComet.png',
+    'Acertar uma habilidade lança um cometa no alvo, causando dano em área. Recarga de 8s, reduzida por acertos de habilidade.'],
+  ['phase-rush', 'Avanço da Tempestade', 0, 'Styles/Sorcery/PhaseRush/StormraidersSurgeRuneIcon2.png',
+    '3 acertos distintos em 4s concedem +30% de Vel. de Movimento por 3s. Recarga de 12s.'],
+  ['axiom-arcanist', 'Arcanista do Axioma', 1, 'Styles/Sorcery/NullifyingOrb/Axiom_Arcanist.png',
+    '+6% de dano do R.'],
+  ['manaflow-band', 'Faixa de Fluxo de Mana', 1, 'Styles/Sorcery/ManaflowBand/ManaflowBand.png',
+    'Acertar uma habilidade concede +25 de Mana máxima (máx. 250). No máximo, restaura 1% da Mana faltante a cada 5s.'],
+  ['nimbus-cloak', 'Manto de Nimbus', 1, 'Styles/Sorcery/NimbusCloak/6361.png',
+    'Usar o R concede +25% de Vel. de Movimento por 2,5s.'],
+  ['transcendence', 'Transcendência', 2, 'Styles/Sorcery/Transcendence/Transcendence.png',
+    '+5 de Aceleração de Habilidade no nível 5 e no 8. A partir do nível 11, abater reduz em 20% a recarga restante das habilidades.'],
+  ['celerity', 'Celeridade', 2, 'Styles/Sorcery/Celerity/CelerityTemp.png',
+    '+1% de Vel. de Movimento; bônus de Vel. de Movimento ficam 7% mais fortes.'],
+  ['absolute-focus', 'Foco Absoluto', 2, 'Styles/Sorcery/AbsoluteFocus/AbsoluteFocus.png',
+    'Acima de 70% da Vida, concede DdA adaptativo (até 10 no nível 18).'],
+  ['scorch', 'Chamuscar', 3, 'Styles/Sorcery/Scorch/Scorch.png',
+    'A próxima habilidade que acerta queima o alvo, causando dano mágico extra em 1s. Recarga de 10s.'],
+  ['waterwalking', 'Caminhar Sobre as Águas', 3, 'Styles/Sorcery/Waterwalking/Waterwalking.png',
+    'No rio: +10% de Vel. de Movimento e DdA adaptativo.'],
+  ['gathering-storm', 'Tempestade Crescente', 3, 'Styles/Sorcery/GatheringStorm/GatheringStorm.png',
+    'A cada 2 min de partida, concede DdA adaptativo crescente.'],
+]);

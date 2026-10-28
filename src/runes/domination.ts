@@ -1,0 +1,28 @@
+import { runeList } from './def';
+
+export const DOMINATION = runeList('domination', [
+  ['electrocute', 'Eletrocutar', 0, 'Styles/Domination/Electrocute/Electrocute.png',
+    '3 acertos distintos (ataque ou habilidade) no mesmo alvo em 3s causam dano adaptativo extra. Recarga de 4s.'],
+  ['dark-harvest', 'Colheita Sombria', 0, 'Styles/Domination/DarkHarvest/DarkHarvest.png',
+    'Acertar um inimigo abaixo de 50% da Vida causa dano extra que cresce com Almas (+1 a cada 50 abates). Recarga de 1,5s.'],
+  ['hail-of-blades', 'Chuva de Lâminas', 0, 'Styles/Domination/HailOfBlades/HailOfBlades.png',
+    'Os 3 primeiros ataques após 4s sem atacar recebem +110% de Vel. de Ataque.'],
+  ['cheap-shot', 'Golpe Desleal', 1, 'Styles/Domination/CheapShot/CheapShot.png',
+    'Dano verdadeiro extra contra inimigos lentos, elites e épicos. Recarga de 4s.'],
+  ['taste-of-blood', 'Gosto de Sangue', 1, 'Styles/Domination/TasteOfBlood/GreenTerror_TasteOfBlood.png',
+    'Causar dano a um elite ou épico cura 16 + 5% do DdA. Recarga de 20s.'],
+  ['sudden-impact', 'Impacto Repentino', 1, 'Styles/Domination/SuddenImpact/SuddenImpact.png',
+    'Por 4s após usar o E, causa +7% de dano.'],
+  ['sixth-sense', 'Sexto Sentido', 2, 'Styles/Domination/SixthSense/SixthSense.png',
+    'Quando uma horda surge, recebe um escudo de 10% da Vida máxima por 3s.'],
+  ['grisly-mementos', 'Lembranças Aterrorizantes', 2, 'Styles/Domination/GrislyMementos/GrislyMementos.png',
+    'Abater um elite ou épico concede +2 de DdA permanente na partida (máx. +20).'],
+  ['deep-ward', 'Sentinela Profunda', 2, 'Styles/Domination/DeepWard/DeepWard.png',
+    '+6% de dano contra inimigos a mais de 500 unidades.'],
+  ['treasure-hunter', 'Caçador de Tesouros', 3, 'Styles/Domination/TreasureHunter/TreasureHunter.png',
+    'Cada abate de elite ou épico concede +1 ponto de runa ao fim da partida (máx. +5).'],
+  ['relentless-hunter', 'Caça Incansável', 3, 'Styles/Domination/RelentlessHunter/RelentlessHunter.png',
+    '+1% de Vel. de Movimento a cada 200 abates (máx. +10%).'],
+  ['ultimate-hunter', 'Caça Suprema', 3, 'Styles/Domination/UltimateHunter/UltimateHunter.png',
+    '+2 de Aceleração de Habilidade no R a cada 500 abates (máx. +15).'],
+]);
