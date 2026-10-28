@@ -27,24 +27,24 @@ const SKILLS = {
     name: 'Flair', maxRank: 5, anim: 'spell1_gun', icon: `${ICON}/spell/SamiraQ.png`,
     cooldown: [6, 5, 4, 3, 2], cost: [30, 30, 30, 30, 30],
     damage: [0, 5, 10, 15, 20], adRatio: [0.95, 1.025, 1.1, 1.175, 1.25], critMultiplier: 1.25,
-    range: 950, speed: 2600, width: 120, slashRange: 340, slashCone: Math.cos(Math.PI / 4), castTime: 0.25,
+    range: 950, aim: 950, speed: 2600, width: 120, slashRange: 340, slashCone: Math.cos(Math.PI / 4), castTime: 0.25,
   },
   W: {
     name: 'Blade Whirl', maxRank: 5, anim: 'spell2', icon: `${ICON}/spell/SamiraW.png`,
     cooldown: [30, 28, 26, 24, 22], cost: [60, 60, 60, 60, 60],
-    damage: [20, 35, 50, 65, 80], bonusAdRatio: 0.6, radius: 325, duration: 0.75, castTime: 0.1,
+    damage: [20, 35, 50, 65, 80], bonusAdRatio: 0.6, radius: 325, duration: 0.75, castTime: 0.1, aim: 'none',
   },
   E: {
     name: 'Wild Rush', maxRank: 5, anim: 'spell3', icon: `${ICON}/spell/SamiraE.png`,
     cooldown: [20, 18, 16, 14, 12], cost: [40, 40, 40, 40, 40],
     damage: [50, 60, 70, 80, 90], bonusAdRatio: 0.2, attackSpeed: [0.2, 0.25, 0.3, 0.35, 0.4], buffDuration: 5,
-    distance: 600, speed: 1600, width: 150, castTime: 0.05,
+    distance: 600, aim: 600, speed: 1600, width: 150, castTime: 0.05,
   },
   R: {
     name: 'Inferno Trigger', maxRank: 3, anim: 'spell4', icon: `${ICON}/spell/SamiraR.png`,
     cooldown: [5, 5, 5], cost: [0, 0, 0],
     damage: [5, 15, 25], adRatio: 0.45, minionMultiplier: 0.25, shots: 10, interval: 0.2, range: 600,
-    slow: 0.3, speed: 2800, maxMissilesPerShot: 8, castTime: 0.05,
+    slow: 0.3, speed: 2800, maxMissilesPerShot: 8, castTime: 0.05, aim: 'none',
   },
 } as const satisfies Record<SkillKey, SkillDef & Record<string, unknown>>; // extra fields are the kit's own numbers
 

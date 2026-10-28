@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { audio } from './audio';
+import { BUFF } from './buffs';
 import { SKILL_KEYS, type ChampionDef, type SkillKey } from './champion';
 import { HORDE, xpToNext } from './data';
 import type { Choice, Game } from './game';
@@ -40,9 +41,11 @@ export class Hud {
         <img src="${champ.skills[k].icon}" alt="">
         <div class="cd"></div><div class="cd-text"></div><span class="key">${k}</span><div class="pips"></div>
       </div>`).join('');
-    const part = (k: SkillKey, sel: string) => $(`skill-${k}`).querySelector<HTMLElement>(sel)!;
+    // not $(): its id cache would still hold the previous HUD's (now detached) skill slots
+    const root = (k: SkillKey) => document.getElementById(`skill-${k}`)!;
+    const part = (k: SkillKey, sel: string) => root(k).querySelector<HTMLElement>(sel)!;
     this.skillEls = Object.fromEntries(SKILL_KEYS.map((k) => [k, {
-      root: $(`skill-${k}`), cd: part(k, '.cd'), cdText: part(k, '.cd-text'), pips: part(k, '.pips'),
+      root: root(k), cd: part(k, '.cd'), cdText: part(k, '.cd-text'), pips: part(k, '.pips'),
     }])) as Hud['skillEls'];
     shown.clear(); // a new HUD (new champion) redraws everything
   }
@@ -61,8 +64,9 @@ export class Hud {
       $('auto').classList.toggle('off', !g.autoAttack);
     }
     const passive = g.kit.hud?.();
+    const buffs = (['blue', 'red'] as const).filter((k) => g.buffs[k] > g.time).map((k) => ` · ${BUFF.names[k]} ${fmt(g.buffs[k] - g.time)}`).join('');
     text('stats',
-      `DdA ${Math.round(g.ad)} · VA ${g.attackSpeed.toFixed(2)} · Arm ${Math.round(g.armor)} · VM ${g.moveSpeed} · AH ${g.abilityHaste} · Crit ${Math.round(g.critChance * 100)}%${passive ? ` · ${passive}` : ''}`);
+      `DdA ${Math.round(g.ad)} · VA ${g.attackSpeed.toFixed(2)} · Arm ${Math.round(g.armor)} · VM ${g.moveSpeed} · AH ${g.abilityHaste} · Crit ${Math.round(g.critChance * 100)}%${passive ? ` · ${passive}` : ''}${buffs}`);
     for (const k of SKILL_KEYS) {
       const el = this.skillEls[k];
       const rank = g.ranks[k];

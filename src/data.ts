@@ -147,17 +147,14 @@ export const HORDE = {
   size: (level: number) => 15 + 2 * level,
   radius: 1500,
   gap: 0.25, // fraction of the ring left open as an escape route
+  buffs: ['blue', 'red'], // jungle buff monsters that join every horde (src/buffs.ts)
 };
 
-// Bosses at 5/10/15/20 min; blue and red buffs fill the gaps between them
+// Bosses at 5/10/15/20 min; blue and red come with every horde (HORDE.buffs)
 export const EVENTS: { at: number; enemy: string }[] = [
   { at: 300, enemy: 'scuttle' },
-  { at: 450, enemy: 'blue' },
   { at: 600, enemy: 'dragon' },
-  { at: 750, enemy: 'red' },
   { at: 900, enemy: 'riftherald' },
-  { at: 1050, enemy: 'blue' },
-  { at: 1050, enemy: 'red' },
   { at: 1200, enemy: 'baron' },
 ];
 

@@ -89,7 +89,12 @@ addEventListener('keydown', (e) => {
   keys.add(k);
   if (hud.choosing && /^[1-9]$/.test(k)) hud.key(Number(k));
   if (game.paused || game.over) return;
-  if (['q', 'w', 'e', 'r'].includes(k)) game.cast(k.toUpperCase() as SkillKey, cursor);
+  if (['q', 'w', 'e', 'r'].includes(k)) {
+    const key = k.toUpperCase() as SkillKey;
+    // moving with the arrows: skills aim themselves (SkillDef.aim), since the cursor is not being used
+    const dir = arrowDir();
+    game.cast(key, (dir.lengthSq() && game.aimPoint(key, dir)) || cursor);
+  }
   if (k === 'd') game.flash(cursor);
   if (k === 't') {
     game.autoAttack = !game.autoAttack;
@@ -100,15 +105,19 @@ addEventListener('keyup', (e) => keys.delete(e.key.toLowerCase()));
 addEventListener('blur', () => keys.clear());
 
 // Arrow keys as a survivors-style alternative (WASD would collide with Q/W/E/R)
-function moveInput() {
-  const v = new THREE.Vector3(
+function arrowDir() {
+  return new THREE.Vector3(
     (keys.has('arrowright') ? 1 : 0) - (keys.has('arrowleft') ? 1 : 0),
     0,
     (keys.has('arrowdown') ? 1 : 0) - (keys.has('arrowup') ? 1 : 0),
-  );
+  ).normalize();
+}
+
+function moveInput() {
+  const v = arrowDir();
   if (v.lengthSq()) {
     moveTarget = null;
-    return v.normalize();
+    return v;
   }
   if (!moveTarget || game.paused) return v;
   v.copy(moveTarget).sub(game.pos).setY(0);

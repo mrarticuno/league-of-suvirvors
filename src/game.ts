@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { Actor, loadModel } from './assets';
 import { audio } from './audio';
+import { BUFF, buffEffects, isBuffMonster, type BuffKey } from './buffs';
 import { MAX_CHAMPION_LEVEL, SKILL_KEYS, type ChampionDef, type ChampionKit, type Hit, type SkillKey } from './champion';
 import { DEFAULT_CHAMPION } from './champions';
 import {
@@ -21,6 +22,7 @@ import { loadVfx, Vfx, type MissileFx } from './vfx';
 const SPAWN_RADIUS = 1800;
 const FLASH = { range: 400, cooldown: 120 };
 const DESPAWN_RADIUS = 3600;
+const AIM_FAR = 5000; // 'move' aim: farther than any dash or blink
 const GRID_CELL = 150;
 const GRID_SLACK = 60; // enemies keep moving after the grid is built; queries widen by this much
 // animation LOD: skinning is most of the frame, so enemies this far from the champion (screen edge and beyond)
@@ -117,6 +119,9 @@ export class Game {
   private itemFx: ItemEffect[] = []; // hooks of the owned items and equipped runes
   page: Page = emptyPage(); // rune page of this run
   private runeFx: ItemEffect[] = [];
+  private buffFx: ItemEffect[] = [];
+  buffs: Record<BuffKey, number> = { blue: 0, red: 0 }; // run time each jungle buff ends
+  private buffDrops: { key: BuffKey; mesh: THREE.Object3D; until: number }[] = []; // dropped buffs waiting to be picked up
   shield = 0;
   private shieldUntil = 0;
   choices: Choice[] = []; // rune popups waiting to be shown
@@ -208,6 +213,7 @@ export class Game {
     this.arena?.mesh.removeFromParent();
     this.blueprint?.removeFromParent();
     this.blueprint = null;
+    for (const d of this.buffDrops) d.mesh.removeFromParent();
     this.map?.dispose(); // the next ensureChunks regenerates the chunks
     this.vfx.clear();
     this.player?.dispose();
@@ -219,8 +225,10 @@ export class Game {
       nextHordeAt: HORDE.every, legendary: -1, blueprintDropped: false,
       stasis: 0, stasisEnd: null, stunned: 0, stunLength: 0, airborne: true, arena: null,
       page, shield: 0, shieldUntil: 0, choices: [], bonusRunePoints: 0, flashReady: 0,
+      buffs: { blue: 0, red: 0 }, buffDrops: [],
     });
     this.runeFx = runeEffects(this, page); // fresh every run: rune stacks never carry over
+    this.buffFx = buffEffects(this);
     this.spawnLog.clear();
     this.killLog.clear();
     this.grid.clear();
@@ -309,7 +317,7 @@ export class Game {
       if (!fx.unique) out.push(fx);
       else if ((best.get(fx.unique)?.rank ?? -Infinity) < (fx.rank ?? 0)) best.set(fx.unique, fx);
     }
-    return [...out, ...best.values(), ...this.runeFx];
+    return [...out, ...best.values(), ...this.runeFx, ...this.buffFx];
   }
 
   takeItem(base: string) {
@@ -405,6 +413,27 @@ export class Game {
     this.animLock = Math.min(this.player.duration(skill.anim), skill.castTime + 0.6);
   }
 
+  /**
+   * Cast point while moving with the arrow keys (SkillDef.aim): the auto-aimed enemy, else `moveDir` from the champion
+   * (at the aim range, or AIM_FAR for 'move' so the kit's own range caps it). Null for 'none': keep the cursor.
+   */
+  aimPoint(key: SkillKey, moveDir: THREE.Vector3): THREE.Vector3 | null {
+    const aim = this.champ.skills[key].aim;
+    if (aim === 'none') return null;
+    if (aim !== 'move') {
+      const target = this.aimTarget(aim);
+      if (target) return target.pos.clone();
+    }
+    return this.pos.clone().addScaledVector(moveDir, aim === 'move' ? AIM_FAR : aim);
+  }
+
+  /** Same priority as auto attacks: the marked target if within `range` (edge distance), else the nearest enemy. */
+  aimTarget(range: number): Enemy | null {
+    const marked = this.autoAttack ? this.focus : this.manualTarget;
+    if (marked && marked.deadFor < 0 && marked.pos.distanceTo(this.pos) - marked.def.radius <= range) return marked;
+    return this.nearestEnemy(this.pos, range);
+  }
+
   // ---- simulation ----
   update(dt: number, move: THREE.Vector3) {
     if (this.paused || this.over) {
@@ -421,6 +450,7 @@ export class Game {
     this.kit.update?.(dt);
     this.hazards.update(dt, this.alive && this.stasis <= 0);
     this.updateBlueprint(dt);
+    this.updateBuffDrops(dt);
     this.map.update(dt);
     this.vfx.update(dt);
     for (const f of this.floaters) f.age += dt;
@@ -447,6 +477,21 @@ export class Game {
     this.setSlots(this.slots);
     this.float(this.pos, 'Item Lendário!', 'crit');
     audio.play('hud_legendary');
+  }
+
+  /** Jungle buff drops: picked up by walking over them, gone after BUFF.dropLife seconds. */
+  private updateBuffDrops(dt: number) {
+    compact(this.buffDrops, (d) => {
+      d.mesh.rotation.y += dt * 1.5;
+      d.mesh.children[0].position.y = 60 + 15 * Math.sin(this.time * 3);
+      const picked = this.alive && d.mesh.position.distanceTo(this.pos) <= this.champ.base.radius + 60;
+      if (picked) {
+        this.buffs[d.key] = this.time + BUFF.duration;
+        this.float(this.pos, BUFF.names[d.key], 'crit');
+        audio.play('hud_item');
+      }
+      return !(picked || this.time >= d.until) || this.removeMesh(d.mesh);
+    });
   }
 
   private updatePlayer(dt: number, move: THREE.Vector3) {
@@ -769,6 +814,12 @@ export class Game {
       this.blueprint.position.set(e.pos.x, 0, e.pos.z);
       this.scene.add(this.blueprint);
     }
+    if (isBuffMonster(e.def.model)) {
+      const mesh = makeBuffDrop(BUFF.colors[e.def.model]);
+      mesh.position.set(e.pos.x, 0, e.pos.z);
+      this.scene.add(mesh);
+      this.buffDrops.push({ key: e.def.model, mesh, until: this.time + BUFF.dropLife });
+    }
     e.ai?.onDeath?.();
   }
 
@@ -854,6 +905,7 @@ export class Game {
       const a = start + (i / (n - 1)) * arc;
       this.spawnEnemy(key, new THREE.Vector3(this.pos.x + Math.cos(a) * HORDE.radius, 0, this.pos.z + Math.sin(a) * HORDE.radius));
     }
+    for (const k of HORDE.buffs) this.spawnEnemy(k);
     for (const fx of this.itemFx) fx.onHorde?.();
   }
 
@@ -990,6 +1042,17 @@ export class Game {
 
   get runLength() { return RUN_LENGTH; }
   get boss() { return this.epics.find((e) => e.deadFor < 0) ?? null; }
+}
+
+/** Jungle buff drop: a glowing orb over a ring in the buff's colour. */
+function makeBuffDrop(color: number) {
+  const g = new THREE.Group();
+  const orb = new THREE.Mesh(new THREE.SphereGeometry(22, 16, 12), glow(color));
+  const ring = new THREE.Mesh(ringGeo, glow(color));
+  ring.scale.setScalar(70);
+  ring.position.y = 3;
+  g.add(orb, ring);
+  return g;
 }
 
 /** Blue scroll (blueprint drop): rolled parchment over a glowing ring. */

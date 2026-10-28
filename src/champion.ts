@@ -47,6 +47,12 @@ export interface SkillDef {
   castTime: number; // the champion stands still this long, then the kit resolves the skill
   anim: string;
   icon: string;
+  /**
+   * How the skill aims while moving with the arrow keys (the cursor is not being used then):
+   * a number auto-aims at the marked target, else the nearest enemy within that range (skillshots, targeted dashes);
+   * 'move' casts along the movement direction (free dashes and blinks); 'none' ignores the point (self casts).
+   */
+  aim: number | 'move' | 'none';
 }
 
 export interface ChampionDef {
