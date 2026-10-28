@@ -57,6 +57,12 @@ addEventListener('mouseup', (e) => {
 
 addEventListener('keydown', (e) => {
   const k = e.key.toLowerCase();
+  if (k === 'escape' && !game.over) {
+    hud.toggleMenu();
+    keys.clear();
+    return;
+  }
+  if (hud.menuOpen) return;
   keys.add(k);
   if (hud.choosing && /^[1-9]$/.test(k)) hud.key(Number(k));
   if (game.paused || game.over) return;
@@ -102,7 +108,7 @@ let last = performance.now();
 function frame(now = last) {
   const dt = Math.min((now - last) / 1000, 0.05);
   last = now;
-  game.update(dt, moveInput());
+  if (!hud.menuOpen) game.update(dt, moveInput()); // ESC menu pauses the simulation
   checkPrompts();
   camera.position.copy(game.pos).add(CAMERA_OFFSET);
   camera.lookAt(game.pos);

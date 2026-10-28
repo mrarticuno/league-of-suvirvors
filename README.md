@@ -55,6 +55,14 @@ Os modelos **não estão no repositório** (são assets da Riot). Gere-os localm
    ```
    Gera `systems.json` (efeitos indexados pelas chaves do `ResourceResolver`, ex. `Ezreal_Q_mis`), `spells.json` (velocidade/largura/alcance dos mísseis) e os PNG/JSON dos assets. `tools/read_bin.py` sozinho converte qualquer `.bin` em JSON. O runtime dos emissores fica em `src/particles.ts`; `src/vfx.ts` só escolhe qual sistema tocar e onde.
 
+6. Sons e música: bancos Wwise (`.bnk`/`.wpk`) do Ezreal, dos monstros, do HUD e a música do Map11. Precisa de `brew install vgmstream ffmpeg` e do [wwiser](https://github.com/bnnm/wwiser):
+   ```bash
+   git clone --depth 1 https://github.com/bnnm/wwiser assets-raw/wwiser
+   (cd tools && ../.venv-tools/bin/python build_audio.py ../assets-raw/wwiser/wwiser.py ../public/assets/sfx "$G")
+   ```
+   O wwiser gera um `.txtp` por evento, o vgmstream renderiza e o ffmpeg converte para mp3. Os eventos são achados pelo id (FNV-1 do nome; os nomes vêm dos `.bin` dos personagens, a tabela fica em `BANKS` no script). Containers aleatórios viram até 4 variações (`<chave>_<n>.mp3`), sorteadas em runtime. Saída: `public/assets/sfx/*.mp3` + `sounds.json`. Sem a pasta, o jogo roda mudo.
+   Eventos não encontrados (ficam mudos): morte dos minions e ataque dos dragões Oceano/Hextech/Quimtech. A música é o evento principal do SR sem nome conhecido (id `3832820115`), cada estado do switch vira uma faixa.
+
 ## Mapa procedural
 
 O mundo não tem borda nem paredes invisíveis: `src/sessions.ts` descreve o layout de uma sessão de 6000×6000 (`CHUNK`) e `src/map.ts` mantém uma janela 3×3 de chunks em volta do jogador (`WorldMap.ensureChunks`). Cada chamada gera no máximo 2 chunks novos e descarta tudo o que sai da janela; o fog (`THREE.Fog`, 5000–9500) esconde a borda carregada.
@@ -80,6 +88,7 @@ Os assets vêm do passo 4 do pipeline: textura por tipo de chunk (a água també
 | Ataque manual (auto desligado) | Botão esquerdo no inimigo |
 | Habilidades | `Q` `W` `E` `R` na direção do cursor |
 | Escolher melhoria | Clique ou `1`–`9` |
+| Pausar / ligar e desligar música e efeitos | `Esc` |
 
 WASD não é usado porque colide com Q/W/E.
 
