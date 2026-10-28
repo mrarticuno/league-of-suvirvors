@@ -1,6 +1,7 @@
 // Pure collision for the procedural map: no three.js, no game state.
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { clone } from 'three/addons/utils/SkeletonUtils.js';
 import { propModel, loadModel } from './assets';
 import { CHUNK, layoutSession, PIECES, PIECE_MODELS, randomKind } from './sessions';
 import type { Obstacle, PieceModel, SessionKind, SessionLayout } from './sessions';
@@ -149,7 +150,8 @@ export class WorldMap {
     for (const p of layout.pieces) {
       const model = this.pieces[p.model];
       if (!model) continue; // obstacle fallback below covers the missing piece
-      const mesh = model.clone();
+      // SkeletonUtils.clone: plain Object3D.clone shares the source's skeleton, whose bones never get a matrixWorld update
+      const mesh = clone(model);
       mesh.position.set(p.x, 0, p.z);
       mesh.rotation.y = p.yaw;
       if (p.model.startsWith('rock_')) {
