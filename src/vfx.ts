@@ -35,7 +35,7 @@ export class Vfx {
       if (l.follow) {
         if (!l.follow.parent) {
           if (l.killOnStop) { l.sys.dispose(); return false; }
-          l.sys.stop();
+          l.sys.kill(); // the followed object (missile) is gone: only lingering particles stay
         }
         else l.sys.setFrame(l.follow.position, l.dir ? missileQuat(l.dir, l.sys.quat) : l.sys.quat);
       }

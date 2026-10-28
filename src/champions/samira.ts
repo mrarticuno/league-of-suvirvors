@@ -42,7 +42,7 @@ const SKILLS = {
   },
   R: {
     name: 'Inferno Trigger', maxRank: 3, anim: 'spell4', icon: `${ICON}/spell/SamiraR.png`,
-    cooldown: [5, 5, 5], cost: [0, 0, 0],
+    cooldown: [0, 0, 0], cost: [0, 0, 0], // gated by Style S instead of a cooldown
     damage: [5, 15, 25], adRatio: 0.45, minionMultiplier: 0.25, shots: 10, interval: 0.2, range: 600,
     slow: 0.3, speed: 2800, maxMissilesPerShot: 8, castTime: 0.05, aim: 'none',
   },
@@ -87,6 +87,14 @@ export const SAMIRA: ChampionDef = {
     attacks: ['attack1_gun_start', 'attack2_gun_start'], crit: 'crit_gun_start',
   },
   vfx: { auto: FX.autoMis, crit: 'Samira_AA_mis_Crit', autoHit: FX.autoHit, critHit: 'Samira_AA_tar_Crit' },
+  // Daredevil Impulse: autos on enemies within PASSIVE.meleeRange are blade slashes
+  melee: {
+    attacks: ['attack1_sword', 'attack2_sword'], crit: 'crit_sword',
+    vfx: {
+      swing: ['Samira_BA_Melee_One', 'Samira_BA_Melee_Two'], crit: 'Samira_BA_Melee_Crit_Swipe',
+      hit: ['Samira_BA_Melee_One_Tar', 'Samira_BA_Melee_two_Tar'], critHit: 'Samira_BA_Melee_Crit_Tar',
+    },
+  },
   kit: samiraKit,
 };
 
@@ -109,6 +117,8 @@ function samiraKit(g: Game): ChampionKit {
   let rush: { hit: Set<Enemy>; damage: number; fx: THREE.Object3D } | null = null;
   let rushAs = 0, rushTimer = 0;
   let inferno: { shots: number; next: number; rank: number } | null = null;
+  let qBlade = false; // Flair's form, chosen when the cast starts (animation) and kept for its resolve
+  let aura: THREE.Object3D | null = null; // Style S glow around Samira while the ultimate is ready
 
   const inMelee = (e: Enemy) => e.pos.distanceTo(g.pos) - e.def.radius - SAMIRA.base.radius <= PASSIVE.meleeRange;
   const bladeBonus = (e: Enemy) =>
@@ -119,6 +129,20 @@ function samiraKit(g: Game): ChampionKit {
     return style * PASSIVE.msPerStack[i];
   };
   const crit = () => Math.random() < g.critChance;
+  const toward = (point: THREE.Vector3) => {
+    const dir = flat.copy(point).sub(g.pos).setY(0);
+    if (dir.lengthSq() < 1) dir.set(Math.sin(g.facing), 0, Math.cos(g.facing));
+    return dir.normalize();
+  };
+  const inCone = (e: Enemy, dir: THREE.Vector3) => {
+    const dx = e.pos.x - g.pos.x, dz = e.pos.z - g.pos.z;
+    const d = Math.hypot(dx, dz);
+    return d - e.def.radius <= SKILLS.Q.slashRange && (d < 1 || (dx * dir.x + dz * dir.z) / d >= SKILLS.Q.slashCone);
+  };
+  const endAura = () => {
+    aura?.removeFromParent();
+    aura = null;
+  };
   const slash = (rank: number) => {
     const w = SKILLS.W;
     g.vfx.playAt('Samira_W_CircleCut', g.pos.clone().setY(0), g.facing);
@@ -141,17 +165,20 @@ function samiraKit(g: Game): ChampionKit {
     attackSpeedBonus: () => (rushTimer > 0 ? rushAs : 0),
     moveSpeedBonus: () => styleMs() - (inferno ? SKILLS.R.slow : 0),
     disarmed: () => whirl !== null || inferno !== null,
+    meleeAuto: inMelee,
     canCast(key) {
       if (inferno) return key === 'E';
       if (key === 'Q') return !whirl;
       if (key === 'R') return style >= PASSIVE.maxStyle && g.nearestEnemy(g.pos, SKILLS.R.range) !== null;
       return true;
     },
-    hud: () => `Estilo ${GRADES[style] || '-'}`,
+    gauge: () => ({ label: GRADES[style] || '-', fill: style / PASSIVE.maxStyle, ready: style >= PASSIVE.maxStyle, skill: 'R' }),
 
     update(dt) {
       rushTimer -= dt;
       if (!inferno && (styleTimer -= dt) <= 0) style = 0;
+      if (style < PASSIVE.maxStyle) endAura();
+      else aura?.position.copy(g.pos).setY(0);
 
       if (whirl) {
         whirl.fx.position.copy(g.pos).setY(0);
@@ -204,8 +231,16 @@ function samiraKit(g: Game): ChampionKit {
     },
 
     dispose() {
+      endAura();
       endWhirl();
       endRush();
+    },
+
+    castAnim(key, point) {
+      if (key !== 'Q') return undefined;
+      const dir = toward(point);
+      qBlade = g.nearestEnemy(g.pos, SKILLS.Q.slashRange, (e) => inCone(e, dir)) !== null;
+      return qBlade ? 'spell1_sword' : undefined;
     },
 
     castStart(key) {
@@ -213,25 +248,19 @@ function samiraKit(g: Game): ChampionKit {
     },
 
     cast(key, r, point) {
-      const dir = flat.copy(point).sub(g.pos).setY(0);
-      if (dir.lengthSq() < 1) dir.set(Math.sin(g.facing), 0, Math.cos(g.facing));
-      dir.normalize();
+      const dir = toward(point);
 
       if (key === 'Q') {
         const q = SKILLS.Q;
         const c = crit();
         const damage = (q.damage[r] + q.adRatio[r] * g.ad) * (c ? q.critMultiplier + g.items.critDamage : 1);
-        const inCone = (e: Enemy) => {
-          const dx = e.pos.x - g.pos.x, dz = e.pos.z - g.pos.z;
-          const d = Math.hypot(dx, dz);
-          return d - e.def.radius <= q.slashRange && (d < 1 || (dx * dir.x + dz * dir.z) / d >= q.slashCone);
-        };
-        if (g.nearestEnemy(g.pos, q.slashRange, inCone)) {
-          // an enemy in front: slash with the blade in a cone instead of shooting
-          g.vfx.play(FX.qSlash, g.pos.clone().setY(0), facingQuat(Math.atan2(dir.x, dir.z)));
+        if (qBlade) {
+          // an enemy in front when the cast started: slash with the blade in a cone instead of shooting
+          // (the arc system is authored facing -Z, hence the half turn)
+          g.vfx.play(FX.qSlash, g.pos.clone().setY(0), facingQuat(Math.atan2(dir.x, dir.z) + Math.PI));
           audio.play('samira_Q_slash');
           for (const e of g.enemiesNear(g.pos, q.slashRange, near)) {
-            if (e.deadFor >= 0 || !inCone(e)) continue;
+            if (e.deadFor >= 0 || !inCone(e, dir)) continue;
             g.vfx.hit('Samira_Q_Melee_Tar', e.pos);
             g.hurtEnemy(e, damage, c ? HITS.slashCrit : HITS.slash);
           }
@@ -265,12 +294,13 @@ function samiraKit(g: Game): ChampionKit {
       if (kind !== last) {
         last = kind;
         if (style < PASSIVE.maxStyle && ++style === PASSIVE.maxStyle) {
-          g.vfx.playAt(FX.rReady, g.pos.clone().setY(0));
+          aura = g.vfx.attach(FX.rReady);
+          aura.position.copy(g.pos).setY(0);
+          g.scene.add(aura);
           audio.play('samira_R_ready');
         } else if (style < PASSIVE.maxStyle) audio.play('samira_style');
       }
       styleTimer = PASSIVE.duration;
-      if (melee) audio.play('samira_melee_hit');
       return melee || BLADE.has(hit) ? bladeBonus(e) : 0;
     },
   };

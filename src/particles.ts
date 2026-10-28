@@ -207,12 +207,16 @@ class Emitter {
   }
 
   static supported(e: Bin) {
-    return !e.disabled && PRIMITIVES.has(e.primitive?.__type) && (e.primitive?.__type !== 'VfxPrimitiveMesh' || meshes.has(e.primitive.mMesh?.mSimpleMeshName));
+    // distortion emitters refract the screen behind them; drawn as plain textures they become solid white quads
+    return !e.disabled && !e.distortionDefinition && PRIMITIVES.has(e.primitive?.__type) && (e.primitive?.__type !== 'VfxPrimitiveMesh' || meshes.has(e.primitive.mMesh?.mSimpleMeshName));
   }
 
   private get duration() { return this.e.lifetime > 0 ? this.e.lifetime : Infinity; }
   get active() { return !this.sys.stopped && this.age - (this.e.timeBeforeFirstEmission ?? 0) < this.duration; }
   get done() { return !this.active && this.particles.length === 0 && (this.sys.stopped || this.age > (this.e.timeBeforeFirstEmission ?? 0)); }
+  private killAt = Infinity;
+  /** LoL: when the system is destroyed (e.g. its missile hits) particles survive only `particleLinger` seconds. */
+  kill() { this.killAt = Math.min(this.killAt, this.age + (this.e.particleLinger ?? 0)); }
 
   update(dt: number, delta: THREE.Matrix4) {
     const e = this.e;
@@ -231,6 +235,7 @@ class Emitter {
       }
     }
     const worldAcc = vec3(val(e.worldAcceleration, et));
+    if (this.age >= this.killAt) this.particles.length = 0;
     compact(this.particles, (p) => {
       p.age += dt;
       if (p.age >= p.life) return false;
@@ -460,6 +465,8 @@ export class ParticleSystem {
   }
 
   stop() { this.stopped = true; }
+  /** Stops and cuts every particle short to its emitter's `particleLinger` (missile destroyed). */
+  kill() { this.stopped = true; for (const e of this.emitters) e.kill(); }
   get done() { return this.emitters.every((e) => e.done); }
 
   update(dt: number) {

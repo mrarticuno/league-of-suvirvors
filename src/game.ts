@@ -138,6 +138,7 @@ export class Game {
   private windup = -1;
   private windupTarget: Enemy | null = null;
   private pendingCrit = false;
+  private pendingMelee = false;
   private attackIndex = 0;
   private castLock = 0;
   private animLock = 0;
@@ -407,10 +408,11 @@ export class Game {
     this.faceTowards(point);
     this.castLock = skill.castTime;
     this.pendingCast = { key, point: point.clone() };
-    this.player.play(skill.anim, { loop: false, restart: true, fade: 0.05 });
+    const anim = this.kit.castAnim?.(key, point) ?? skill.anim;
+    this.player.play(anim, { loop: false, restart: true, fade: 0.05 });
     this.kit.castStart?.(key, point);
     audio.play(`${this.champ.id}_${key}`);
-    this.animLock = Math.min(this.player.duration(skill.anim), skill.castTime + 0.6);
+    this.animLock = Math.min(this.player.duration(anim), skill.castTime + 0.6);
   }
 
   /**
@@ -634,18 +636,35 @@ export class Game {
     this.faceTowards(target.pos);
     const crit = Math.random() < this.critChance;
     this.pendingCrit = crit;
-    const anim = crit ? anims.crit : anims.attacks[this.attackIndex++ % anims.attacks.length];
+    const melee = this.champ.melee && this.kit.meleeAuto?.(target) ? this.champ.melee : null;
+    this.pendingMelee = melee !== null;
+    const set = melee ?? anims;
+    const anim = crit ? set.crit : set.attacks[this.attackIndex++ % set.attacks.length];
     const length = Math.min(this.player.duration(anim), delay);
     this.player.play(anim, { loop: false, restart: true, duration: length, fade: 0.05 });
-    audio.play(crit ? `${id}_crit` : this.attackIndex % 2 ? `${id}_auto` : `${id}_auto2`);
+    const sound = melee ? `${id}_melee` : `${id}_auto`;
+    audio.play(crit ? (melee ? `${id}_melee_crit` : `${id}_crit`) : this.attackIndex % 2 ? sound : `${sound}2`);
     this.animLock = length;
   }
 
   private fireAuto(target: Enemy) {
     const B = this.champ.base;
     const dmg = this.ad * (this.pendingCrit ? B.critDamage + this.items.critDamage : 1);
-    this.basicAttack(target, dmg, this.pendingCrit);
+    if (this.pendingMelee) this.meleeAttack(target, dmg, this.pendingCrit);
+    else this.basicAttack(target, dmg, this.pendingCrit);
     for (const fx of this.itemFx) fx.onAttack?.(target, dmg, this.pendingCrit);
+  }
+
+  /** The champion's melee basic attack (`ChampionDef.melee`): swing and hit land at once, no missile. */
+  private meleeAttack(target: Enemy, damage: number, crit: boolean) {
+    const { melee, id } = this.champ;
+    const fx = melee!.vfx;
+    const i = this.attackIndex % fx.swing.length;
+    // swing systems are authored facing -Z: half turn so the arc opens toward the target
+    this.vfx.playAt(crit ? fx.crit : fx.swing[i], this.pos.clone().setY(0), this.facing + Math.PI);
+    this.vfx.hit(crit ? fx.critHit : fx.hit[i], target.pos, this.facing);
+    audio.play(`${id}_melee${crit ? '_crit' : ''}_hit`);
+    this.hurtEnemy(target, damage, { type: 'physical', source: 'auto', onHit: true, crit });
   }
 
   /** Fires a basic attack missile; `bolt` marks secondary ones (Runaan's Hurricane). */

@@ -32,6 +32,15 @@
       .skill .pips i.on { background: #ffd257; }
       .skill.locked img { filter: grayscale(1) brightness(0.35); }
       .skill.nomana img { filter: hue-rotate(200deg) brightness(0.6); }
+      .skill.blocked img { filter: grayscale(1) brightness(0.4); }
+      .skill.empowered { border-color: #ffd257; box-shadow: 0 0 10px #ff3b3b, inset 0 0 8px #ffd257; }
+      .skill.empowered img { filter: sepia(1) saturate(5) hue-rotate(-25deg) brightness(1.1); }
+      #gauge { position: relative; width: 52px; height: 52px; border: 2px solid var(--gold-dim); overflow: hidden; display: none; }
+      #gauge img { width: 100%; height: 100%; display: block; filter: brightness(0.45); }
+      #gauge-fill { position: absolute; left: 0; right: 0; bottom: 0; background: linear-gradient(0deg, rgba(212,60,79,0.75), rgba(255,210,87,0.45)); }
+      #gauge-label { position: absolute; inset: 0; display: grid; place-items: center; font-weight: 800; font-size: 26px; color: #ffd257; text-shadow: 0 0 4px #000, 0 0 2px #000; }
+      #gauge.ready { border-color: #ffd257; box-shadow: 0 0 10px #ffd257; }
+      #gauge.ready #gauge-label { color: #fff; text-shadow: 0 0 6px #ff3b3b, 0 0 2px #000; }
       .bar { position: relative; width: 100%; height: 16px; background: #111; border: 1px solid #000; }
       .bar div { height: 100%; }
       .bar span { position: absolute; inset: 0; text-align: center; font-size: 11px; line-height: 16px; text-shadow: 0 1px 1px #000; }
@@ -145,7 +154,7 @@
       <div id="boss"><div id="boss-name"></div><div id="boss-bar"><div id="boss-fill"></div></div></div>
     </div>
     <div id="bottom">
-      <div id="lvl-row"><div id="level">1</div><div id="skills"></div><div id="inventory"></div></div>
+      <div id="lvl-row"><div id="level">1</div><div id="gauge"><img alt=""><div id="gauge-fill"></div><div id="gauge-label"></div></div><div id="skills"></div><div id="inventory"></div></div>
       <div class="bar"><div id="hp-fill"></div><span id="hp-text"></span></div>
       <div class="bar"><div id="mana-fill"></div><span id="mana-text"></span></div>
       <div id="stats"></div>

@@ -71,6 +71,11 @@ export interface ChampionDef {
   anims: { idle: string; run: string; death: string; attacks: readonly string[]; crit: string };
   /** Particle systems of the basic attack (missile and impact, normal and crit). */
   vfx: { auto: string; crit: string; autoHit: string; critHit: string };
+  /**
+   * Close-range basic attack (e.g. a blade) used instead of the missile when the kit's `meleeAuto` says so:
+   * no missile, the hit lands at the end of the windup. Sounds: `<id>_melee`, `_melee2`, `_melee_crit`, `_melee_hit`, `_melee_crit_hit`.
+   */
+  melee?: { attacks: readonly string[]; crit: string; vfx: { swing: readonly string[]; crit: string; hit: readonly string[]; critHit: string } };
   kit: (g: Game) => ChampionKit;
 }
 
@@ -78,6 +83,8 @@ export interface ChampionDef {
 export interface ChampionKit {
   /** Resolves a skill once its cast time ends. `rank` is 0-based. */
   cast(key: SkillKey, rank: number, point: THREE.Vector3): void;
+  /** Animation for this cast when the skill has more than one form (e.g. gun or blade); default `SkillDef.anim`. */
+  castAnim?(key: SkillKey, point: THREE.Vector3): string | undefined;
   /** When the cast starts (cast VFX). */
   castStart?(key: SkillKey, point: THREE.Vector3): void;
   /** Bonus attack speed (fraction) from the champion's own mechanics. */
@@ -88,10 +95,14 @@ export interface ChampionKit {
   canCast?(key: SkillKey): boolean;
   /** True while the champion's own mechanics forbid basic attacks (e.g. a channel that replaces them). */
   disarmed?(): boolean;
+  /** True when the basic attack about to start on `target` is the champion's melee one (`ChampionDef.melee`). */
+  meleeAuto?(target: Enemy): boolean;
   /** Extra magic damage added to a hit on `e` before mitigation (e.g. a mark detonating). */
   onDamage?(e: Enemy, hit: Hit): number;
   update?(dt: number): void;
   dispose?(): void;
   /** Passive status line on the HUD. */
   hud?(): string;
+  /** Passive gauge next to the skills (e.g. a stack grade): big label, fill 0..1, `ready` glows it and `skill`'s slot. */
+  gauge?(): { label: string; fill: number; ready: boolean; skill?: SkillKey };
 }

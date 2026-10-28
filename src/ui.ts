@@ -47,6 +47,7 @@ export class Hud {
     this.skillEls = Object.fromEntries(SKILL_KEYS.map((k) => [k, {
       root: root(k), cd: part(k, '.cd'), cdText: part(k, '.cd-text'), pips: part(k, '.pips'),
     }])) as Hud['skillEls'];
+    $('gauge').querySelector('img')!.src = champ.passive.icon;
     shown.clear(); // a new HUD (new champion) redraws everything
   }
 
@@ -67,12 +68,21 @@ export class Hud {
     const buffs = (['blue', 'red'] as const).filter((k) => g.buffs[k] > g.time).map((k) => ` · ${BUFF.names[k]} ${fmt(g.buffs[k] - g.time)}`).join('');
     text('stats',
       `DdA ${Math.round(g.ad)} · VA ${g.attackSpeed.toFixed(2)} · Arm ${Math.round(g.armor)} · VM ${g.moveSpeed} · AH ${g.abilityHaste} · Crit ${Math.round(g.critChance * 100)}%${passive ? ` · ${passive}` : ''}${buffs}`);
+    const gauge = g.kit.gauge?.();
+    style('gauge', 'display', gauge ? 'block' : 'none');
+    if (gauge) {
+      text('gauge-label', gauge.label);
+      style('gauge-fill', 'height', `${(Math.min(1, gauge.fill) * 100).toFixed(1)}%`);
+      if (changed('gauge-ready', String(gauge.ready))) $('gauge').classList.toggle('ready', gauge.ready);
+    }
     for (const k of SKILL_KEYS) {
       const el = this.skillEls[k];
       const rank = g.ranks[k];
       const cd = g.cooldowns[k];
       el.root.classList.toggle('locked', rank === 0);
       el.root.classList.toggle('nomana', rank > 0 && g.mana < g.costOf(k));
+      el.root.classList.toggle('blocked', rank > 0 && g.kit.canCast?.(k) === false);
+      el.root.classList.toggle('empowered', rank > 0 && !!gauge?.ready && gauge.skill === k);
       // text stays centered on the icon while the overlay shrinks, so the last seconds stay readable
       const cdText = cd > 0 ? (cd < 1 ? cd.toFixed(1) : String(Math.ceil(cd))) : '';
       if (changed(`cd-text-${k}`, cdText)) el.cdText.textContent = cdText;
