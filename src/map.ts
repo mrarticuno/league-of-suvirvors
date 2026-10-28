@@ -1,6 +1,8 @@
 // Pure collision for the procedural map: no three.js, no game state.
 import * as THREE from 'three';
-import { CHUNK, layoutSession, randomKind } from './sessions';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { propModel, loadModel } from './assets';
+import { CHUNK, layoutSession, PIECES, PIECE_MODELS, randomKind } from './sessions';
 import type { Obstacle, PieceModel, SessionKind, SessionLayout } from './sessions';
 
 export { CHUNK } from './sessions';
@@ -150,6 +152,11 @@ export class WorldMap {
       const mesh = model.clone();
       mesh.position.set(p.x, 0, p.z);
       mesh.rotation.y = p.yaw;
+      if (p.model.startsWith('rock_')) {
+        // rocks are normalised to a unit long side, so stretch them over the box they stand for
+        const box = layout.obstacles.find((o) => o.kind === 'box' && o.x === p.x && o.z === p.z);
+        if (box?.kind === 'box') mesh.scale.setScalar(2 * Math.max(box.hw, box.hd));
+      }
       group.add(mesh);
     }
 
@@ -183,6 +190,59 @@ const chunkKey = (x: number, z: number) => `${Math.floor(x / CHUNK)},${Math.floo
 const loader = new THREE.TextureLoader();
 const loadTex = (name: string) =>
   new Promise<THREE.Texture>((ok, err) => loader.load(`assets/map/tex/${name}.png`, ok, undefined, err));
+
+// The structure meshes stack their damaged variants and tower stages on the intact one, so only the base shows
+const INTACT = ['Stage1', 'Stage2', 'Stage3', 'Rubble', 'Broken1', 'Broken2', 'Broken3', 'Destroyed'];
+
+/** Rocks ship ~1 unit long; the long side becomes 1 so a placement can stretch it over its obstacle box. */
+function unitRock(rock: THREE.Object3D): THREE.Object3D {
+  const size = new THREE.Box3().setFromObject(rock).getSize(new THREE.Vector3());
+  rock.scale.setScalar(1 / Math.max(size.x, size.z));
+  const group = new THREE.Group(); // the wrapper keeps the normalisation when the placement scales it
+  group.add(rock);
+  return group;
+}
+
+const rockLoader = new GLTFLoader();
+
+/** Rocks are the extracted map meshes: same unlit material and UV conventions as loadModel. */
+async function loadRock(key: string): Promise<THREE.Object3D> {
+  const [gltf, map] = await Promise.all([
+    rockLoader.loadAsync(`assets/map/pieces/${key}.glb`),
+    loader.loadAsync(`assets/map/pieces/${key}.png`),
+  ]);
+  map.flipY = false; // glTF UV convention
+  map.wrapS = map.wrapT = THREE.RepeatWrapping;
+  map.colorSpace = THREE.SRGBColorSpace;
+  const material = new THREE.MeshBasicMaterial({ map, alphaTest: 0.3 });
+  gltf.scene.traverse((o) => {
+    const mesh = o as THREE.Mesh;
+    if (mesh.isMesh) mesh.material = material;
+  });
+  return gltf.scene;
+}
+
+/**
+ * Loads the scenery pieces by catalog key. A model that is missing or fails to load resolves to `undefined`,
+ * so a chunk keeps drawing the obstacle placeholder instead of breaking (same as an unset piece).
+ */
+export async function loadMapPieces(): Promise<Partial<Record<PieceModel, THREE.Object3D>>> {
+  const pieces: Partial<Record<PieceModel, THREE.Object3D>> = {};
+  await Promise.all(PIECES.map(async (key) => {
+    const id = PIECE_MODELS[key];
+    try {
+      if (key.startsWith('rock_')) {
+        pieces[key] = unitRock(await loadRock(id));
+      } else {
+        await loadModel(id, INTACT);
+        pieces[key] = propModel(id); // League units: already Ezreal-scaled with its feet at y = 0
+      }
+    } catch {
+      pieces[key] = undefined;
+    }
+  }));
+  return pieces;
+}
 
 /** Loads the five chunk textures (SessionKind ground + river water). */
 export async function loadMapTextures(): Promise<{ textures: Record<SessionKind, THREE.Texture>; water: THREE.Texture }> {

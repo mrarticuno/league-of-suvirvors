@@ -53,6 +53,13 @@ function isUnkeyed(track: THREE.KeyframeTrack, scene: THREE.Object3D) {
   return true;
 }
 
+/** A static (unanimated) clone of a loaded model, for scenery. */
+export function propModel(id: string): THREE.Object3D {
+  const t = templates.get(id);
+  if (!t) throw new Error(`model ${id} not loaded`);
+  return clone(t.scene);
+}
+
 /** An animated instance of a loaded model. */
 export class Actor {
   readonly root = new THREE.Group();

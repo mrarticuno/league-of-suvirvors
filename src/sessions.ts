@@ -9,6 +9,15 @@ export type Obstacle = BoxObstacle | CircleObstacle;
 export const PIECES: readonly ['turret', 'inhibitor', 'nexus', 'rock_a', 'rock_b', 'rock_c'] =
   ['turret', 'inhibitor', 'nexus', 'rock_a', 'rock_b', 'rock_c'];
 export type PieceModel = (typeof PIECES)[number];
+/** Catalog key -> model id: structures come from `assets/models/<id>`, rocks from `assets/map/pieces/<id>`. */
+export const PIECE_MODELS: Record<PieceModel, string> = {
+  turret: 'sruap_orderturret',
+  inhibitor: 'sruap_orderinhibitor',
+  nexus: 'sruap_ordernexus',
+  rock_a: 'rock_a',
+  rock_b: 'rock_b',
+  rock_c: 'rock_c',
+};
 export interface Piece { model: PieceModel; x: number; z: number; yaw: number }
 export interface WaterBand { x0: number; x1: number }
 export interface SessionLayout { kind: SessionKind; obstacles: Obstacle[]; pieces: Piece[]; water: WaterBand | null }

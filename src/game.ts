@@ -5,7 +5,7 @@ import {
   MAX_CHAMPION_LEVEL, MAX_ENEMIES, POOL, RUN_LENGTH, SKILL_KEYS, xpToNext, type EnemyDef, type SkillKey,
 } from './data';
 import { combine, MAX_ITEMS, sumStats, type Item } from './items';
-import { loadMapTextures, WorldMap } from './map';
+import { loadMapPieces, loadMapTextures, WorldMap } from './map';
 import { loadVfx, Vfx, type MissileFx } from './vfx';
 
 const B = EZREAL.base;
@@ -138,8 +138,8 @@ export class Game {
       }),
     ]);
     this.scene.background = new THREE.Color(0x0b1410);
-    const { textures, water } = await loadMapTextures();
-    this.map = new WorldMap(this.scene, textures, {}, Math.random, water);
+    const [{ textures, water }, pieces] = await Promise.all([loadMapTextures(), loadMapPieces()]);
+    this.map = new WorldMap(this.scene, textures, pieces, Math.random, water);
     this.focusRing.visible = false;
     this.scene.add(this.focusRing);
     this.reset();
