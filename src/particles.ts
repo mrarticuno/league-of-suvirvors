@@ -15,7 +15,7 @@ const meshes = new Map<string, { pos: number[]; uv: number[] }>();
 let camera: THREE.Camera | null = null; // captured from the renderer, needed for billboards and camera trails
 
 function assetNames(v: Bin, out: Set<string>) {
-  if (typeof v === 'string' && /\.(png|json)$/.test(v)) out.add(v);
+  if (typeof v === 'string' && /\.(png|webp|json)$/.test(v)) out.add(v);
   else if (v && typeof v === 'object') for (const x of Object.values(v)) assetNames(x, out);
 }
 

@@ -1,10 +1,12 @@
 // Procedural map: chunk streaming (3x3 window around the player), circle-vs-obstacle collision and the map asset loaders.
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { clone } from 'three/addons/utils/SkeletonUtils.js';
 import { propModel, loadModel } from './assets';
 import { CHUNK, layoutSession, PIECES, PIECE_MODELS, randomKind, SESSION_KINDS } from './sessions';
 import type { Obstacle, PieceModel, SessionKind, SessionLayout } from './sessions';
+import { IMG } from './util';
 
 export { CHUNK } from './sessions';
 
@@ -274,7 +276,7 @@ export class WorldMap {
 
 const loader = new THREE.TextureLoader();
 const loadTex = (name: string) =>
-  new Promise<THREE.Texture>((ok, err) => loader.load(`assets/map/tex/${name}.png`, ok, undefined, err));
+  new Promise<THREE.Texture>((ok, err) => loader.load(`assets/map/tex/${name}.${IMG}`, ok, undefined, err));
 
 // The structure meshes stack their damaged variants and tower stages on the intact one, so only the base shows
 const INTACT = ['Stage1', 'Stage2', 'Stage3', 'Rubble', 'Broken1', 'Broken2', 'Broken3', 'Destroyed'];
@@ -290,13 +292,13 @@ function unitRock(rock: THREE.Object3D): THREE.Object3D {
   return group;
 }
 
-const rockLoader = new GLTFLoader();
+const rockLoader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
 
 /** Rocks are the extracted map meshes: same unlit material and UV conventions as loadModel. */
 async function loadRock(key: string): Promise<THREE.Object3D> {
   const [gltf, map] = await Promise.all([
     rockLoader.loadAsync(`assets/map/pieces/${key}.glb`),
-    loader.loadAsync(`assets/map/pieces/${key}.png`),
+    loader.loadAsync(`assets/map/pieces/${key}.${IMG}`),
   ]);
   map.flipY = false; // glTF UV convention
   map.wrapS = map.wrapT = THREE.RepeatWrapping;

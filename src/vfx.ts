@@ -2,7 +2,7 @@
 // champion's skin ResourceResolver; champions pass their own keys. Enemy skillshots keep a small hand-made look.
 import * as THREE from 'three';
 import { createSystem, facingQuat, loadParticles, missileQuat, type ParticleSystem } from './particles';
-import { compact } from './util';
+import { compact, IMG } from './util';
 
 export const loadVfx = loadParticles;
 
@@ -13,7 +13,7 @@ export class Vfx {
   private live: Live[] = [];
   private time = 0;
   private flashes: { s: THREE.Sprite; age: number }[] = [];
-  private enemyTex = new THREE.TextureLoader().load('assets/vfx/ezreal/ezreal_base_z_glow.png');
+  private enemyTex = new THREE.TextureLoader().load(`assets/vfx/ezreal/ezreal_base_z_glow.${IMG}`);
   constructor(private scene: THREE.Scene) {}
 
   clear() {

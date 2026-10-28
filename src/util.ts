@@ -24,3 +24,6 @@ export class TimeWindow {
 
   clear() { this.times.length = 0; this.head = 0; }
 }
+
+/** Texture extension: build:prod converts the PNGs to WebP (tools/optimize.mjs) and sets VITE_IMG_EXT=webp. */
+export const IMG: string = import.meta.env.VITE_IMG_EXT ?? 'png';

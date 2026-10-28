@@ -1,13 +1,15 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone } from 'three/addons/utils/SkeletonUtils.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+import { IMG } from './util';
 
 interface Template {
   scene: THREE.Object3D;
   clips: Map<string, THREE.AnimationClip>;
 }
 
-const gltfLoader = new GLTFLoader();
+const gltfLoader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder); // build:prod meshopt-compresses the .glb files
 const texLoader = new THREE.TextureLoader();
 const templates = new Map<string, Template>();
 
@@ -16,7 +18,7 @@ export async function loadModel(id: string, hide: readonly string[] = [], mesh =
   if (templates.has(id)) return;
   const [gltf, map] = await Promise.all([
     gltfLoader.loadAsync(`assets/models/${mesh}.glb`),
-    texLoader.loadAsync(`assets/models/${id}.png`),
+    texLoader.loadAsync(`assets/models/${id}.${IMG}`),
   ]);
   map.flipY = false; // glTF UV convention
   // League meshes rely on UV wrap (some islands go negative or past 1.0), clamp shows atlas edges
