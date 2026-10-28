@@ -5,3 +5,4 @@ dist/
 assets-raw
 public/assets
 .playwright-mcp/
+__pycache__/
