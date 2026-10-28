@@ -346,6 +346,8 @@ export class Game {
         this.animLock = 0;
       }
     }
+    // resolve even when stationary: a blink, the Baron's push or the tentacle drag can embed the player in scenery
+    this.map.collideCircle(this.pos, B.radius);
 
     if (this.animLock <= 0) {
       if (moving) {
@@ -430,6 +432,7 @@ export class Game {
       const dist = Math.min(dir.length(), e.blinkRange);
       const from = this.pos.clone();
       if (dist > 0) this.pos.addScaledVector(dir.normalize(), dist);
+      this.map.collideCircle(this.pos, B.radius); // the blink can land inside an obstacle
       this.vfx.blink(from, this.pos);
       const marked = this.nearestEnemy(this.pos, e.boltRange, (x) => x.markedUntil > this.time);
       const target = marked ?? this.nearestEnemy(this.pos, e.boltRange);

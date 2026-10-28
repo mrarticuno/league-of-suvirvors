@@ -16,7 +16,7 @@ Os modelos **não estão no repositório** (são assets da Riot). Gere-os localm
 
 1. Ferramentas: Python 3 e .NET 8 SDK.
    ```bash
-   python3 -m venv .venv-tools && .venv-tools/bin/pip install xxhash zstandard pillow
+   python3 -m venv .venv-tools && .venv-tools/bin/pip install xxhash zstandard pillow pygltflib
    git clone https://github.com/Crauzer/lol2gltf && cd lol2gltf/src/lol2gltf
    # o csproj vem fixo em win-x64: troque RuntimeIdentifier para osx-arm64, desligue PublishReadyToRun e RestorePackagesWithLockFile
    dotnet publish -c Release -o ../../../l2g
@@ -41,7 +41,7 @@ Os modelos **não estão no repositório** (são assets da Riot). Gere-os localm
    ```
    Saída: `public/assets/models/<id>.glb` + `<id>.png`. O PNG é aplicado em runtime porque o `lol2gltf` só embute `.tex/.dds`.
    As estruturas já têm linha fixa em `tools/build_models.py` (`sruap_orderturret|orderinhibitor|ordernexus`, `own_anm=False` porque são cenário estático) e saem como `public/assets/models/sruap_*.glb|png`.
-4. Mapa: texturas do terreno e rochas, extraídas do `Map11.wad.client` com o `hashes.game.txt` completo como tabela de nomes.
+4. Mapa: texturas do terreno e rochas, extraídas do `Map11.wad.client`. Baixe antes as listas de hashes completas do CommunityDragon (`hashes.game.txt` e `hashes.bin{entries,fields,types,hashes}.txt` de `https://raw.communitydragon.org/data/hashes/lol/`) em `assets-raw/hashes/`: o `textures` usa o `hashes.game.txt` como tabela de nomes e o `pieces` precisa das listas `.bin*` para o `read_bin` resolver os nomes do `.mapgeo`.
    ```bash
    G="/Applications/League of Legends.app/Contents/LoL/Game/DATA/FINAL"
    .venv-tools/bin/python tools/build_map.py textures assets-raw/hashes/hashes.game.txt public/assets/map "$G/Maps/Shipping/Map11.wad.client"
@@ -49,7 +49,7 @@ Os modelos **não estão no repositório** (são assets da Riot). Gere-os localm
    ```
    Saída: `public/assets/map/tex/{ground_river,ground_lane,ground_jungle,ground_base,water}.png` (recortes de ~400 px dos atlas do SR) e `public/assets/map/pieces/rock_{a,b,c}.glb|png` (as três maiores seções de rocha/penhasco do `base.mapgeo`, normalizadas para 1 unidade e escaladas para cobrir a caixa do obstáculo).
    O `pieces` é um parser limitado do `.mapgeo` v14: se for pulado ou falhar (versão diferente do formato, WAD ausente), o runtime desenha caixas/cilindros escuros a partir dos obstáculos do layout — nada quebra.
-5. VFX das habilidades: sistemas de partículas do Ezreal lidos do `.bin` da skin, com todas as texturas e malhas que eles usam. Precisa das listas de hashes completas do CommunityDragon (`hashes.game.txt` e `hashes.bin{entries,fields,types,hashes}.txt` de `https://raw.communitydragon.org/data/hashes/lol/`) em `assets-raw/hashes/`:
+5. VFX das habilidades: sistemas de partículas do Ezreal lidos do `.bin` da skin, com todas as texturas e malhas que eles usam. Usa as listas de hashes baixadas no passo 4:
    ```bash
    (cd tools && ../.venv-tools/bin/python build_vfx.py ../assets-raw/hashes ezreal ../public/assets/vfx/ezreal "$G")
    ```

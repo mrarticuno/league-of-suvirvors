@@ -56,6 +56,13 @@ it('collides at the rendered position of a chunk outside the origin', () => {
   expect(Math.hypot(p.x - cx, p.z - cz)).toBeGreaterThan(400); // pushed to 380 + 30
 });
 
+// rand >= 0.75 makes every kind 'base'; -1.5*CHUNK lands in chunk (-2, -1) — pins Math.floor on the negative side
+it('generates chunks at negative coordinates', () => {
+  const map = new WorldMap(new THREE.Scene(), textures, {}, () => 0.8);
+  for (let i = 0; i < 5; i++) map.ensureChunks(new THREE.Vector3(-1.5 * CHUNK, 0, -0.5 * CHUNK));
+  expect(map.kindAt(-1.5 * CHUNK + 10, -0.5 * CHUNK + 10)).toBe('base');
+});
+
 it('colliding against an unloaded chunk is a no-op', () => {
   const map = new WorldMap(new THREE.Scene(), textures, {}, seed());
   const p = new THREE.Vector3(99999, 0, 99999);

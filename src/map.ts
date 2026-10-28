@@ -1,4 +1,4 @@
-// Pure collision for the procedural map: no three.js, no game state.
+// Procedural map: chunk streaming (3x3 window around the player), circle-vs-obstacle collision and the map asset loaders.
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone } from 'three/addons/utils/SkeletonUtils.js';
@@ -155,9 +155,15 @@ export class WorldMap {
       mesh.position.set(p.x, 0, p.z);
       mesh.rotation.y = p.yaw;
       if (p.model.startsWith('rock_')) {
-        // rocks are normalised to a unit long side, so stretch them over the box they stand for
+        // the rock is the visual for the box obstacle it stands on: stretch it over the box on the box's axes
         const box = layout.obstacles.find((o) => o.kind === 'box' && o.x === p.x && o.z === p.z);
-        if (box?.kind === 'box') mesh.scale.setScalar(2 * Math.max(box.hw, box.hd));
+        if (box?.kind === 'box') {
+          const size = model.userData.size as THREE.Vector3 | undefined; // normalised footprint of the rock mesh
+          if (size) {
+            mesh.rotation.y = 0; // drop the layout yaw: the mesh axes must match the box axes or corners stay open
+            mesh.scale.set((2 * box.hw) / size.x, 2 * Math.max(box.hw, box.hd), (2 * box.hd) / size.z);
+          } else mesh.scale.setScalar(2 * Math.max(box.hw, box.hd));
+        }
       }
       group.add(mesh);
     }
@@ -199,9 +205,11 @@ const INTACT = ['Stage1', 'Stage2', 'Stage3', 'Rubble', 'Broken1', 'Broken2', 'B
 /** Rocks ship ~1 unit long; the long side becomes 1 so a placement can stretch it over its obstacle box. */
 function unitRock(rock: THREE.Object3D): THREE.Object3D {
   const size = new THREE.Box3().setFromObject(rock).getSize(new THREE.Vector3());
-  rock.scale.setScalar(1 / Math.max(size.x, size.z));
+  const k = 1 / Math.max(size.x, size.z);
+  rock.scale.setScalar(k);
   const group = new THREE.Group(); // the wrapper keeps the normalisation when the placement scales it
   group.add(rock);
+  group.userData.size = size.multiplyScalar(k); // per-axis footprint after normalising (rock_a is long in X, b/c in Z)
   return group;
 }
 
@@ -239,7 +247,8 @@ export async function loadMapPieces(): Promise<Partial<Record<PieceModel, THREE.
         await loadModel(id, INTACT);
         pieces[key] = propModel(id); // League units: already Ezreal-scaled with its feet at y = 0
       }
-    } catch {
+    } catch (err) {
+      console.warn(`[map] piece ${key} (${id}) failed to load, using the obstacle fallback`, err);
       pieces[key] = undefined;
     }
   }));
