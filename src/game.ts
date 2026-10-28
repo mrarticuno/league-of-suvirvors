@@ -341,6 +341,7 @@ export class Game {
         this.resolveCast(this.pendingCast.key, this.pendingCast.point);
         this.pendingCast = null;
       }
+      this.player.update(dt); // keep the spell animation playing while rooted
       return; // champions stand still while casting
     }
 

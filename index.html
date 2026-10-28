@@ -24,7 +24,8 @@
       #skills { display: flex; gap: 8px; }
       .skill { position: relative; width: 52px; height: 52px; border: 2px solid var(--gold-dim); overflow: hidden; }
       .skill img { width: 100%; height: 100%; display: block; }
-      .skill .cd { position: absolute; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); display: grid; place-items: center; font-weight: 700; font-size: 16px; }
+      .skill .cd { position: absolute; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); }
+      .skill .cd-text { position: absolute; inset: 0; display: grid; place-items: center; font-weight: 700; font-size: 16px; text-shadow: 0 0 3px #000; pointer-events: none; }
       .skill .key { position: absolute; left: 2px; bottom: 6px; font-size: 11px; font-weight: 700; text-shadow: 0 0 3px #000; }
       .skill .pips { position: absolute; bottom: 1px; left: 0; right: 0; display: flex; justify-content: center; gap: 2px; }
       .skill .pips i { width: 6px; height: 3px; background: #333; }

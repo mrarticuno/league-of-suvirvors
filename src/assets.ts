@@ -32,7 +32,21 @@ export async function loadModel(id: string, hide: readonly string[] = [], mesh =
     mesh.material = material;
     mesh.frustumCulled = false; // skinned bounds don't follow animation
   });
-  for (const clip of gltf.animations) clip.tracks = clip.tracks.filter((t) => !isUnkeyed(t, gltf.scene));
+  for (const clip of gltf.animations) {
+    const kept = clip.tracks.filter((t) => !isUnkeyed(t, gltf.scene));
+    // The drakes' flying_attack1/spell1 also store keyed translations as offsets from the bind pose
+    // (Root y ~0 instead of ~84 sinks the drake into the ground). Other clips with unkeyed bones, e.g. murkwolf death, are absolute.
+    if (clip.name === 'sru_dragon_flying_attack1' || clip.name === 'sru_dragon_flying_spell1') {
+      for (const t of kept) {
+        if (!t.name.endsWith('.position')) continue;
+        const bind = gltf.scene.getObjectByName(t.name.slice(0, -'.position'.length))?.position;
+        if (bind) for (let i = 0; i < t.values.length; i += 3) {
+          t.values[i] += bind.x; t.values[i + 1] += bind.y; t.values[i + 2] += bind.z;
+        }
+      }
+    }
+    clip.tracks = kept;
+  }
   templates.set(id, { scene: gltf.scene, clips: new Map(gltf.animations.map((c) => [c.name, c])) });
 }
 

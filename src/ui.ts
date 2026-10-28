@@ -18,7 +18,7 @@ export class Hud {
     $('skills').innerHTML = SKILL_KEYS.map((k) => `
       <div class="skill" id="skill-${k}">
         <img src="https://ddragon.leagueoflegends.com/cdn/16.21.1/img/spell/Ezreal${k}.png" alt="">
-        <div class="cd"></div><span class="key">${k}</span><div class="pips"></div>
+        <div class="cd"></div><div class="cd-text"></div><span class="key">${k}</span><div class="pips"></div>
       </div>`).join('');
   }
 
@@ -42,7 +42,8 @@ export class Hud {
       el.classList.toggle('locked', rank === 0);
       el.classList.toggle('nomana', rank > 0 && g.mana < g.costOf(k));
       const cdEl = el.querySelector<HTMLElement>('.cd')!;
-      cdEl.textContent = cd > 0 ? (cd < 1 ? cd.toFixed(1) : String(Math.ceil(cd))) : '';
+      // text stays centered on the icon while the overlay shrinks, so the last seconds stay readable
+      el.querySelector('.cd-text')!.textContent = cd > 0 ? (cd < 1 ? cd.toFixed(1) : String(Math.ceil(cd))) : '';
       cdEl.style.height = rank > 0 && cd > 0 ? `${(cd / g.cooldownOf(k)) * 100}%` : '0';
       el.querySelector('.pips')!.innerHTML = Array.from({ length: EZREAL[k].maxRank }, (_, i) => `<i class="${i < rank ? 'on' : ''}"></i>`).join('');
     }
