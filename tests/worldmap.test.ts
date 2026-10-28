@@ -34,6 +34,28 @@ it('dispose removes every mesh and is safe to call twice', () => {
   expect(map.kindAt(0, 0)).toBeNull();
 });
 
+it('revisiting a chunk does not duplicate meshes', () => {
+  const scene = new THREE.Scene();
+  const map = new WorldMap(scene, textures, {}, seed());
+  for (let i = 0; i < 5; i++) map.ensureChunks(new THREE.Vector3(0, 0, 0));
+  const first = scene.children.length;
+  for (let i = 0; i < 5; i++) map.ensureChunks(new THREE.Vector3(CHUNK * 2, 0, 0));
+  for (let i = 0; i < 5; i++) map.ensureChunks(new THREE.Vector3(0, 0, 0));
+  expect(first).toBe(9);
+  expect(scene.children.length).toBe(first);
+});
+
+// rand >= 0.75 makes every kind 'base', whose layout has a nexus circle obstacle at local (0, 0)
+it('collides at the rendered position of a chunk outside the origin', () => {
+  const map = new WorldMap(new THREE.Scene(), textures, {}, () => 0.8);
+  for (let i = 0; i < 5; i++) map.ensureChunks(new THREE.Vector3(CHUNK * 1.5, 0, CHUNK * 0.5));
+  const cx = CHUNK * 1.5, cz = CHUNK * 0.5; // chunk (1, 0) origin; nexus r 380
+  expect(map.kindAt(cx + 10, cz + 10)).toBe('base');
+  const p = new THREE.Vector3(cx + 300, 0, cz);
+  map.collideCircle(p, 30);
+  expect(Math.hypot(p.x - cx, p.z - cz)).toBeGreaterThan(400); // pushed to 380 + 30
+});
+
 it('colliding against an unloaded chunk is a no-op', () => {
   const map = new WorldMap(new THREE.Scene(), textures, {}, seed());
   const p = new THREE.Vector3(99999, 0, 99999);

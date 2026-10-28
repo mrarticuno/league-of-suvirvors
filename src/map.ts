@@ -97,8 +97,15 @@ export class WorldMap {
 
   /** Resolves only against the chunk containing `pos`; no-op when it is not loaded. */
   collideCircle(pos: THREE.Vector3, radius: number): void {
-    const c = this.chunks.get(chunkKey(pos.x, pos.z));
-    if (c) resolveCircle(pos, radius, c.layout.obstacles);
+    const cx = Math.floor(pos.x / CHUNK), cz = Math.floor(pos.z / CHUNK);
+    const c = this.chunks.get(`${cx},${cz}`);
+    if (!c) return;
+    // layouts are chunk-local (origin = chunk centre), so resolve there and shift back
+    const ox = (cx + 0.5) * CHUNK, oz = (cz + 0.5) * CHUNK;
+    const local = { x: pos.x - ox, z: pos.z - oz };
+    resolveCircle(local, radius, c.layout.obstacles);
+    pos.x = local.x + ox;
+    pos.z = local.z + oz;
   }
 
   update(dt: number): void {
@@ -117,7 +124,8 @@ export class WorldMap {
     const kind = randomKind(this.rand);
     const layout = layoutSession(kind, this.rand);
     const group = new THREE.Group();
-    group.position.set(cx * CHUNK, 0, cz * CHUNK); // layout coords stay chunk-local
+    // chunk c covers world [c*CHUNK, (c+1)*CHUNK); layouts are centred on their chunk origin
+    group.position.set((cx + 0.5) * CHUNK, 0, (cz + 0.5) * CHUNK);
     const geos: THREE.BufferGeometry[] = [];
 
     const groundGeo = new THREE.PlaneGeometry(CHUNK, CHUNK);
@@ -145,7 +153,8 @@ export class WorldMap {
       group.add(mesh);
     }
 
-    // obstacles whose piece model was injected are already drawn; the rest get a simple shape
+    // obstacles whose piece model was injected are already drawn; the rest get a simple shape.
+    // invariant (sessions.ts layouts): a piece copies its obstacle's exact x/z, so equality pairs them
     const drawn = new Set(layout.pieces.filter((p) => this.pieces[p.model]).map((p) => `${p.x},${p.z}`));
     for (const o of layout.obstacles) {
       if (drawn.has(`${o.x},${o.z}`)) continue;
