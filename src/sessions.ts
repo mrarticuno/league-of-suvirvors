@@ -33,17 +33,21 @@ export function randomKind(rand: () => number = Math.random): SessionKind {
   return SESSION_KINDS[Math.min(SESSION_KINDS.length - 1, Math.floor(rand() * SESSION_KINDS.length))];
 }
 
+const randomRock = (rand: () => number): PieceModel => PIECES[Math.min(PIECES.length - 1, 3 + Math.floor(rand() * 3))];
+
 function river(rand: () => number): SessionLayout {
   const x0 = -800 - rand() * 300, x1 = 800 + rand() * 300;
   const edge = Math.max(-x0, x1); // banks start past the wider side of the river
-  const obstacles: Obstacle[] = [];
+  const obstacles: Obstacle[] = [], pieces: Piece[] = [];
   const count = 2 + Math.floor(rand() * 3);
   for (let i = 0; i < count; i++) {
     const hw = 150 + rand() * 250, hd = 100 + rand() * 200;
     const x = (i % 2 ? -1 : 1) * (edge + hw + 50 + rand() * 600);
-    obstacles.push({ kind: 'box', x, z: jitter(rand, HALF - hd), hw, hd });
+    const z = jitter(rand, HALF - hd);
+    obstacles.push({ kind: 'box', x, z, hw, hd });
+    pieces.push({ model: randomRock(rand), x, z, yaw: 0 }); // bank boulders: a bare box reads as a hole in the map
   }
-  return { kind: 'river', obstacles, pieces: [], water: { x0, x1 } };
+  return { kind: 'river', obstacles, pieces, water: { x0, x1 } };
 }
 
 function lane(rand: () => number): SessionLayout {
@@ -71,10 +75,7 @@ function jungle(rand: () => number): SessionLayout {
     const hw = 200 + rand() * 400, hd = 150 + rand() * 150;
     const x = clamp(cx + jitter(rand, 200), hw), z = clamp(cz + jitter(rand, 200), hd);
     obstacles.push({ kind: 'box', x, z, hw, hd });
-    if (rand() < 0.4) {
-      const rock = PIECES[Math.min(PIECES.length - 1, 3 + Math.floor(rand() * 3))];
-      pieces.push({ model: rock, x, z, yaw: rand() * Math.PI * 2 });
-    }
+    pieces.push({ model: randomRock(rand), x, z, yaw: 0 }); // every wall is a rock: a bare box reads as a hole in the map
   }
   return { kind: 'jungle', obstacles, pieces, water: null };
 }

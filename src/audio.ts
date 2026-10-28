@@ -45,7 +45,9 @@ class GameAudio {
   async load() {
     const res = await fetch(BASE + 'sounds.json').catch(() => null);
     if (!res?.ok) return; // sounds not extracted: play silently
-    const manifest: Record<string, string[]> = await res.json();
+    // the dev server answers a missing file with index.html (200), so a parse failure also means "not extracted"
+    const manifest: Record<string, string[]> | null = await res.json().catch(() => null);
+    if (!manifest) return;
     this.tracks = manifest.music ?? [];
     await Promise.all(Object.entries(manifest).filter(([k]) => k !== 'music').map(async ([key, files]) => {
       const takes = await Promise.all(files.map(async (f) => {

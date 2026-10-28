@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone } from 'three/addons/utils/SkeletonUtils.js';
 import { propModel, loadModel } from './assets';
-import { CHUNK, layoutSession, PIECES, PIECE_MODELS, randomKind } from './sessions';
+import { CHUNK, layoutSession, PIECES, PIECE_MODELS, randomKind, SESSION_KINDS } from './sessions';
 import type { Obstacle, PieceModel, SessionKind, SessionLayout } from './sessions';
 
 export { CHUNK } from './sessions';
@@ -36,12 +36,65 @@ export function resolveCircle(pos: { x: number; z: number }, radius: number, obs
 const MAX_GEN = 2; // new chunks per ensureChunks call: amortizes generation spikes
 const MARGIN_CELLS = 1; // keeps a 3x3 window around the player's chunk
 const OBSTACLE_HEIGHT = 80; // obstacles are 2D colliders, so the fallback mesh height is arbitrary
-const repeatTexture = (t: THREE.Texture, r: number) => {
-  const c = t.clone();
-  c.wrapS = c.wrapT = THREE.RepeatWrapping;
-  c.repeat.set(r, r);
-  return c;
-};
+const GROUND_TILE = 750; // world units per ground texture repeat
+const WATER_TILE = 500;
+const BLEND = 600; // half-width of the cross-fade band at a chunk border
+const BANK = 150; // half-width of the soft river bank
+
+// Ground of one chunk: world-space UVs (continuous across chunks), cross-faded with the neighbour kinds near the
+// borders, plus the river band. Kinds are SESSION_KINDS indices; kinds[(dz + 1) * 3 + dx + 1] is the cell at (dx, dz).
+const GROUND_VERT = /* glsl */ `
+uniform vec2 origin;
+varying vec2 vWorld;
+varying vec2 vLocal;
+void main() {
+  vec4 w = modelMatrix * vec4(position, 1.0);
+  vWorld = w.xz;
+  vLocal = w.xz - origin;
+  gl_Position = projectionMatrix * viewMatrix * w;
+}`;
+const GROUND_FRAG = /* glsl */ `
+uniform sampler2D tRiver, tLane, tJungle, tBase, tWater;
+uniform float kinds[9];
+uniform vec2 water; // local x0, x1; x0 == x1 means no river
+uniform float waterShift;
+varying vec2 vWorld;
+varying vec2 vLocal;
+const float HALF = ${CHUNK / 2}.0;
+vec4 oneHot(float k) { return vec4(equal(vec4(k), vec4(0.0, 1.0, 2.0, 3.0))); }
+float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float vnoise(vec2 p) {
+  vec2 i = floor(p), f = fract(p);
+  f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x), mix(hash(i + vec2(0.0, 1.0)), hash(i + 1.0), f.x), f.y);
+}
+// anti-tiling: a second, rotated and rescaled read of the same texture, mixed in by low-frequency noise,
+// breaks the mirror axes of MirroredRepeatWrapping
+float gN;
+vec3 tex(sampler2D t, vec2 uv) {
+  vec2 uv2 = mat2(0.8, -0.6, 0.6, 0.8) * uv * 0.83 + 0.37;
+  return mix(texture2D(t, uv).rgb, texture2D(t, uv2).rgb, gN);
+}
+void main() {
+  // 0 inside, 0.5 at the border: the neighbour computes the mirror image, so both sides meet at 50/50
+  float fx = 0.5 * clamp(1.0 - (HALF - abs(vLocal.x)) / ${BLEND}.0, 0.0, 1.0);
+  float fz = 0.5 * clamp(1.0 - (HALF - abs(vLocal.y)) / ${BLEND}.0, 0.0, 1.0);
+  int ix = vLocal.x < 0.0 ? 0 : 2, iz = vLocal.y < 0.0 ? 0 : 6;
+  vec4 w = oneHot(kinds[4]) * (1.0 - fx) * (1.0 - fz) + oneHot(kinds[3 + ix]) * fx * (1.0 - fz)
+         + oneHot(kinds[iz + 1]) * (1.0 - fx) * fz + oneHot(kinds[iz + ix]) * fx * fz;
+  vec2 uv = vWorld / ${GROUND_TILE}.0;
+  gN = smoothstep(0.3, 0.7, vnoise(vWorld / 1300.0));
+  vec3 c = tex(tRiver, uv) * w.x + tex(tLane, uv) * w.y + tex(tJungle, uv) * w.z + tex(tBase, uv) * w.w;
+  if (water.y > water.x) {
+    float across = smoothstep(water.x - ${BANK}.0, water.x + ${BANK}.0, vLocal.x)
+                 * (1.0 - smoothstep(water.y - ${BANK}.0, water.y + ${BANK}.0, vLocal.x));
+    float along = 1.0 - smoothstep(HALF - 2.0 * ${BLEND}.0, HALF - ${BLEND}.0 * 0.5, abs(vLocal.y)); // pool tapers before the border
+    vec3 wc = tex(tWater, vWorld / ${WATER_TILE}.0 + vec2(waterShift, 0.0));
+    c = mix(c, wc, across * along);
+  }
+  gl_FragColor = vec4(c, 1.0);
+  #include <colorspace_fragment>
+}`;
 
 interface Chunk {
   kind: SessionKind;
@@ -49,14 +102,15 @@ interface Chunk {
   cz: number;
   layout: SessionLayout;
   group: THREE.Group;
-  geos: THREE.BufferGeometry[]; // owned by this chunk; texture clones and piece clones are shared
+  geos: THREE.BufferGeometry[]; // owned by this chunk; textures and piece clones are shared
+  mat: THREE.ShaderMaterial; // owned: per-chunk uniforms
 }
 
 export class WorldMap {
   private readonly chunks = new Map<string, Chunk>();
-  private readonly groundMats: Record<SessionKind, THREE.MeshBasicMaterial>;
-  private readonly waterMat: THREE.MeshBasicMaterial;
-  private readonly waterTex: THREE.Texture | null;
+  // kinds outlive their chunk: a chunk's border blend needs its neighbours' kinds before they are built
+  private readonly kinds = new Map<string, SessionKind>();
+  private readonly shared: Record<string, THREE.IUniform>;
   private readonly obstacleMat = new THREE.MeshBasicMaterial({ color: 0x2b2b2b });
   private readonly boxGeo = new THREE.BoxGeometry(1, 1, 1);
   private readonly cylGeo = new THREE.CylinderGeometry(1, 1, 1, 16);
@@ -68,14 +122,16 @@ export class WorldMap {
     private readonly rand: () => number = Math.random,
     water?: THREE.Texture,
   ) {
-    this.groundMats = {
-      river: new THREE.MeshBasicMaterial({ map: repeatTexture(textures.river, 8) }),
-      lane: new THREE.MeshBasicMaterial({ map: repeatTexture(textures.lane, 8) }),
-      jungle: new THREE.MeshBasicMaterial({ map: repeatTexture(textures.jungle, 8) }),
-      base: new THREE.MeshBasicMaterial({ map: repeatTexture(textures.base, 8) }),
+    const fallback = new THREE.DataTexture(new Uint8Array([47, 111, 181, 255]), 1, 1); // flat river blue
+    fallback.needsUpdate = true;
+    this.shared = {
+      tRiver: { value: textures.river },
+      tLane: { value: textures.lane },
+      tJungle: { value: textures.jungle },
+      tBase: { value: textures.base },
+      tWater: { value: water ?? fallback },
+      waterShift: { value: 0 },
     };
-    this.waterTex = water ? repeatTexture(water, 4) : null;
-    this.waterMat = new THREE.MeshBasicMaterial(this.waterTex ? { map: this.waterTex } : { color: 0x2f6fb5 });
   }
 
   /** Generates at most 2 new chunks per call and drops everything outside the 3x3 window. */
@@ -112,7 +168,7 @@ export class WorldMap {
   }
 
   update(dt: number): void {
-    if (this.waterTex) this.waterTex.offset.x += dt * 0.01;
+    this.shared.waterShift.value += dt * 0.01;
   }
 
   kindAt(x: number, z: number): SessionKind | null {
@@ -124,28 +180,30 @@ export class WorldMap {
   }
 
   private build(cx: number, cz: number): Chunk {
-    const kind = randomKind(this.rand);
+    const kind = this.kindOf(cx, cz);
     const layout = layoutSession(kind, this.rand);
     const group = new THREE.Group();
     // chunk c covers world [c*CHUNK, (c+1)*CHUNK); layouts are centred on their chunk origin
     group.position.set((cx + 0.5) * CHUNK, 0, (cz + 0.5) * CHUNK);
     const geos: THREE.BufferGeometry[] = [];
 
+    const kinds: number[] = [];
+    for (let dz = -1; dz <= 1; dz++) for (let dx = -1; dx <= 1; dx++) kinds.push(SESSION_KINDS.indexOf(this.kindOf(cx + dx, cz + dz)));
+    const mat = new THREE.ShaderMaterial({
+      vertexShader: GROUND_VERT,
+      fragmentShader: GROUND_FRAG,
+      uniforms: {
+        ...this.shared, // same uniform objects: textures and the water scroll stay shared
+        kinds: { value: kinds },
+        origin: { value: new THREE.Vector2(group.position.x, group.position.z) },
+        water: { value: new THREE.Vector2(layout.water?.x0 ?? 0, layout.water?.x1 ?? 0) },
+      },
+    });
     const groundGeo = new THREE.PlaneGeometry(CHUNK, CHUNK);
-    const ground = new THREE.Mesh(groundGeo, this.groundMats[kind]);
+    const ground = new THREE.Mesh(groundGeo, mat);
     ground.rotation.x = -Math.PI / 2;
     group.add(ground);
     geos.push(groundGeo);
-
-    if (layout.water) {
-      const { x0, x1 } = layout.water;
-      const geo = new THREE.PlaneGeometry(x1 - x0, CHUNK);
-      const waterMesh = new THREE.Mesh(geo, this.waterMat);
-      waterMesh.rotation.x = -Math.PI / 2;
-      waterMesh.position.set((x0 + x1) / 2, 1, 0);
-      group.add(waterMesh);
-      geos.push(geo);
-    }
 
     for (const p of layout.pieces) {
       const model = this.pieces[p.model];
@@ -181,7 +239,7 @@ export class WorldMap {
     }
 
     this.scene.add(group);
-    return { kind, cx, cz, layout, group, geos };
+    return { kind, cx, cz, layout, group, geos, mat };
   }
 
   private removeChunk(key: string): void {
@@ -189,7 +247,15 @@ export class WorldMap {
     if (!c) return;
     c.group.removeFromParent();
     for (const g of c.geos) g.dispose();
+    c.mat.dispose();
     this.chunks.delete(key);
+  }
+
+  private kindOf(cx: number, cz: number): SessionKind {
+    const key = `${cx},${cz}`;
+    let kind = this.kinds.get(key);
+    if (!kind) this.kinds.set(key, (kind = randomKind(this.rand)));
+    return kind;
   }
 }
 
@@ -261,7 +327,7 @@ export async function loadMapTextures(): Promise<{ textures: Record<SessionKind,
     ['ground_river', 'ground_lane', 'ground_jungle', 'ground_base', 'water'].map(loadTex),
   );
   for (const t of [river, lane, jungle, base, water]) {
-    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    t.wrapS = t.wrapT = THREE.MirroredRepeatWrapping; // the crops are not tileable: mirroring hides the repeat seams
     t.colorSpace = THREE.SRGBColorSpace;
   }
   return { textures: { river, lane, jungle, base }, water };
