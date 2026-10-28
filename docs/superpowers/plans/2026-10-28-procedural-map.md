@@ -264,7 +264,7 @@ git commit -m "feat: slide collision against box and circle obstacles"
 export class WorldMap {
   /** textures: uma THREE.Texture por kind (injetada — testes usam new THREE.Texture()). pieces: templates clonados por piece.model; ausente = box fallback. */
   constructor(scene: THREE.Scene, textures: Record<SessionKind, THREE.Texture>,
-              pieces: Partial<Record<PieceModel, THREE.Object3D>>, rand?: () => number);
+              pieces: Partial<Record<PieceModel, THREE.Object3D>>, rand?: () => number, water?: THREE.Texture);
   ensureChunks(pos: THREE.Vector3): void;      // gera ≤ 2 chunks novos por chamada; descarta fora do 3×3
   collideCircle(pos: THREE.Vector3, radius: number): void; // resolve só contra o chunk que contém pos
   update(dt: number): void;                    // scroll da água
@@ -424,6 +424,7 @@ Checklist:
 - Andar >1 chunk em cada direção: novas sessões aparecem, antigas somem, fog esconde a borda carregada.
 - Água do rio andável e animada; nenhuma barreira invisível em lugar algum.
 - Inimigos deslizam em paredes/torres e nunca ficam dentro de obstáculo visível.
+- E para dentro de uma parede → o Ezreal é empurrado para fora ao pousar.
 - Baron: arena continua fechando e puxando o jogador de volta.
 
 - [ ] **Step 4: Commit**

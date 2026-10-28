@@ -16,7 +16,7 @@ Os modelos **não estão no repositório** (são assets da Riot). Gere-os localm
 
 1. Ferramentas: Python 3 e .NET 8 SDK.
    ```bash
-   python3 -m venv .venv-tools && .venv-tools/bin/pip install xxhash zstandard pillow
+   python3 -m venv .venv-tools && .venv-tools/bin/pip install xxhash zstandard pillow pygltflib
    git clone https://github.com/Crauzer/lol2gltf && cd lol2gltf/src/lol2gltf
    # o csproj vem fixo em win-x64: troque RuntimeIdentifier para osx-arm64, desligue PublishReadyToRun e RestorePackagesWithLockFile
    dotnet publish -c Release -o ../../../l2g
@@ -24,7 +24,7 @@ Os modelos **não estão no repositório** (são assets da Riot). Gere-os localm
 2. Lista de hashes (os `.bin` do jogo referenciam texturas/animações por hash xxh64):
    ```bash
    curl -s https://raw.communitydragon.org/data/hashes/lol/hashes.game.txt \
-     | grep -E "assets/characters/(ezreal|sru_)" > assets-raw/hashes.filtered.txt
+     | grep -E "assets/characters/(ezreal|sru_|turret|inhibitor|nexus)" > assets-raw/hashes.filtered.txt
    ```
 3. Extrair dos WADs (`tools/extract_lol.py`) e converter para `.glb` (`tools/build_models.py`):
    ```bash
@@ -33,14 +33,42 @@ Os modelos **não estão no repositório** (são assets da Riot). Gere-os localm
    for c in sru_chaosminion{melee,ranged,siege,super} sru_orderminionmelee sru_krug sru_murkwolf sru_razorbeak sru_razorbeakmini sru_gromp sru_blue sru_red sru_riftherald sru_baron sru_crab sru_dragon sru_dragon_{air,fire,earth,water,hextech,chemtech}; do
      .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt $c assets-raw/$c "$G/Maps/Shipping/Map11.wad.client" "$G/Maps/Shipping/Common.wad.client"
    done
+   # estruturas do SR (scenery do mapa): a pasta do personagem é turret/inhibitor/nexus
+   for c in turret inhibitor nexus; do
+     .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt $c assets-raw/$c "$G/Maps/Shipping/Map11.wad.client" "$G/Maps/Shipping/Common.wad.client"
+   done
    .venv-tools/bin/python tools/build_models.py l2g/lol2gltf
    ```
    Saída: `public/assets/models/<id>.glb` + `<id>.png`. O PNG é aplicado em runtime porque o `lol2gltf` só embute `.tex/.dds`.
-4. VFX das habilidades: sistemas de partículas do Ezreal lidos do `.bin` da skin, com todas as texturas e malhas que eles usam. Precisa das listas de hashes completas do CommunityDragon (`hashes.game.txt` e `hashes.bin{entries,fields,types,hashes}.txt` de `https://raw.communitydragon.org/data/hashes/lol/`) em `assets-raw/hashes/`:
+   As estruturas já têm linha fixa em `tools/build_models.py` (`sruap_orderturret|orderinhibitor|ordernexus`, `own_anm=False` porque são cenário estático) e saem como `public/assets/models/sruap_*.glb|png`.
+4. Mapa: texturas do terreno e rochas, extraídas do `Map11.wad.client`. Baixe antes as listas de hashes completas do CommunityDragon (`hashes.game.txt` e `hashes.bin{entries,fields,types,hashes}.txt` de `https://raw.communitydragon.org/data/hashes/lol/`) em `assets-raw/hashes/`: o `textures` usa o `hashes.game.txt` como tabela de nomes e o `pieces` precisa das listas `.bin*` para o `read_bin` resolver os nomes do `.mapgeo`.
+   ```bash
+   G="/Applications/League of Legends.app/Contents/LoL/Game/DATA/FINAL"
+   .venv-tools/bin/python tools/build_map.py textures assets-raw/hashes/hashes.game.txt public/assets/map "$G/Maps/Shipping/Map11.wad.client"
+   .venv-tools/bin/python tools/build_map.py pieces assets-raw/hashes/hashes.game.txt public/assets/map "$G/Maps/Shipping/Map11.wad.client"
+   ```
+   Saída: `public/assets/map/tex/{ground_river,ground_lane,ground_jungle,ground_base,water}.png` (recortes de ~400 px dos atlas do SR) e `public/assets/map/pieces/rock_{a,b,c}.glb|png` (as três maiores seções de rocha/penhasco do `base.mapgeo`, normalizadas para 1 unidade e escaladas para cobrir a caixa do obstáculo).
+   O `pieces` é um parser limitado do `.mapgeo` v14: se for pulado ou falhar (versão diferente do formato, WAD ausente), o runtime desenha caixas/cilindros escuros a partir dos obstáculos do layout — nada quebra.
+5. VFX das habilidades: sistemas de partículas do Ezreal lidos do `.bin` da skin, com todas as texturas e malhas que eles usam. Usa as listas de hashes baixadas no passo 4:
    ```bash
    (cd tools && ../.venv-tools/bin/python build_vfx.py ../assets-raw/hashes ezreal ../public/assets/vfx/ezreal "$G")
    ```
    Gera `systems.json` (efeitos indexados pelas chaves do `ResourceResolver`, ex. `Ezreal_Q_mis`), `spells.json` (velocidade/largura/alcance dos mísseis) e os PNG/JSON dos assets. `tools/read_bin.py` sozinho converte qualquer `.bin` em JSON. O runtime dos emissores fica em `src/particles.ts`; `src/vfx.ts` só escolhe qual sistema tocar e onde.
+
+## Mapa procedural
+
+O mundo não tem borda nem paredes invisíveis: `src/sessions.ts` descreve o layout de uma sessão de 6000×6000 (`CHUNK`) e `src/map.ts` mantém uma janela 3×3 de chunks em volta do jogador (`WorldMap.ensureChunks`). Cada chamada gera no máximo 2 chunks novos e descarta tudo o que sai da janela; o fog (`THREE.Fog`, 5000–9500) esconde a borda carregada.
+
+Cada chunk sorteia um tipo no momento da geração, com repetição permitida e sem persistência (sair e voltar pode render outro tipo):
+
+- `river`: rio com margens de água andável e caixas de mata nas duas margens.
+- `lane`: 4 torres nos cantos.
+- `jungle`: 2–7 paredes de rocha; ~40% delas ganham uma rocha decorativa.
+- `base`: nexus no centro, inibidor e 2–3 torres em volta.
+
+Os obstáculos são **física pura**: torres, inibidores e o nexus não atacam nem são atacáveis (o clique direito continua focando só unidades reais) e não bloqueiam projéteis — mísseis, o blink do E e a água passam por cima. Só corpos (jogador e inimigos) colidem, deslizando ao longo do obstáculo (`resolveCircle`); não há pathfinding: o inimigo anda reto até o Ezreal e contorna o que encostar.
+
+Os assets vêm do passo 4 do pipeline: textura por tipo de chunk (a água também rola o offset) e peças carregadas por `loadMapPieces()`. Peça ausente ou que falhe ao carregar cai na caixa/cilindro escuro do obstáculo — nada quebra.
 
 ## Controles
 

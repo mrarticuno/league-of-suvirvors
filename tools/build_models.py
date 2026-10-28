@@ -39,6 +39,11 @@ MODELS = {
     "dragon_water": ("sru_dragon_water", "sru_dragon_water_tx_cm.png", ["sru_dragon"]),
     "dragon_hextech": ("sru_dragon_hextech", "sru_dragon_hextech_tx_cm.png", ["sru_dragon"]),
     "dragon_chemtech": ("sru_dragon_chemtech", "sru_dragon_chemtech_tx_cm.png", ["sru_dragon"]),
+    # Blue (order) SR structures, extracted from Map11. Scenery only, so own clips are skipped (static bind pose,
+    # turret 5.7M -> 1.2M).
+    "sruap_orderturret": ("turret", "turret_tx_cm.png", [], False),
+    "sruap_orderinhibitor": ("inhibitor", "inhibitor_tx_cm.png", [], False),
+    "sruap_ordernexus": ("nexus", "nexus_tx_cm.png", [], False),
 }
 
 

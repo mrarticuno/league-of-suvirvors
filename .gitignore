@@ -1,8 +1,8 @@
 node_modules/
 dist/
-.venv-tools/
+.venv-tools
 # Riot Games assets: extracted locally by tools/, never committed (see README)
-assets-raw/
-public/assets/models/
-public/assets/vfx/
+assets-raw
+public/assets
 .playwright-mcp/
+__pycache__/
