@@ -10,7 +10,7 @@ import re
 import sys
 import urllib.request
 
-LEGENDARIES = ["3078", "3004", "3161", "6694", "2517", "3110", "3026", "3071", "6672", "3153", "3031", "3508"]
+LEGENDARIES = ["3078", "3004", "3161", "6694", "2517", "3110", "3026", "3071", "6672", "3153", "3031", "3508", "3085", "3068"]
 # intermediates of the evolution lines (src/items.ts LINES) that no legendary recipe above pulls in
 EXTRA = ["6670", "3086"]
 STAT_KEYS = {

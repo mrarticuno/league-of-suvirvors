@@ -28,6 +28,8 @@ export const PASSIVES: Record<string, string> = {
   '3071': 'Talhar: dano físico reduz a Armadura do alvo em 6% (acumula 5x).',
   '3026': 'Renascimento: ao sofrer dano letal, revive com 50% da Vida base (1x a cada 5 min).',
   '3110': 'Carícia do Inverno: inimigos próximos atacam 20% mais devagar.',
+  '3085': 'Fúria do Vento: ataques disparam projéteis em até 2 inimigos próximos, causando 55% do dano e efeitos ao acertar.',
+  '3068': 'Imolação: queima inimigos próximos, causando dano mágico por segundo (aumenta com nível e Vida adicional).',
 };
 
 /** Evolution paths per base item (steps after the base). Copies needed for a path = its length + 1. */
@@ -43,16 +45,17 @@ export const LINES: Record<string, string[][]> = {
     ['1043', '3086', '6672'], ['1043', '1053', '3153'],
     ['3051', '3044', '3078'],
     ['3086', '6670', '1038', '3031'],
+    ['3144', '3086', '3085'],
   ],
   '2022': [ // Partícula Brilhante
     ['3057', '3044', '3078'], ['3057', '1018', '3508'],
     ['3067', '3044', '3071'],
     ['3133', '3004'],
   ],
-  '1028': [['3044', '3067', '3071'], ['2021', '3161']], // Cristal de Rubi
-  '1029': [['3082', '3110'], ['2019', '1038', '3026']], // Couraça de Pano
+  '1028': [['3044', '3067', '3071'], ['2021', '3161'], ['6660', '1031', '3068']], // Cristal de Rubi
+  '1029': [['3082', '3110'], ['2019', '1038', '3026'], ['1031', '6660', '3068']], // Couraça de Pano
   '3070': [['1027', '3004'], ['3024', '3110']], // Lágrima da Deusa
-  '1018': [['3057', '3133', '3508'], ['6670', '1038', '1037', '3031']], // Capa da Agilidade
+  '1018': [['3057', '3133', '3508'], ['6670', '1038', '1037', '3031'], ['3086', '3144', '3085']], // Capa da Agilidade
 };
 export const BASES = Object.keys(LINES);
 
