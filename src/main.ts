@@ -2,7 +2,6 @@ import * as THREE from 'three';
 import { Game } from './game';
 import { Hud } from './ui';
 import type { SkillKey } from './data';
-import { combinable } from './items';
 
 // LoL-style camera: high, pitched ~56°, looking down at the champion
 const CAMERA_OFFSET = new THREE.Vector3(0, 1900, 1250);
@@ -59,10 +58,9 @@ addEventListener('mouseup', (e) => {
 addEventListener('keydown', (e) => {
   const k = e.key.toLowerCase();
   keys.add(k);
-  if (hud.choosing && ['1', '2', '3', '4'].includes(k)) hud.key(Number(k));
+  if (hud.choosing && /^[1-9]$/.test(k)) hud.key(Number(k));
   if (game.paused || game.over) return;
   if (['q', 'w', 'e', 'r'].includes(k)) game.cast(k.toUpperCase() as SkillKey, cursor);
-  if (k === 'c') openCombine();
   if (k === 't') {
     game.autoAttack = !game.autoAttack;
     game.manualTarget = null;
@@ -87,13 +85,6 @@ function moveInput() {
   if (v.length() < 15) moveTarget = null;
   return moveTarget ? v.normalize() : v.set(0, 0, 0);
 }
-
-function openCombine() {
-  if (game.paused || game.over || hud.choosing || !combinable(game.inventory).length) return;
-  game.paused = true;
-  hud.combineMenu(game, () => (game.paused = game.pendingLevelUps > 0));
-}
-document.getElementById('combine')!.addEventListener('click', openCombine);
 
 function checkPrompts() {
   if (game.over && !document.getElementById('end')!.checkVisibility()) {

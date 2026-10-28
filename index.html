@@ -52,22 +52,24 @@
       #inv-edit { display: flex; gap: 6px; }
       #inv-edit .slot { position: relative; width: 48px; height: 48px; border: 1px solid var(--gold-dim); background: #111; }
       #inv-edit .slot img { width: 100%; height: 100%; display: block; }
-      #inv-edit .slot button { position: absolute; top: -8px; right: -8px; min-width: 18px; height: 18px; padding: 0 4px; border: 1px solid #a33; background: #300; color: #fcc; font-size: 11px; cursor: pointer; }
-      #inv-edit .slot.confirm button { top: auto; bottom: -10px; right: -12px; }
+      /* slot states: finished, locked (no evolution left), legendary (blueprint) */
+      #inv-edit .final, #inventory .final { border-color: #ffd257; }
+      #inv-edit .locked, #inventory .locked { border-color: #a33; filter: grayscale(0.8); }
+      #inv-edit .legendary, #inventory .legendary { border-color: #ff9a2e; box-shadow: 0 0 8px #ff9a2e; }
       #shop { display: flex; gap: 16px; align-items: flex-start; justify-content: center; flex-wrap: wrap; width: 100%; }
       #shop-left { display: flex; flex-direction: column; gap: 10px; width: min(480px, 92vw); }
-      #combos, #choices { display: flex; flex-direction: column; gap: 10px; }
+      #choices { display: flex; flex-direction: column; gap: 10px; }
       #choices .offer { background: var(--panel); border: 1px solid var(--gold-dim); padding: 10px 12px; cursor: pointer; display: flex; gap: 10px; align-items: flex-start; }
       #choices .offer:hover:not(.disabled) { border-color: var(--gold); }
       #choices .offer.disabled { opacity: 0.45; cursor: default; }
       #choices .offer.picked { opacity: 1; border-color: #4fdc7a; }
       #choices .offer > img { width: 44px; height: 44px; flex: none; }
+      #choices .offer { flex-wrap: wrap; }
       #choices .offer div { display: flex; flex-direction: column; gap: 3px; }
-      .into { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
-      .chip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 6px 2px 2px; background: #0a1a26; border: 1px solid #2a3a48; color: var(--text); font: inherit; font-size: 11px; cursor: pointer; }
-      .chip img { width: 18px; height: 18px; }
-      .chip.hot { border-color: #4fdc7a; color: #4fdc7a; }
-      .chip:hover { border-color: var(--gold); }
+      #choices .offer .acts { flex-basis: 100%; }
+      #choices .act { background: #0a1a26; color: var(--text); border: 1px solid #2a3a48; padding: 6px 8px; text-align: left; cursor: pointer; font: inherit; font-size: 12px; }
+      #choices .act:hover { border-color: var(--gold); }
+      #choices .act small { opacity: 0.7; }
       #tree { width: min(620px, 94vw); background: var(--panel); border: 1px solid var(--gold-dim); padding: 12px; overflow-x: auto; }
       #tree:empty { display: none; }
       .tree-head { display: flex; flex-direction: column; gap: 3px; margin-bottom: 10px; font-size: 12px; }
@@ -98,16 +100,8 @@
       #choices button.skill-choice > img { width: 44px; height: 44px; flex: none; }
       #choices button.skill-choice div { display: flex; flex-direction: column; gap: 3px; }
       #choices button.skill-choice:hover, #restart:hover, #continue:hover { border-color: var(--gold); }
-      #combos .combo { background: var(--panel); border: 1px solid #ffd257; box-shadow: 0 0 12px rgba(255, 210, 87, 0.35); padding: 10px 12px; cursor: pointer; display: flex; gap: 10px; align-items: flex-start; }
-      #combos .combo:hover { box-shadow: 0 0 18px rgba(255, 210, 87, 0.7); }
-      #combos .combo > img { width: 44px; height: 44px; flex: none; }
-      #combos .combo div { display: flex; flex-direction: column; gap: 3px; }
-      #combos .recipe { font-size: 12px; color: #ffd257; font-weight: 600; }
       #continue { justify-content: center; }
-      .tier-legendary { color: #ffb347; } .tier-epic { color: #c9a0ff; } .tier-basic { color: var(--text); }
       .passive { color: #9fd8ff; }
-      .warn { color: #ff8a7a; }
-      .warn.ok { color: #7dffa0; }
       #end-items { display: flex; gap: 4px; } #end-items img { width: 40px; height: 40px; }
       #floaters { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
       .floater { position: absolute; left: 0; top: 0; font-weight: 800; font-size: 15px; text-shadow: 0 1px 2px #000, 0 0 4px #000; white-space: nowrap; }
@@ -116,9 +110,6 @@
       .floater.crit { color: #ffb020; font-size: 20px; }
       .floater.taken { color: #ff4a4a; font-size: 17px; }
       .floater.xp { color: #c49bff; font-size: 13px; }
-      #combine { display: none; background: #3a2a05; color: #ffd257; border: 1px solid #ffd257; padding: 4px 10px; font: inherit; font-weight: 700; cursor: pointer; animation: pulse 1.2s ease-in-out infinite alternate; }
-      @keyframes pulse { from { box-shadow: 0 0 2px rgba(255, 210, 87, 0.3); } to { box-shadow: 0 0 12px rgba(255, 210, 87, 0.8); } }
-      @media (prefers-reduced-motion: reduce) { #combine { animation: none; } }
       @media (max-width: 700px) { #help { display: none; } }
     </style>
   </head>
@@ -134,7 +125,6 @@
     </div>
     <div id="bottom">
       <div id="lvl-row"><div id="level">1</div><div id="skills"></div><div id="inventory"></div></div>
-      <button id="combine">Combinar itens (C)</button>
       <div class="bar"><div id="hp-fill"></div><span id="hp-text"></span></div>
       <div class="bar"><div id="mana-fill"></div><span id="mana-text"></span></div>
       <div id="stats"></div>
@@ -143,7 +133,7 @@
       Botão direito no chão: mover (segure para seguir) · Setas: mover<br />
       Botão direito no inimigo: focar alvo · T: ataque automático<br />
       Ataque manual (auto desligado): botão esquerdo no inimigo<br />
-      Level-up: 1–4 escolhem a opção · C: combinar itens<br />
+      Level-up: 1–9 escolhem a opção<br />
       Q W E R: habilidades na direção do cursor
     </div>
     <div id="levelup" class="overlay">
@@ -151,7 +141,6 @@
       <div id="inv-edit"></div>
       <div id="shop">
         <div id="shop-left">
-          <div id="combos"></div>
           <div id="choices"></div>
           <button id="continue">Continuar</button>
         </div>

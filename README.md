@@ -51,8 +51,7 @@ Os modelos **não estão no repositório** (são assets da Riot). Gere-os localm
 | Ligar/desligar ataque automático | `T` |
 | Ataque manual (auto desligado) | Botão esquerdo no inimigo |
 | Habilidades | `Q` `W` `E` `R` na direção do cursor |
-| Escolher melhoria | Clique ou `1`–`4` |
-| Combinar itens | `C` (quando há receita completa) |
+| Escolher melhoria | Clique ou `1`–`9` |
 
 WASD não é usado porque colide com Q/W/E.
 
@@ -66,15 +65,13 @@ WASD não é usado porque colide com Q/W/E.
   - **R**: 1 s de conjuração, atravessa inimigos, 50% de dano em não-épicos.
 - **Level-up em duas etapas**:
   1. Um rank de habilidade, pela regra do LoL: básicas nos níveis 1/3/5/7/9, R nos níveis 6/11/16. A etapa é pulada quando não há rank disponível.
-  2. Um item entre 3 sorteados.
-- **Itens**: dados reais do Data Dragon (pt-BR, ícones, receitas), gerados por `tools/build_items.py` em `src/items.json`.
-  - Cada uma das 3 ofertas sorteia a raridade: básico 68%, intermediário 28%, lendário 4% (`TIER_CHANCE` em `src/items.ts`).
-  - Inventário de no máximo 6 itens.
-  - Ao ter todos os componentes de uma receita (inclusive intermediários de 1 componente, como Partícula → Fulgor), aparece o card "Combinar". Ele aparece no level-up e também a qualquer momento pelo botão "Combinar itens (C)" do HUD.
-  - Cada oferta mostra a árvore de receita (ícone, stats, o que você tem, o que falta).
-  - É possível descartar itens (clique duplo no ×) ou pular a escolha.
-  - O card mostra em verde os lendários que você já está montando.
-  - Lendários: builds atuais do Ezreal (Força da Trindade, Manamune, Lança de Shojin, Fome Eterna, Rancor de Serylda, Coração Congelado, Anjo Guardião) e a build on-hit/crítico (Mata-Cráquens, Espada do Rei Destruído, Gume do Infinito, Colhedor de Essência, Cutelo Negro).
+  2. Um item entre 3 sorteados (ou uma poção, com a build completa).
+- **Itens**: dados reais do Data Dragon (pt-BR, ícones), gerados por `tools/build_items.py` em `src/items.json`. Regras completas em `docs/superpowers/specs/2026-10-28-item-evolution-design.md`.
+  - Só itens básicos de origem são ofertados. Uma cópia nova pode virar item novo ou evoluir um passo um item da mesma linha; o jogador escolhe o slot e o ramo (`LINES` em `src/items.ts`).
+  - Itens completos custam de 3 a 5 cópias do básico e são únicos. Ramos cujo item completo já é seu (ou está reservado por outro slot) ficam bloqueados; um item sem ramo livre fica travado.
+  - Inventário de no máximo 6 itens; não é possível descartar. Cada oferta mostra a árvore da linha (o que você tem, o que está bloqueado, o custo de cada item completo).
+  - Build completa (6 itens completos ou travados): o level-up oferece Poção de Vida ou de Mana (20% do máximo), e cada abate tem 1% de chance de derrubar um blueprint (pergaminho azul, 1 por run) que torna um item completo aleatório Lendário (+50% dos stats).
+  - Itens completos: builds atuais do Ezreal (Força da Trindade, Manamune, Lança de Shojin, Fome Eterna, Rancor de Serylda, Coração Congelado, Anjo Guardião) e a build on-hit/crítico (Mata-Cráquens, Espada do Rei Destruído, Gume do Infinito, Colhedor de Essência, Cutelo Negro).
   - Passivas implementadas: Lâmina Arcana (Fulgor/Trindade/Colhedor), Fascínio (Manamune), Derrubar (Mata-Cráquens), Gume da Névoa (Rei Destruído), dano crítico (Gume do Infinito), Talhar (Cutelo Negro), Renascimento (Anjo Guardião), Carícia do Inverno (Coração Congelado), penetração de armadura, roubo de vida e vampirismo.
   - Armadura: dano físico (ataque básico, Q, efeitos ao acertar) é reduzido pela armadura do inimigo. O dano mágico (W, E, R) não.
 - **Inimigos à distância**: disparam skillshots em linha reta, mirados onde o Ezreal estava, com alcance limitado. Dá para desviar.

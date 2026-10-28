@@ -4,7 +4,7 @@ import {
   BARON, DIRECTOR, DRAGONS, ENEMIES, ENEMY_ARMOR, ENEMY_MISSILE_EXTRA_RANGE, EVENTS, enemyArmorScale, enemyDamageScale, enemyHpScale, EZREAL, HORDE,
   MAX_CHAMPION_LEVEL, MAX_ENEMIES, POOL, RUN_LENGTH, SKILL_KEYS, xpToNext, type EnemyDef, type SkillKey,
 } from './data';
-import { combine, MAX_ITEMS, sumStats, type Item } from './items';
+import { BLUEPRINT_CHANCE, buildComplete, isFinal, MAX_ITEMS, POTION, slotItem, sumStats, type Slot } from './items';
 import { loadVfx, Vfx, type MissileFx } from './vfx';
 
 const B = EZREAL.base;
@@ -80,8 +80,11 @@ export class Game {
   mana = 0;
   ranks: Record<SkillKey, number> = { Q: 0, W: 0, E: 0, R: 0 };
   cooldowns: Record<SkillKey, number> = { Q: 0, W: 0, E: 0, R: 0 };
-  inventory: string[] = [];
+  slots: Slot[] = [];
+  legendary = -1; // slot upgraded by the blueprint
   items = sumStats([]);
+  private blueprintDropped = false; // at most one blueprint per run
+  private blueprint: THREE.Object3D | null = null; // scroll lying on the ground
   passiveStacks = 0;
   passiveTimer = 0;
   autoAttack = true;
@@ -145,6 +148,8 @@ export class Game {
     for (const f of this.effects) f.mesh.removeFromParent();
     this.arena?.mesh.removeFromParent();
     this.pull?.removeFromParent();
+    this.blueprint?.removeFromParent();
+    this.blueprint = null;
     this.vfx?.clear();
     this.player?.dispose();
     Object.assign(this, {
@@ -152,7 +157,7 @@ export class Game {
       passiveStacks: 0, passiveTimer: 0, focus: null, manualTarget: null, pendingLevelUps: 1,
       attackTimer: 0, windup: -1, windupTarget: null, castLock: 0, animLock: 0, pendingCast: null,
       enemies: [], missiles: [], floaters: [], nextEvent: 0, spawnBudget: 0, spawnLog: [], killLog: [],
-      nextHordeAt: HORDE.every, inventory: [], items: sumStats([]), spellbladeArmed: false, spellbladeCd: 0,
+      nextHordeAt: HORDE.every, slots: [], legendary: -1, blueprintDropped: false, items: sumStats([]), spellbladeArmed: false, spellbladeCd: 0,
       autoCount: 0, guardianAngelReadyAt: 0, stasis: 0, stunned: 0, stunLength: 0, arena: null, pull: null,
       hazards: [], effects: [],
     });
@@ -182,7 +187,8 @@ export class Game {
   get armor() { return grow(B.armor, B.armorPerLevel, this.level) + this.items.armor; }
   get abilityHaste() { return this.items.ah; }
   get alive() { return this.hp > 0; }
-  has(id: string) { return this.inventory.includes(id); }
+  get inventory() { return this.slots.map(slotItem); }
+  has(id: string) { return this.slots.some((s) => slotItem(s) === id); }
   cooldownOf(key: SkillKey) { return EZREAL[key].cooldown[this.ranks[key] - 1] * (100 / (100 + this.abilityHaste)); }
   costOf(key: SkillKey) { return EZREAL[key].cost[Math.max(0, this.ranks[key] - 1)]; }
 
@@ -200,18 +206,22 @@ export class Game {
   rankUp(key: SkillKey) { this.ranks[key]++; }
 
   /** Change the inventory, keeping current HP/mana in step with the max values (like buying in LoL). */
-  private setInventory(inv: string[]) {
+  private setSlots(slots: Slot[]) {
     const hpBefore = this.maxHp, manaBefore = this.maxMana;
-    this.inventory = inv;
-    this.items = sumStats(inv);
+    this.slots = slots;
+    this.items = sumStats(this.inventory, this.legendary);
     this.hp = Math.max(1, Math.min(this.maxHp, this.hp + this.maxHp - hpBefore));
     this.mana = Math.max(0, Math.min(this.maxMana, this.mana + this.maxMana - manaBefore));
   }
-  takeItem(id: string) { if (this.inventory.length < MAX_ITEMS) this.setInventory([...this.inventory, id]); }
-  /** Take an offer straight into a recipe it completes; works with a full inventory since the components are consumed. */
-  takeInto(id: string, item: Item) { this.setInventory(combine([...this.inventory, id], item)); }
-  combineItem(item: Item) { this.setInventory(combine(this.inventory, item)); }
-  discardItem(index: number) { this.setInventory(this.inventory.filter((_, i) => i !== index)); }
+  takeItem(base: string) { if (this.slots.length < MAX_ITEMS) this.setSlots([...this.slots, { base, path: [] }]); }
+  /** Evolve slot i one step; callers only pass steps from nextSteps(). */
+  evolve(i: number, step: string) {
+    this.setSlots(this.slots.map((s, j) => (j === i ? { ...s, path: [...s.path, step] } : s)));
+  }
+  drinkPotion(kind: keyof typeof POTION) {
+    if (kind === 'hp') this.hp = Math.min(this.maxHp, this.hp + POTION.hp * this.maxHp);
+    else this.mana = Math.min(this.maxMana, this.mana + POTION.mana * this.maxMana);
+  }
 
   float(pos: THREE.Vector3, text: string, kind: Floater['kind']) {
     if (this.floaters.length < 150) this.floaters.push({ pos: pos.clone(), text, kind, age: 0 });
@@ -269,6 +279,7 @@ export class Game {
     this.updateEnemies(dt);
     this.updateMissiles(dt);
     this.updateArena(dt);
+    this.updateBlueprint(dt);
     this.vfx.update(dt);
     for (const f of this.floaters) f.age += dt;
     this.floaters = this.floaters.filter((f) => f.age < 0.9);
@@ -278,6 +289,21 @@ export class Game {
       this.focusRing.position.set(this.focus.pos.x, 3, this.focus.pos.z);
       this.focusRing.scale.setScalar(this.focus.def.radius + 25);
     }
+  }
+
+  /** Blueprint scroll: bobs on the ground until Ezreal walks over it, then a random finished item turns legendary. */
+  private updateBlueprint(dt: number) {
+    const bp = this.blueprint;
+    if (!bp) return;
+    bp.rotation.y += dt * 1.5;
+    bp.children[0].position.y = 60 + 15 * Math.sin(this.time * 3);
+    if (bp.position.distanceTo(this.pos) > B.radius + 60) return;
+    bp.removeFromParent();
+    this.blueprint = null;
+    const finals = this.slots.flatMap((s, i) => (isFinal(s) ? [i] : []));
+    this.legendary = finals[Math.floor(Math.random() * finals.length)];
+    this.setSlots(this.slots);
+    this.float(this.pos, 'Item Lendário!', 'crit');
   }
 
   private updatePlayer(dt: number, move: THREE.Vector3) {
@@ -565,6 +591,12 @@ export class Game {
     this.killLog.push(this.time);
     e.actor.play(e.def.anims.death, { loop: false, fade: 0.08 });
     this.gainXp(e.def.xp); // XP is absorbed on kill (no gems to collect)
+    if (!this.blueprintDropped && buildComplete(this.slots) && this.slots.some(isFinal) && Math.random() < BLUEPRINT_CHANCE) {
+      this.blueprintDropped = true;
+      this.blueprint = makeBlueprint();
+      this.blueprint.position.set(e.pos.x, 0, e.pos.z);
+      this.scene.add(this.blueprint);
+    }
     if (e.def.model === 'baron') { this.over = 'won'; this.player.play(EZREAL.anims.idle); }
   }
 
@@ -967,6 +999,17 @@ function makeArena(radius: number) {
     s.position.set(Math.cos(a) * radius, 0, Math.sin(a) * radius);
     g.add(s);
   }
+  return g;
+}
+
+/** Blue scroll (blueprint drop): rolled parchment over a glowing ring. */
+function makeBlueprint() {
+  const g = new THREE.Group();
+  const scroll = new THREE.Mesh(new THREE.CylinderGeometry(14, 14, 70, 16).rotateZ(Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x3d8bff }));
+  const ring = new THREE.Mesh(ringGeo, glow(0x3d8bff));
+  ring.scale.setScalar(70);
+  ring.position.y = 3;
+  g.add(scroll, ring);
   return g;
 }
 

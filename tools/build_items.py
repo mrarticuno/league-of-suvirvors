@@ -11,6 +11,8 @@ import sys
 import urllib.request
 
 LEGENDARIES = ["3078", "3004", "3161", "6694", "2517", "3110", "3026", "3071", "6672", "3153", "3031", "3508"]
+# intermediates of the evolution lines (src/items.ts LINES) that no legendary recipe above pulls in
+EXTRA = ["6670", "3086"]
 STAT_KEYS = {
     "FlatPhysicalDamageMod": "ad", "PercentAttackSpeedMod": "as", "FlatHPPoolMod": "hp", "FlatMPPoolMod": "mana",
     "FlatCritChanceMod": "crit", "FlatArmorMod": "armor", "PercentMovementSpeedMod": "msPct", "PercentLifeStealMod": "lifesteal",
@@ -48,7 +50,7 @@ def main(version):
         for c in frm:
             add(c)
 
-    for i in LEGENDARIES:
+    for i in LEGENDARIES + EXTRA:
         add(i)
     for i, it in items.items():
         for c in set(it["from"]):

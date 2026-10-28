@@ -2,7 +2,8 @@ import * as THREE from 'three';
 import { EZREAL, HORDE, SKILL_KEYS, xpToNext, type SkillKey } from './data';
 import type { Game } from './game';
 import {
-  buildsInto, combinable, completedBy, describeStats, itemIcon, ITEMS, MAX_ITEMS, PASSIVES, rollOffers, type Item,
+  buildComplete, claimed, describeStats, finalsVia, isFinal, isLocked, itemIcon, ITEMS, LEGENDARY_BONUS, lineTree, MAX_ITEMS,
+  nextSteps, PASSIVES, rollOffers, slotItem, type LineNode,
 } from './items';
 
 const $ = (id: string) => document.getElementById(id)!;
@@ -45,13 +46,11 @@ export class Hud {
       cdEl.style.height = rank > 0 && cd > 0 ? `${(cd / g.cooldownOf(k)) * 100}%` : '0';
       el.querySelector('.pips')!.innerHTML = Array.from({ length: EZREAL[k].maxRank }, (_, i) => `<i class="${i < rank ? 'on' : ''}"></i>`).join('');
     }
-    const inv = g.inventory.join(',');
+    const inv = `${g.inventory.join(',')}|${g.legendary}`;
     if ($('inventory').dataset.inv !== inv) {
       $('inventory').dataset.inv = inv;
-      $('inventory').innerHTML = slots(g.inventory).map((id) =>
-        id ? `<img src="${itemIcon(id)}" title="${ITEMS[id].name}">` : '<span></span>').join('');
+      $('inventory').innerHTML = slotsHtml(g, (i, cls, title) => `<img src="${itemIcon(slotItem(g.slots[i]))}" class="${cls}" title="${title}">`, '<span></span>');
     }
-    $('combine').style.display = combinable(g.inventory).length ? 'block' : 'none';
     const hordeIn = g.nextHordeAt - g.time;
     $('horde').style.display = hordeIn <= HORDE.warning ? 'block' : 'none';
     $('horde').textContent = `Horda chegando em ${Math.ceil(hordeIn)}s!`;
@@ -89,7 +88,7 @@ export class Hud {
     });
   }
 
-  /** Level-up: pick a skill rank (when one is available), then an item. */
+  /** Level-up: pick a skill rank (when one is available), then an item (or a potion once the build is complete). */
   levelUp(g: Game, done: () => void) {
     this.choosing = true;
     $('levelup').style.display = 'flex';
@@ -106,7 +105,6 @@ export class Hud {
   private skillStep(g: Game, skills: SkillKey[], next: () => void) {
     $('levelup-title').textContent = `Nível ${g.level} — escolha uma habilidade`;
     $('inv-edit').innerHTML = '';
-    $('combos').innerHTML = '';
     $('tree').innerHTML = '';
     $('choices').innerHTML = skills.map((k, i) => {
       const s = EZREAL[k];
@@ -121,83 +119,58 @@ export class Hud {
     $('continue').style.display = 'none';
   }
 
-  /** Combine-only screen, opened from the HUD (C) whenever the inventory holds a full recipe. */
-  combineMenu(g: Game, done: () => void) {
-    this.choosing = true;
-    $('levelup').style.display = 'flex';
-    this.itemStep(g, () => {
-      $('levelup').style.display = 'none';
-      this.choosing = false;
-      done();
-    }, false);
+  private itemStep(g: Game, done: () => void) {
+    $('levelup-title').textContent = `Nível ${g.level} — escolha um item`;
+    $('inv-edit').innerHTML = slotsHtml(g, (i, cls, title) =>
+      `<div class="slot ${cls}" title="${title}" data-slot="${i}"><img src="${itemIcon(slotItem(g.slots[i]))}" alt=""></div>`,
+    '<div class="slot empty"></div>');
+    $('inv-edit').querySelectorAll<HTMLElement>('[data-slot]').forEach((el) =>
+      el.addEventListener('mouseenter', () => showTree(g, g.slots[Number(el.dataset.slot)].base)));
+    $('continue').style.display = 'block';
+    $('continue').onclick = () => done();
+    if (buildComplete(g.slots)) return this.potionStep(g, done);
+    $('continue').textContent = 'Recusar itens';
+    const offers = rollOffers(g.slots);
+    // every choice is one numbered button: take the offer as a new item, or spend it evolving a slot of its line
+    const actions: { label: string; run: () => void }[] = [];
+    const cards = offers.map((base, o) => {
+      const buttons: string[] = [];
+      const add = (label: string, run: () => void) => {
+        buttons.push(`<button class="act" data-a="${actions.length}">${actions.length + 1}. ${label}</button>`);
+        actions.push({ label, run });
+      };
+      if (g.slots.length < MAX_ITEMS) add('Pegar como item novo', () => g.takeItem(base));
+      g.slots.forEach((s, i) => {
+        if (s.base !== base) return;
+        for (const step of nextSteps(g.slots, i)) {
+          const finals = finalsVia(g.slots, i, step).map((f) => ITEMS[f].name).join(' / ');
+          add(`Evoluir ${ITEMS[slotItem(s)].name} → <b>${ITEMS[step].name}</b> <small>(${finals})</small>`, () => g.evolve(i, step));
+        }
+      });
+      return `<div class="offer" data-o="${o}">${itemCard(base)}<div class="acts">${buttons.join('')}</div></div>`;
+    });
+    $('choices').innerHTML = cards.join('') || '<div class="offer">Nenhum item disponível.</div>';
+    $('choices').querySelectorAll<HTMLElement>('[data-o]').forEach((el) =>
+      el.addEventListener('mouseenter', () => showTree(g, offers[Number(el.dataset.o)])));
+    this.keyActions = actions.map((a) => () => { a.run(); done(); });
+    $('choices').querySelectorAll<HTMLButtonElement>('[data-a]').forEach((b) =>
+      b.addEventListener('click', () => this.keyActions[Number(b.dataset.a)]()));
+    if (offers[0]) showTree(g, offers[0]);
   }
 
-  private itemStep(g: Game, done: () => void, withOffers = true) {
-    const offers = withOffers ? rollOffers() : [];
-    let picked: string | null = null;
-    let confirmDiscard = -1;
-    // recipe tree shown in the side panel: which legendary, and which offered item to highlight in it
-    // offers show the legendary they lead to; the combine-only menu starts on the combinable item itself
-    let tree = { root: offers[0] ? defaultTarget(offers[0], g) : combinable(g.inventory)[0]?.id ?? '', offered: offers[0]?.id ?? '' };
-    const showTree = (root: string, offered: string | null) => {
-      tree = { root, offered: offered ?? '' };
-      $('tree').innerHTML = root ? treeHtml(root, g.inventory, picked ? '' : tree.offered) : '';
-    };
-    const render = () => {
-      const full = g.inventory.length >= MAX_ITEMS;
-      $('levelup-title').textContent = withOffers ? `Nível ${g.level} — escolha um item` : 'Combinar itens';
-      $('inv-edit').innerHTML = slots(g.inventory).map((id, i) => id
-        ? `<div class="slot ${confirmDiscard === i ? 'confirm' : ''}" title="${ITEMS[id].name}">
-             <img src="${itemIcon(id)}" alt=""><button data-discard="${i}">${confirmDiscard === i ? 'Descartar?' : '×'}</button></div>`
-        : '<div class="slot empty"></div>').join('');
-      const combos = combinable(g.inventory);
-      $('combos').innerHTML = combos.map((it, i) => `
-        <div class="combo" role="button" tabindex="0" data-combo="${i}">
-          ${itemCard(it, '', g, `<span class="recipe">Clique para combinar: ${it.from.map((c) => ITEMS[c].name).join(' + ')}</span>`)}</div>`).join('');
-      // with a full inventory an offer is still takeable when it completes a recipe: it is combined on pick
-      const into = offers.map((it) => (full ? completedBy(g.inventory, it.id) : undefined));
-      $('choices').innerHTML = offers.map((it, i) => `
-        <div data-i="${i}" role="button" tabindex="0" class="offer ${picked || (full && !into[i]) ? 'disabled' : ''} ${picked === it.id ? 'picked' : ''}">
-          ${itemCard(it, `${i + 1}. `, g)}${picked ? '' : into[i] ? `<span class="warn ok">Completa ${into[i]!.name} — combina ao escolher</span>`
-            : full ? '<span class="warn">Inventário cheio — descarte ou combine</span>' : ''}</div>`).join('');
-      $('choices').querySelectorAll<HTMLElement>('[data-i]').forEach((el) => {
-        const it = offers[Number(el.dataset.i)];
-        el.addEventListener('mouseenter', () => showTree(defaultTarget(it, g), it.id));
-      });
-      $('shop-left').querySelectorAll<HTMLButtonElement>('[data-tree]').forEach((b) => b.addEventListener('click', (ev) => {
-        ev.stopPropagation(); // choosing a recipe to inspect must not pick or combine the item
-        const card = b.closest<HTMLElement>('[data-i]');
-        showTree(b.dataset.tree!, card ? offers[Number(card.dataset.i)].id : null);
-      }));
-      $('combos').querySelectorAll<HTMLElement>('[data-combo]').forEach((el) =>
-        el.addEventListener('mouseenter', () => showTree(combos[Number(el.dataset.combo)].id, null)));
-      showTree(tree.root, tree.offered);
-      $('continue').style.display = 'block';
-      $('continue').textContent = !withOffers ? 'Fechar' : picked ? 'Continuar' : 'Pular item';
-      $('inv-edit').querySelectorAll<HTMLButtonElement>('[data-discard]').forEach((b) => b.addEventListener('click', () => {
-        const i = Number(b.dataset.discard);
-        if (confirmDiscard === i) { g.discardItem(i); confirmDiscard = -1; } else confirmDiscard = i;
-        render();
-      }));
-      $('combos').querySelectorAll<HTMLElement>('[data-combo]').forEach((b) => b.addEventListener('click', () => {
-        const made = combos[Number(b.dataset.combo)];
-        g.combineItem(made);
-        tree = { root: defaultTarget(made, g), offered: '' }; // next step: the legendary it builds toward
-        render();
-      }));
-      this.keyActions = offers.map((it, i) => () => {
-        if (picked || (full && !into[i])) return;
-        picked = it.id;
-        if (into[i]) g.takeInto(it.id, into[i]!);
-        else g.takeItem(it.id);
-        // stay open when the pick completes a recipe, so the player can combine right away
-        if (combinable(g.inventory).length) render();
-        else done();
-      });
-      this.bindChoices();
-    };
-    $('continue').onclick = () => done();
-    render();
+  /** Build complete: level ups offer potions instead of items. */
+  private potionStep(g: Game, done: () => void) {
+    $('levelup-title').textContent = `Nível ${g.level} — build completa, escolha uma poção`;
+    $('continue').textContent = 'Recusar';
+    $('tree').innerHTML = '';
+    const potions = [
+      { icon: '2003', name: 'Poção de Vida', text: 'Restaura 20% da Vida máxima.', run: () => g.drinkPotion('hp') },
+      { icon: '2031', name: 'Poção de Mana', text: 'Restaura 20% da Mana máxima.', run: () => g.drinkPotion('mana') },
+    ];
+    $('choices').innerHTML = potions.map((p, i) => `<div class="offer" role="button" tabindex="0" data-i="${i}">
+      <img src="${itemIcon(p.icon)}" alt=""><div><b>${i + 1}. ${p.name}</b><span>${p.text}</span></div></div>`).join('');
+    this.keyActions = potions.map((p) => () => { p.run(); done(); });
+    this.bindChoices();
   }
 
   private bindChoices() {
@@ -214,58 +187,46 @@ export class Hud {
   }
 }
 
-const slots = (inv: string[]) => Array.from({ length: MAX_ITEMS }, (_, i) => inv[i] ?? null);
-
-function itemCard(it: Item, prefix = '', g?: Game, extra = '') {
-  const targets = it.tier === 'legendary' ? [] : buildsInto(it.id);
-  // highlight legendaries the player already owns parts of
-  const owned = (l: Item) => g?.inventory.some((x) => buildsInto(x).includes(l));
-  return `<img src="${itemIcon(it.id)}" alt="">
-    <div><b class="tier-${it.tier}">${prefix}${it.name}</b>
-    <span>${describeStats(it.stats)}</span>
-    ${PASSIVES[it.id] ? `<span class="passive">${PASSIVES[it.id]}</span>` : ''}
-    ${targets.length ? `<span class="into">Compõe (clique para ver a árvore): ${targets.map((l) =>
-      `<button class="chip ${owned(l) ? 'hot' : ''}" data-tree="${l.id}"><img src="${itemIcon(l.id)}" alt="">${l.name}</button>`).join('')}</span>` : ''}
-    ${extra}</div>`;
+/** Six inventory cells; `cell` renders an owned slot with its state class and tooltip. */
+function slotsHtml(g: Game, cell: (i: number, cls: string, title: string) => string, empty: string) {
+  return Array.from({ length: MAX_ITEMS }, (_, i) => {
+    const s = g.slots[i];
+    if (!s) return empty;
+    const legendary = g.legendary === i;
+    const state = legendary ? 'legendary' : isFinal(s) ? 'final' : isLocked(g.slots, i) ? 'locked' : '';
+    const label = { legendary: ' (Lendário)', final: ' (Completo)', locked: ' (Travado: sem evolução possível)', '': '' }[state];
+    return cell(i, state, `${ITEMS[slotItem(s)].name}${label}`);
+  }).join('');
 }
 
-/** Legendary to show first for an item: one the player already owns parts of, else the first it builds into. */
-function defaultTarget(it: Item, g: Game) {
-  if (it.tier === 'legendary') return it.id;
-  const targets = buildsInto(it.id);
-  return (targets.find((l) => g.inventory.some((x) => buildsInto(x).includes(l))) ?? targets[0]).id;
+function itemCard(id: string) {
+  const it = ITEMS[id];
+  return `<img src="${itemIcon(id)}" alt="">
+    <div><b>${it.name}</b><span>${describeStats(it.stats)}</span>
+    ${PASSIVES[id] ? `<span class="passive">${PASSIVES[id]}</span>` : ''}</div>`;
 }
 
 /**
- * Recipe tree like the LoL shop: the item on top, components below. Inventory items are matched top-down
- * (owning an epic covers its whole branch); the offered item is highlighted where it would fit.
+ * Evolution tree of a line, top-down: every branch with its stats, the copies of the base each finished item costs,
+ * where the player's slots of this line sit, and which finished items are already owned or reserved (blocked).
  */
-function treeHtml(rootId: string, inventory: string[], offered: string) {
-  const left = [...inventory];
-  let offerPlaced = false;
-  let missing = 0;
-  const node = (id: string, isRoot: boolean): string => {
-    const it = ITEMS[id];
-    let state = isRoot ? 'root' : '';
-    const owned = isRoot ? -1 : left.indexOf(id);
-    if (owned >= 0) { left.splice(owned, 1); state = 'owned'; }
-    else if (!isRoot && !offerPlaced && id === offered) { offerPlaced = true; state = 'offer'; }
-    const expand = state === '' || state === 'root';
-    if (!state && !it.from.length) { state = 'missing'; missing++; }
-    else if (!state) state = 'partial';
-    const badge = { owned: 'Você tem', offer: 'Esta oferta', missing: 'Falta', partial: 'Montar', root: '' }[state];
-    const kids = expand ? it.from.map((c) => node(c, false)).join('') : '';
-    return `<li><div class="node ${state}" title="${it.name}">
-        <img src="${itemIcon(id)}" alt=""><b>${it.name}</b><small>${describeStats(it.stats)}</small>${badge ? `<em>${badge}</em>` : ''}
-      </div>${kids ? `<ul>${kids}</ul>` : ''}</li>`;
+function showTree(g: Game, base: string) {
+  const taken = claimed(g.slots);
+  const here = (n: LineNode) => g.slots.filter((s) => s.base === base && s.path.join() === n.path.join()).length;
+  const blocked = (n: LineNode): boolean => (n.kids.length ? n.kids.every(blocked) : taken.has(n.id) && !here(n));
+  const node = (n: LineNode): string => {
+    const it = ITEMS[n.id];
+    const owned = here(n);
+    const finalItem = !n.kids.length;
+    const state = owned ? 'owned' : blocked(n) ? 'missing' : finalItem ? 'root' : '';
+    const badge = owned ? `Você tem${owned > 1 ? ` ×${owned}` : ''}` : blocked(n) ? 'Bloqueado' : finalItem ? `${n.path.length + 1} cópias` : '';
+    const legendary = owned && g.legendary >= 0 && g.slots[g.legendary].base === base && g.slots[g.legendary].path.join() === n.path.join();
+    const stats = describeStats(it.stats, legendary ? 1 + LEGENDARY_BONUS : 1);
+    return `<li><div class="node ${state}" title="${it.name}${PASSIVES[n.id] ? ` — ${PASSIVES[n.id]}` : ''}">
+        <img src="${itemIcon(n.id)}" alt=""><b>${it.name}</b><small>${stats}</small>${badge ? `<em>${badge}</em>` : ''}
+      </div>${n.kids.length ? `<ul>${n.kids.map(node).join('')}</ul>` : ''}</li>`;
   };
-  const html = node(rootId, true);
-  const root = ITEMS[rootId];
-  const summary = rootId === offered ? 'Item lendário pronto — escolha e use direto!' : missing > 0
-    ? `${missing === 1 ? 'Falta 1 item básico' : `Faltam ${missing} itens básicos`}${offerPlaced ? ' além desta oferta' : ''}`
-    : offerPlaced ? 'Esta oferta completa a receita!' : 'Você já tem tudo — combine!';
-  return `<div class="tree-head"><b class="tier-${root.tier}">${root.name}</b>
-      <span>${describeStats(root.stats)}</span>${PASSIVES[rootId] ? `<span class="passive">${PASSIVES[rootId]}</span>` : ''}
-      <span class="tree-sum">${summary}</span></div>
-    <ul class="tree">${html}</ul>`;
+  $('tree').innerHTML = `<div class="tree-head"><b>Linha: ${ITEMS[base].name}</b>
+      <span>Cada cópia de ${ITEMS[base].name} evolui um item desta linha um passo. Itens completos são únicos.</span></div>
+    <ul class="tree">${node(lineTree(base))}</ul>`;
 }
