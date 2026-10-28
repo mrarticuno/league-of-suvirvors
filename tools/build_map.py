@@ -12,6 +12,7 @@ geometry sections whose material name says rock/cliff/wall, as unit-size meshes
 (position + UV, unlit material) for the streamed world's scenery.
 """
 import io
+import json
 import re
 import struct
 import sys
@@ -172,7 +173,8 @@ def object_vertices(obj, formats, vblocks):
     return pos, uvs
 
 
-def write_piece(name, obj, sub, formats, vblocks, tblocks, texture, out):
+def build_piece(name, obj, sub, formats, vblocks, tblocks, texture):
+    """Return the piece's GLB bytes (validated in memory) and its texture; writes nothing."""
     pos, uvs = object_vertices(obj, formats, vblocks)
     raw = tblocks[obj["tblk"]][2 * sub[1]:2 * (sub[1] + sub[2])]  # u16 indices
     indices = list(struct.unpack("<%dH" % (len(raw) // 2), raw))
@@ -219,14 +221,14 @@ def write_piece(name, obj, sub, formats, vblocks, tblocks, texture, out):
         buffers=[pygltflib.Buffer(byteLength=len(packed) + len(index_bytes))],
     )
     gltf.set_binary_blob(packed + index_bytes)
-    gltf.save_binary(out / f"{name}.glb")
-    texture.save(out / f"{name}.png")
-    check = pygltflib.GLTF2().load_binary(out / f"{name}.glb")
-    assert [len(pos), len(uvs), len(indices)] == [a.count for a in check.accessors]
-    attrs = check.meshes[0].primitives[0].attributes
-    assert (attrs.POSITION, attrs.TEXCOORD_0) == (0, 1)
+    glb = b"".join(gltf.save_to_bytes())
+    (json_len,) = struct.unpack_from("<I", glb, 12)
+    check = json.loads(glb[20:20 + json_len])
+    assert [len(pos), len(uvs), len(indices)] == [a["count"] for a in check["accessors"]]
+    assert check["meshes"][0]["primitives"][0]["attributes"] == {"POSITION": 0, "TEXCOORD_0": 1}
     print(f"{name} <- {sub[0].rsplit('/', 1)[-1]}  {len(indices) // 3} tris  {len(pos)} verts  "
-          f"{texture.width}x{texture.height} tex  {(out / (name + '.glb')).stat().st_size // 1024} KB")
+          f"{texture.width}x{texture.height} tex  {len(glb) // 1024} KB")
+    return glb
 
 
 def extract_pieces(hashes_file, out_dir, *wad_paths):
@@ -249,15 +251,20 @@ def extract_pieces(hashes_file, out_dir, *wad_paths):
     if len(picks) < len(PIECES):
         sys.exit(f"only {len(picks)} rock/cliff/wall sections found, need {len(PIECES)}")
 
-    out = Path(out_dir) / "pieces"
-    out.mkdir(parents=True, exist_ok=True)
+    built = []  # materialise every piece before touching the disk: no partial output
     for name, (i, sub) in zip(PIECES, picks):
         path = textures.get(sub[0])
         data = read(path) if path else None
         if data is None:
             sys.exit(f"{name}: no texture in the WADs for material {sub[0]} ({path})")
-        img = tex_to_png(data) if path.endswith(".tex") else Image.open(io.BytesIO(data))
-        write_piece(name, objects[i], sub, formats, vblocks, tblocks, img.convert("RGBA"), out)
+        img = (tex_to_png(data) if path.endswith(".tex") else Image.open(io.BytesIO(data))).convert("RGBA")
+        built.append((name, build_piece(name, objects[i], sub, formats, vblocks, tblocks, img), img))
+
+    out = Path(out_dir) / "pieces"
+    out.mkdir(parents=True, exist_ok=True)
+    for name, glb, img in built:
+        (out / f"{name}.glb").write_bytes(glb)
+        img.save(out / f"{name}.png")
 
 
 def main(cmd, *args):
