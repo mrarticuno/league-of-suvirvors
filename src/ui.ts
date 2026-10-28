@@ -2,7 +2,8 @@ import * as THREE from 'three';
 import { audio } from './audio';
 import { SKILL_KEYS, type ChampionDef, type SkillKey } from './champion';
 import { HORDE, xpToNext } from './data';
-import type { Game } from './game';
+import type { Choice, Game } from './game';
+import { KILLS_PER_POINT } from './progress';
 import { PASSIVES } from './itemEffects';
 import {
   buildComplete, claimed, describeStats, finalsVia, isFinal, isLocked, itemIcon, ITEMS, LEGENDARY_BONUS, lineTree, MAX_ITEMS,
@@ -222,9 +223,28 @@ export class Hud {
       b.addEventListener('click', () => this.keyActions[Number(b.dataset.i)]()));
   }
 
-  showEnd(g: Game, onRestart: () => void) {
+  /** A rune popup (Game.choices): pick one option by click or number key, or skip it. */
+  choice(c: Choice, done: () => void) {
+    this.choosing = true;
+    const close = () => { $('levelup').style.display = 'none'; this.choosing = false; done(); };
+    $('levelup').style.display = 'flex';
+    $('levelup-title').textContent = c.title;
+    $('inv-edit').innerHTML = '';
+    $('tree').innerHTML = '';
+    $('continue').style.display = 'block';
+    $('continue').textContent = 'Recusar';
+    $('continue').onclick = close;
+    $('choices').innerHTML = c.options.map((o, i) => `<div class="offer" role="button" tabindex="0" data-i="${i}">
+      <img src="${o.icon}" alt=""><div><b>${i + 1}. ${o.name}</b><span>${o.text}</span></div></div>`).join('');
+    this.keyActions = c.options.map((o) => () => { o.run(); close(); });
+    this.bindChoices();
+  }
+
+  /** `gained`: rune points earned this run; `remainder`: kills already counted towards the next point. */
+  showEnd(g: Game, gained: number, remainder: number, onRestart: () => void) {
     $('end-title').textContent = g.over === 'won' ? 'Vitória!' : 'Derrota';
     $('end-stats').textContent = `Tempo ${fmt(g.time)} · Nível ${g.level} · ${g.kills} abates`;
+    $('end-runes').textContent = `+${gained} pontos de runa · ${KILLS_PER_POINT - remainder} abates até o próximo ponto`;
     $('end-items').innerHTML = g.inventory.map((id) => `<img src="${itemIcon(id)}" title="${ITEMS[id].name}">`).join('');
     $('end').style.display = 'flex';
     $('restart').onclick = () => { $('end').style.display = 'none'; onRestart(); };

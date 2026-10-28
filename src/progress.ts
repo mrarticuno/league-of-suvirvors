@@ -74,6 +74,25 @@ export function equipRune(page: Page, id: string, unlocked: string[]): Page {
   return p;
 }
 
+/** Primary tree tab: a new tree starts empty; taking the secondary's tree empties the secondary. */
+export function choosePrimary(page: Page, tree: TreeId): Page {
+  if (page.primary === tree) return page;
+  const p = { ...page, primary: tree, keystone: null, primaryRunes: [null, null, null] };
+  return tree === page.secondary ? { ...p, secondary: null, secondaryRunes: [] } : p;
+}
+
+/** Secondary tree tab: never the primary tree; a new tree starts empty. */
+export function chooseSecondary(page: Page, tree: TreeId): Page {
+  if (page.secondary === tree || page.primary === tree) return page;
+  return { ...page, secondary: tree, secondaryRunes: [] };
+}
+
+/** Reads and writes localStorage lazily, so a blocked storage only throws inside load/save's try blocks. */
+export const browserStorage: Store = {
+  getItem: (k) => localStorage.getItem(k),
+  setItem: (k, v) => localStorage.setItem(k, v),
+};
+
 export function equipShard(page: Page, row: number, index: number, shardRows: number[]): Page {
   if (!shardRows.includes(row)) return page;
   return { ...page, shards: page.shards.map((s, i) => (i === row ? index : s)) };

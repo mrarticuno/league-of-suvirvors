@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  credit, emptyPage, emptyProgress, equipRune, equipShard, loadProgress, nodeCost, saveProgress, unlockRune, unlockShardRow,
+  choosePrimary, chooseSecondary, credit, emptyPage, emptyProgress, equipRune, equipShard, loadProgress, nodeCost, saveProgress, unlockRune, unlockShardRow,
   type Progress,
 } from '../src/progress';
 
@@ -89,6 +89,26 @@ describe('page rules', () => {
   it('shards equip only in unlocked rows', () => {
     expect(equipShard(emptyPage(), 1, 2, []).shards).toEqual([null, null, null]);
     expect(equipShard(emptyPage(), 1, 2, [1]).shards).toEqual([null, 2, null]);
+  });
+});
+
+describe('tree tabs', () => {
+  it('choosing a primary tree clears the old picks; taking the secondary tree empties the secondary', () => {
+    let page = equipRune(emptyPage(), 'conqueror', ALL);
+    page = equipRune(page, 'cheap-shot', ALL);
+    expect(choosePrimary(page, 'precision')).toBe(page);
+    page = choosePrimary(page, 'domination');
+    expect(page).toMatchObject({ primary: 'domination', keystone: null, primaryRunes: [null, null, null], secondary: null, secondaryRunes: [] });
+  });
+
+  it('choosing a secondary tree clears its picks and never takes the primary tree', () => {
+    let page = choosePrimary(emptyPage(), 'precision');
+    expect(chooseSecondary(page, 'precision')).toBe(page);
+    page = chooseSecondary(page, 'sorcery');
+    expect(page.secondary).toBe('sorcery');
+    page = equipRune(page, 'cheap-shot', ALL);
+    expect(chooseSecondary(page, 'domination')).toBe(page);
+    expect(chooseSecondary(page, 'resolve').secondaryRunes).toEqual([]);
   });
 });
 

@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 import { Game } from './game';
+import { browserStorage, credit, loadProgress, saveProgress } from './progress';
+import { showChampionSelect, showRunePage } from './runePage';
 import { Hud } from './ui';
 import type { SkillKey } from './champion';
 
@@ -55,7 +57,23 @@ addEventListener('mouseup', (e) => {
   if (e.button === 2) rightHeld = false;
 });
 
+let inMenu = true; // champion select / rune page open: the run doesn't simulate
+let credited = false; // rune points of the finished run already saved
+
+/** Champion select, then the rune page; Jogar starts a fresh run with the page. */
+function openMenus() {
+  inMenu = true;
+  keys.clear();
+  // shortcut: only one champion exists, so the Game keeps its default one; switching needs loading another model
+  showChampionSelect((champ) => showRunePage(champ, (page) => {
+    game.reset(page);
+    credited = false;
+    inMenu = false;
+  }));
+}
+
 addEventListener('keydown', (e) => {
+  if (inMenu) return;
   const k = e.key.toLowerCase();
   if (k === 'escape' && !game.over) {
     hud.toggleMenu();
@@ -94,8 +112,16 @@ function moveInput() {
 }
 
 function checkPrompts() {
-  if (game.over && !document.getElementById('end')!.checkVisibility()) {
-    hud.showEnd(game, () => game.reset());
+  if (inMenu) return;
+  if (game.over) {
+    if (credited) return;
+    credited = true; // once per run, however often this runs before Continuar
+    const r = credit(loadProgress(browserStorage), game.kills, game.bonusRunePoints);
+    saveProgress(r.progress, browserStorage);
+    hud.showEnd(game, r.gained, r.progress.killRemainder, openMenus);
+  } else if (game.choices.length && !hud.choosing) {
+    game.paused = true;
+    hud.choice(game.choices.shift()!, () => { game.paused = game.pendingLevelUps > 0; });
   } else if (!game.over && game.pendingLevelUps > 0 && !hud.choosing) {
     game.paused = true;
     hud.levelUp(game, () => {
@@ -109,7 +135,7 @@ let last = performance.now();
 function frame(now = last) {
   const dt = Math.min((now - last) / 1000, 0.05);
   last = now;
-  if (!hud.menuOpen) game.update(dt, moveInput()); // ESC menu pauses the simulation
+  if (!hud.menuOpen && !inMenu) game.update(dt, moveInput()); // ESC menu and the between-run screens pause the simulation
   checkPrompts();
   camera.position.copy(game.pos).add(CAMERA_OFFSET);
   camera.lookAt(game.pos);
@@ -124,6 +150,7 @@ game
   .then(() => {
     document.getElementById('loading')!.remove();
     frame();
+    openMenus();
   });
 
 if (import.meta.env.DEV) Object.assign(window, { game, camera, CAMERA_OFFSET });
