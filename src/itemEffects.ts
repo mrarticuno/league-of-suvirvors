@@ -2,8 +2,12 @@
 // The Game creates one effect per owned item (kept across evolutions of other slots, so cooldowns like Guardian
 // Angel's survive) and calls its hooks; an item with no hooks only shows its text. Stats stay in items.json.
 // New passive: add an entry here; no Game change is needed unless it needs a brand new hook.
-import type { Hit } from './champion';
+import type { Hit, SkillKey } from './champion';
 import type { Enemy, Game } from './game';
+import type { ItemStats } from './items';
+
+/** Stats an effect can add to (item stats plus rune-only ones). `range` is attack range in units. */
+export type FxStat = keyof ItemStats | 'tenacity' | 'healMult' | 'range';
 
 export interface ItemEffect {
   /** LoL "UNIQUE" passives: of several items in one group only the highest `rank` works. */
@@ -23,6 +27,25 @@ export interface ItemEffect {
   onLethal?(): boolean;
   /** Multiplier on the attack cooldown of an enemy `dist` units away when it starts an attack. */
   enemyAttackCooldown?(dist: number): number;
+  // ---- hooks added for runes (src/runes) ----
+  /** Additive bonus to a stat, read every time the stat is derived. */
+  stat?(k: FxStat): number;
+  /** Multiplier on all damage dealt to `e` by this hit. */
+  damageMult?(e: Enemy, hit: Hit): number;
+  /** Damage was dealt to `e` (after mitigation). */
+  onDealt?(e: Enemy, hit: Hit, dealt: number): void;
+  onKill?(e: Enemy): void;
+  /** The champion is about to take `amount` (after armor, before shields): return the reduced amount. */
+  onHurt?(amount: number): number;
+  onStunned?(): void;
+  onShield?(): void;
+  onHorde?(): void;
+  onLevel?(): void;
+  /** A skill finished its cast and resolved. */
+  onCastResolved?(key: SkillKey): void;
+  xpMult?(): number;
+  /** Multiplier on what a potion restores. */
+  potionMult?(): number;
 }
 
 interface ItemPassive { desc: string; effect?: (g: Game) => ItemEffect }

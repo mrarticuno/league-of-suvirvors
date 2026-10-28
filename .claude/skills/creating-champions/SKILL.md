@@ -23,7 +23,7 @@ Contrato completo e comentado: `src/champion.ts`. Exemplo de referência: `src/c
 | `tools/build_audio.py` | Entradas em `BANKS` com as chaves de som do campeão |
 | `tools/extract_lol.py` | Extrair `Champions/<Champ>.wad.client` para `assets-raw/<id>` (antes de `build_models.py`) |
 | `tools/build_vfx.py` | Rodar com `<id>` → `public/assets/vfx/<id>/systems.json` (+ `spells.json` com os números do LoL) |
-| `src/main.ts` | Sem tela de seleção: `?champ=<id>` na URL escolhe o campeão (padrão `DEFAULT_CHAMPION`) |
+| `src/main.ts` | Nada a fazer: a tela de seleção lista `CHAMPIONS` e troca com `game.setChampion`. `?champ=<id>` na URL só escolhe o campeão carregado de início |
 | `README.md` | "Regras implementadas" (kit) e "Pipeline de assets" (a regex de hashes e os comandos de extração citam `ezreal`: acrescente o campeão) |
 
 Assets (`assets-raw/`, `public/assets/`) não vão para o git.

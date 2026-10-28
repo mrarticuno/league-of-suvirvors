@@ -189,6 +189,14 @@ export class WorldMap {
     return this.chunks.get(cellKey(Math.floor(x / CHUNK), Math.floor(z / CHUNK)))?.kind ?? null;
   }
 
+  /** True inside a river session's water band (layouts are chunk-local, centred on the chunk). */
+  inWater(x: number, z: number): boolean {
+    const cx = Math.floor(x / CHUNK);
+    const w = this.chunks.get(cellKey(cx, Math.floor(z / CHUNK)))?.layout.water;
+    const local = x - (cx + 0.5) * CHUNK;
+    return !!w && local >= w.x0 && local <= w.x1;
+  }
+
   dispose(): void {
     for (const key of [...this.chunks.keys()]) this.removeChunk(key);
   }

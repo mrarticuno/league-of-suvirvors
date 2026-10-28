@@ -9,14 +9,17 @@ import {
 } from './data';
 import { AI, SPAWNERS, type EnemyAI } from './enemies';
 import { Hazards } from './hazards';
-import { ITEM_PASSIVES, type ItemEffect } from './itemEffects';
+import { ITEM_PASSIVES, type FxStat, type ItemEffect } from './itemEffects';
 import { BLUEPRINT_CHANCE, buildComplete, isFinal, MAX_ITEMS, POTION, slotItem, sumStats, type Slot } from './items';
 import { loadMapPieces, loadMapTextures, WorldMap } from './map';
+import { emptyPage, type Page } from './progress';
+import { runeEffects } from './runes';
 import { SpatialGrid } from './spatial';
 import { compact, TimeWindow } from './util';
 import { loadVfx, Vfx, type MissileFx } from './vfx';
 
 const SPAWN_RADIUS = 1800;
+const FLASH = { range: 400, cooldown: 120 };
 const DESPAWN_RADIUS = 3600;
 const GRID_CELL = 150;
 const GRID_SLACK = 60; // enemies keep moving after the grid is built; queries widen by this much
@@ -46,6 +49,8 @@ export interface Enemy {
   armor: number;
   shred: number; // Black Cleaver stacks
   shredUntil: number;
+  slowPct: number; // movement slow while time < slowUntil
+  slowUntil: number;
   ai?: EnemyAI; // own behaviour (src/enemies), replaces the generic chase-and-attack loop
   animDt: number; // animation time not yet applied (animation LOD)
 }
@@ -73,6 +78,9 @@ export interface MissileOpts {
   hit?: Hit; target?: Enemy; pierce?: boolean; height?: number;
   hitFx?: string; hitSound?: string; onHit?: Missile['onHit'];
 }
+
+/** A popup a rune asks the player to pick from (shown between frames, like level ups). */
+export interface Choice { title: string; options: { name: string; text: string; icon: string; run: () => void }[] }
 
 /** Floating combat text (damage dealt/taken, XP), rendered by the HUD. */
 export interface Floater { pos: THREE.Vector3; text: string; kind: 'physical' | 'magic' | 'crit' | 'taken' | 'xp'; age: number }
@@ -106,7 +114,14 @@ export class Game {
   legendary = -1; // slot upgraded by the blueprint
   items = sumStats([]);
   private owned = new Set<string>();
-  private itemFx: ItemEffect[] = []; // hooks of the owned items
+  private itemFx: ItemEffect[] = []; // hooks of the owned items and equipped runes
+  page: Page = emptyPage(); // rune page of this run
+  private runeFx: ItemEffect[] = [];
+  shield = 0;
+  private shieldUntil = 0;
+  choices: Choice[] = []; // rune popups waiting to be shown
+  bonusRunePoints = 0; // extra rune points earned this run (Treasure Hunter)
+  flashReady = 0; // Hextech Flashtraption cooldown end (run time)
   private fxCache = new Map<string, ItemEffect>(); // effect state outlives evolutions of the other slots
   private blueprintDropped = false; // at most one blueprint per run
   private blueprint: THREE.Object3D | null = null; // scroll lying on the ground
@@ -152,9 +167,15 @@ export class Game {
   private map!: WorldMap;
   private focusRing = new THREE.Mesh(ringGeo, glow(0xff3030));
 
-  constructor(readonly champ: ChampionDef = DEFAULT_CHAMPION) {
+  constructor(public champ: ChampionDef = DEFAULT_CHAMPION) {
     // same colour as the background, hides the edge of the loaded chunks
     this.scene.fog = new THREE.Fog(0x0b1410, 5000, 9500);
+  }
+
+  /** Loads another champion's model and VFX; the next reset() spawns it. */
+  async setChampion(c: ChampionDef) {
+    await Promise.all([loadVfx(`assets/vfx/${c.id}/`), loadModel(c.model, c.hide, c.model, c.textures)]);
+    this.champ = c;
   }
 
   async load(onProgress: (done: number, total: number) => void) {
@@ -179,7 +200,7 @@ export class Game {
     this.reset();
   }
 
-  reset() {
+  reset(page: Page = emptyPage()) {
     for (const e of this.enemies) { e.actor.dispose(); e.ai?.dispose?.(); }
     for (const m of this.missiles) m.mesh.removeFromParent();
     this.kit?.dispose?.();
@@ -197,7 +218,9 @@ export class Game {
       enemies: [], aliveCount: 0, epics: [], nextId: 0, missiles: [], floaters: [], nextEvent: 0, spawnBudget: 0,
       nextHordeAt: HORDE.every, legendary: -1, blueprintDropped: false,
       stasis: 0, stasisEnd: null, stunned: 0, stunLength: 0, airborne: true, arena: null,
+      page, shield: 0, shieldUntil: 0, choices: [], bonusRunePoints: 0, flashReady: 0,
     });
+    this.runeFx = runeEffects(this, page); // fresh every run: rune stacks never carry over
     this.spawnLog.clear();
     this.killLog.clear();
     this.grid.clear();
@@ -216,27 +239,34 @@ export class Game {
 
   // ---- derived stats ----
   get baseHp() { const B = this.champ.base; return grow(B.hp, B.hpPerLevel, this.level); }
-  get maxHp() { return this.baseHp + this.items.hp; }
-  get maxMana() { const B = this.champ.base; return grow(B.mana, B.manaPerLevel, this.level) + this.items.mana; }
+  /** Sum of a stat over item and rune effects (on top of item stats). */
+  fxStat(k: FxStat) {
+    let v = 0;
+    for (const fx of this.itemFx) if (fx.stat) v += fx.stat(k);
+    return v;
+  }
+  get maxHp() { return this.baseHp + this.items.hp + this.fxStat('hp'); }
+  get maxMana() { const B = this.champ.base; return grow(B.mana, B.manaPerLevel, this.level) + this.items.mana + this.fxStat('mana'); }
   get baseAd() { const B = this.champ.base; return grow(B.ad, B.adPerLevel, this.level); }
   /** Bonus AD from item stats and item passives (e.g. Manamune). */
   get bonusAd() {
-    let ad = this.items.ad;
+    let ad = this.items.ad + this.fxStat('ad');
     for (const fx of this.itemFx) if (fx.bonusAd) ad += fx.bonusAd();
     return ad;
   }
   get ad() { return this.baseAd + this.bonusAd; }
   get attackSpeed() {
     const B = this.champ.base;
-    const bonus = grow(0, B.attackSpeedPerLevel, this.level) + this.items.as + (this.kit.attackSpeedBonus?.() ?? 0);
+    const bonus = grow(0, B.attackSpeedPerLevel, this.level) + this.items.as + this.fxStat('as') + (this.kit.attackSpeedBonus?.() ?? 0);
     return Math.min(2.5, B.attackSpeed * (1 + bonus));
   }
-  get moveSpeed() { return Math.round(this.champ.base.moveSpeed * (1 + this.items.msPct + (this.kit.moveSpeedBonus?.() ?? 0))); }
-  get critChance() { return Math.min(1, this.items.crit); }
-  get armor() { const B = this.champ.base; return grow(B.armor, B.armorPerLevel, this.level) + this.items.armor; }
-  get abilityHaste() { return this.items.ah; }
+  get moveSpeed() { return Math.round(this.champ.base.moveSpeed * (1 + this.items.msPct + this.fxStat('msPct') + (this.kit.moveSpeedBonus?.() ?? 0))); }
+  get critChance() { return Math.min(1, this.items.crit + this.fxStat('crit')); }
+  get armor() { const B = this.champ.base; return grow(B.armor, B.armorPerLevel, this.level) + this.items.armor + this.fxStat('armor'); }
+  get abilityHaste() { return this.items.ah + this.fxStat('ah'); }
+  get attackRange() { return this.champ.base.attackRange + this.fxStat('range'); }
   /** Center distance within which an enemy can be in attack range. */
-  get attackReach() { return this.champ.base.attackRange + this.champ.base.radius; }
+  get attackReach() { return this.attackRange + this.champ.base.radius; }
   get alive() { return this.hp > 0; }
   has(id: string) { return this.owned.has(id); }
   cooldownOf(key: SkillKey) { return this.champ.skills[key].cooldown[this.ranks[key] - 1] * (100 / (100 + this.abilityHaste)); }
@@ -279,7 +309,7 @@ export class Game {
       if (!fx.unique) out.push(fx);
       else if ((best.get(fx.unique)?.rank ?? -Infinity) < (fx.rank ?? 0)) best.set(fx.unique, fx);
     }
-    return [...out, ...best.values()];
+    return [...out, ...best.values(), ...this.runeFx];
   }
 
   takeItem(base: string) {
@@ -293,8 +323,38 @@ export class Game {
     audio.play('hud_item');
   }
   drinkPotion(kind: keyof typeof POTION) {
-    if (kind === 'hp') this.hp = Math.min(this.maxHp, this.hp + POTION.hp * this.maxHp);
-    else this.mana = Math.min(this.maxMana, this.mana + POTION.mana * this.maxMana);
+    let mult = 1;
+    for (const fx of this.itemFx) if (fx.potionMult) mult *= fx.potionMult();
+    if (kind === 'hp') this.heal(POTION.hp * this.maxHp * mult);
+    else this.mana = Math.min(this.maxMana, this.mana + POTION.mana * this.maxMana * mult);
+  }
+
+  /** Healing goes through here so heal/shield power (Revitalize) applies. */
+  heal(amount: number) {
+    if (this.alive) this.hp = Math.min(this.maxHp, this.hp + amount * (1 + this.fxStat('healMult')));
+  }
+  addShield(amount: number, seconds: number) {
+    this.shield += amount * (1 + this.fxStat('healMult'));
+    this.shieldUntil = Math.max(this.shieldUntil, this.time + seconds);
+    for (const fx of this.itemFx) fx.onShield?.();
+  }
+  slow(e: Enemy, pct: number, seconds: number) {
+    e.slowPct = Math.max(this.isSlowed(e) ? e.slowPct : 0, pct);
+    e.slowUntil = Math.max(e.slowUntil, this.time + seconds);
+  }
+  isSlowed(e: Enemy) { return e.slowUntil > this.time; }
+  inWater() { return this.map.inWater(this.pos.x, this.pos.z); }
+
+  get hasFlash() { return [...this.page.primaryRunes, ...this.page.secondaryRunes].includes('hextech-flashtraption'); }
+  /** Hextech Flashtraption: blink up to FLASH.range towards `point`. */
+  flash(point: THREE.Vector3) {
+    if (!this.hasFlash || this.time < this.flashReady || !this.alive || this.stasis > 0 || this.stunned > 0) return;
+    const step = this.tmp.copy(point).sub(this.pos).setY(0);
+    if (step.length() > FLASH.range) step.setLength(FLASH.range);
+    this.pos.add(step);
+    this.collidePlayer();
+    this.faceTowards(point);
+    this.flashReady = this.time + FLASH.cooldown;
   }
 
   float(pos: THREE.Vector3, text: string, kind: Floater['kind']) {
@@ -302,8 +362,9 @@ export class Game {
   }
 
   private gainXp(v: number) {
+    for (const fx of this.itemFx) if (fx.xpMult) v *= fx.xpMult();
     this.xp += v;
-    this.float(this.pos, `+${v} XP`, 'xp');
+    this.float(this.pos, `+${Math.round(v)} XP`, 'xp');
     while (this.xp >= xpToNext(this.level)) {
       this.xp -= xpToNext(this.level);
       const hpBefore = this.maxHp, manaBefore = this.maxMana;
@@ -311,6 +372,7 @@ export class Game {
       this.hp += this.maxHp - hpBefore;
       this.mana += this.maxMana - manaBefore;
       this.pendingLevelUps++;
+      for (const fx of this.itemFx) fx.onLevel?.();
       audio.play('hud_levelup');
     }
   }
@@ -399,6 +461,7 @@ export class Game {
       return;
     }
     if (!this.alive) return;
+    if (this.time >= this.shieldUntil) this.shield = 0;
     this.hp = Math.min(this.maxHp, this.hp + (grow(B.hpRegen5, B.hpRegen5PerLevel, this.level) / 5) * dt);
     this.mana = Math.min(this.maxMana, this.mana + (grow(B.manaRegen5, B.manaRegen5PerLevel, this.level) / 5) * dt);
     for (const fx of this.itemFx) fx.tick?.(dt);
@@ -435,6 +498,7 @@ export class Game {
         const { key, point } = this.pendingCast;
         this.pendingCast = null;
         this.kit.cast(key, this.ranks[key] - 1, point);
+        for (const fx of this.itemFx) fx.onCastResolved?.(key);
       }
       this.player.update(dt); // keep the spell animation playing while rooted
       return; // champions stand still while casting
@@ -498,7 +562,7 @@ export class Game {
   }
 
   inAttackRange(e: Enemy) {
-    return e.deadFor < 0 && e.pos.distanceTo(this.pos) - e.def.radius - this.champ.base.radius <= this.champ.base.attackRange;
+    return e.deadFor < 0 && e.pos.distanceTo(this.pos) - e.def.radius - this.champ.base.radius <= this.attackRange;
   }
 
   private tryAttack(dt: number) {
@@ -633,18 +697,26 @@ export class Game {
     magic += this.kit.onDamage?.(e, hit) ?? 0;
     physical = this.mitigate(e, physical);
     if (physical > 0) for (const fx of this.itemFx) fx.onPhysical?.(e);
-    const total = physical + magic;
+    let total = physical + magic;
+    for (const fx of this.itemFx) if (fx.damageMult) total *= fx.damageMult(e, hit);
     const dealt = Math.min(e.hp, total);
-    this.hp = Math.min(this.maxHp, this.hp + dealt * (this.items.omnivamp + (hit.source === 'auto' ? this.items.lifesteal : 0)));
+    const vamp = this.items.omnivamp + this.fxStat('omnivamp') + (hit.source === 'auto' ? this.items.lifesteal + this.fxStat('lifesteal') : 0);
+    if (vamp > 0) this.heal(dealt * vamp);
     e.hp -= total;
     this.float(e.pos, String(Math.round(total)), hit.crit ? 'crit' : magic > physical ? 'magic' : 'physical');
+    // kill before the procs: a proc that lands on the corpse returns at the deadFor check above instead of killing twice
     if (e.hp <= 0) this.killEnemy(e);
+    for (const fx of this.itemFx) fx.onDealt?.(e, hit, dealt);
   }
 
   /** `nonLethal` damage leaves the champion at 1 HP at worst (Baron's whip). */
   hurtPlayer(amount: number, nonLethal = false) {
     if (!this.alive || this.stasis > 0) return;
     let taken = amount * (100 / (100 + this.armor));
+    for (const fx of this.itemFx) if (fx.onHurt) taken = fx.onHurt(taken);
+    const absorbed = Math.min(this.shield, taken);
+    this.shield -= absorbed;
+    taken -= absorbed;
     if (nonLethal) taken = Math.min(taken, this.hp - 1);
     this.hp -= taken;
     this.float(this.pos, `-${Math.round(taken)}`, 'taken');
@@ -669,6 +741,8 @@ export class Game {
   /** Crowd control: no actions for `seconds`; `airborne` plays the knock-up arc. */
   stun(seconds: number, airborne = true) {
     if (!this.alive || this.stasis > 0) return;
+    seconds *= 1 - Math.min(0.8, this.fxStat('tenacity'));
+    for (const fx of this.itemFx) fx.onStunned?.();
     this.stunned = this.stunLength = Math.max(this.stunned, seconds);
     this.airborne = airborne;
     this.windup = -1;
@@ -688,6 +762,7 @@ export class Game {
     this.killLog.push(this.time);
     audio.playAt(`${voice(e.def)}_death`, e.pos, this.pos);
     this.gainXp(e.def.xp); // XP is absorbed on kill (no gems to collect)
+    for (const fx of this.itemFx) fx.onKill?.(e);
     if (!this.blueprintDropped && buildComplete(this.slots) && this.slots.some(isFinal) && Math.random() < BLUEPRINT_CHANCE) {
       this.blueprintDropped = true;
       this.blueprint = makeBlueprint();
@@ -779,6 +854,7 @@ export class Game {
       const a = start + (i / (n - 1)) * arc;
       this.spawnEnemy(key, new THREE.Vector3(this.pos.x + Math.cos(a) * HORDE.radius, 0, this.pos.z + Math.sin(a) * HORDE.radius));
     }
+    for (const fx of this.itemFx) fx.onHorde?.();
   }
 
   spawnEnemy(key: string, at?: THREE.Vector3): Enemy {
@@ -791,7 +867,7 @@ export class Game {
     const e: Enemy = {
       id: this.nextId++, def, actor, pos: at ?? new THREE.Vector3(this.pos.x + Math.cos(a) * r, 0, this.pos.z + Math.sin(a) * r),
       hp, maxHp: hp, attackTimer: 0, windup: -1, deadFor: -1, animDt: 0,
-      armor: (def.armor ?? ENEMY_ARMOR[def.tier]) * (epic ? 1 : enemyArmorScale(this.time)), shred: 0, shredUntil: 0,
+      armor: (def.armor ?? ENEMY_ARMOR[def.tier]) * (epic ? 1 : enemyArmorScale(this.time)), shred: 0, shredUntil: 0, slowPct: 0, slowUntil: 0,
     };
     e.ai = AI[def.model]?.(this, e);
     actor.play(def.anims.run);
@@ -855,7 +931,7 @@ export class Game {
           e.actor.play(e.def.anims.idle, { fade: 0.2 });
         }
       } else {
-        e.pos.addScaledVector(toPlayer.normalize(), e.def.speed * dt);
+        e.pos.addScaledVector(toPlayer.normalize(), e.def.speed * (this.isSlowed(e) ? 1 - e.slowPct : 1) * dt);
         e.actor.play(e.def.anims.run, { fade: 0.2 });
       }
       e.actor.root.rotation.y = Math.atan2(this.pos.x - e.pos.x, this.pos.z - e.pos.z);
