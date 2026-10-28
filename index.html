@@ -71,31 +71,29 @@
       #choices .act { background: #0a1a26; color: var(--text); border: 1px solid #2a3a48; padding: 6px 8px; text-align: left; cursor: pointer; font: inherit; font-size: 12px; }
       #choices .act:hover { border-color: var(--gold); }
       #choices .act small { opacity: 0.7; }
-      #tree { width: min(620px, 94vw); background: var(--panel); border: 1px solid var(--gold-dim); padding: 12px; overflow-x: auto; }
+      #tree { width: min(760px, 94vw); background: var(--panel); border: 1px solid var(--gold-dim); padding: 12px; overflow-x: auto; }
       #tree:empty { display: none; }
       .tree-head { display: flex; flex-direction: column; gap: 3px; margin-bottom: 10px; font-size: 12px; }
       .tree-head b { font-size: 15px; }
       .tree-sum { color: #ffd257; font-weight: 600; }
-      /* org-chart tree: connectors drawn with borders */
-      ul.tree, ul.tree ul { list-style: none; margin: 0; padding: 0; display: flex; justify-content: center; }
-      ul.tree ul { padding-top: 14px; position: relative; }
-      ul.tree li { position: relative; padding: 14px 3px 0; display: flex; flex-direction: column; align-items: center; }
-      ul.tree > li { padding-top: 0; }
-      ul.tree ul > li::before, ul.tree ul > li::after { content: ''; position: absolute; top: 0; width: 50%; height: 14px; border-top: 1px solid var(--gold-dim); }
-      ul.tree ul > li::before { left: 0; } ul.tree ul > li::after { right: 0; border-left: 1px solid var(--gold-dim); }
-      ul.tree ul > li:first-child::before, ul.tree ul > li:last-child::after { border-top: none; }
-      ul.tree ul > li:only-child::before { display: none; } ul.tree ul > li:only-child::after { border-top: none; }
-      ul.tree ul::before { content: ''; position: absolute; top: 0; left: 50%; height: 14px; border-left: 1px solid var(--gold-dim); }
-      .node { display: flex; flex-direction: column; align-items: center; gap: 2px; width: 92px; padding: 5px 3px; border: 1px solid #2a3a48; background: #0a141c; text-align: center; font-size: 10px; }
-      .node img { width: 34px; height: 34px; }
+      /* sideways tree (root on the left, branches stacked) so wide lines grow down, not past the panel */
+      ul.tree, ul.tree ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; justify-content: center; }
+      ul.tree ul { padding-left: 14px; position: relative; }
+      ul.tree li { position: relative; padding: 3px 0 3px 14px; display: flex; align-items: center; }
+      ul.tree > li { padding-left: 0; }
+      ul.tree ul > li::before, ul.tree ul > li::after { content: ''; position: absolute; left: 0; width: 14px; height: 50%; border-left: 1px solid var(--gold-dim); }
+      ul.tree ul > li::before { top: 0; border-bottom: 1px solid var(--gold-dim); }
+      ul.tree ul > li::after { top: 50%; }
+      ul.tree ul > li:first-child::before, ul.tree ul > li:last-child::after { border-left: none; }
+      ul.tree ul::before { content: ''; position: absolute; left: 0; top: 50%; width: 14px; border-top: 1px solid var(--gold-dim); }
+      .node { display: grid; grid-template-columns: 28px 1fr; column-gap: 5px; align-items: center; width: 118px; flex: none; padding: 4px; border: 1px solid #2a3a48; background: #0a141c; font-size: 10px; }
+      .node img { width: 28px; height: 28px; grid-row: span 3; }
       .node b { font-size: 11px; line-height: 1.15; }
       .node small { opacity: 0.8; line-height: 1.2; }
-      .node em { font-style: normal; font-weight: 700; font-size: 10px; padding: 1px 4px; }
-      .node.root { width: 120px; border-color: #ffb347; } .node.root img { width: 44px; height: 44px; }
+      .node em { font-style: normal; font-weight: 700; font-size: 10px; }
+      .node.root { border-color: #ffb347; }
       .node.owned { border-color: #4fdc7a; } .node.owned em { color: #4fdc7a; }
-      .node.offer { border-color: #ffd257; box-shadow: 0 0 10px rgba(255, 210, 87, 0.5); } .node.offer em { color: #ffd257; }
       .node.missing { border-style: dashed; border-color: #a33; } .node.missing img { filter: grayscale(1) brightness(0.6); } .node.missing em { color: #ff8a7a; }
-      .node.partial em { color: #c9a0ff; }
       #restart, #continue { background: var(--panel); color: var(--text); border: 1px solid var(--gold-dim); padding: 10px 12px; text-align: left; cursor: pointer; font: inherit; display: flex; gap: 10px; align-items: flex-start; }
       #choices button.skill-choice { background: var(--panel); color: var(--text); border: 1px solid var(--gold-dim); padding: 10px 12px; text-align: left; cursor: pointer; font: inherit; display: flex; gap: 10px; align-items: flex-start; }
       #choices button.skill-choice > img { width: 44px; height: 44px; flex: none; }
