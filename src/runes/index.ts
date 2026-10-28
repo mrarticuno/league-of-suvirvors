@@ -1,7 +1,7 @@
 // Rune catalog: LoL rune trees adapted to the survivors loop (see docs/superpowers/specs/2026-10-28-rune-pages-design.md).
 // Each tree file exports its runes; an effect reuses the item hook interface (src/itemEffects.ts), so the Game runs
 // rune effects in the same loops as item passives. Unlocking and page rules live in src/progress.ts.
-import { IMG, type TreeId } from './def';
+import { IMG, type RuneDef, type TreeId } from './def';
 import { DOMINATION } from './domination';
 import { INSPIRATION } from './inspiration';
 import { PRECISION } from './precision';
