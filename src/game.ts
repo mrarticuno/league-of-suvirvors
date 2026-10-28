@@ -34,7 +34,7 @@ export interface Enemy {
   shredUntil: number;
 }
 
-type MissileKind = 'auto' | 'Q' | 'W' | 'E' | 'R' | 'enemy';
+type MissileKind = 'auto' | 'Q' | 'W' | 'E' | 'R' | 'enemy' | 'burn'; // 'burn': Sunfire Aegis aura, not a missile
 interface Missile {
   kind: MissileKind;
   mesh: THREE.Object3D;
@@ -49,6 +49,7 @@ interface Missile {
   target?: Enemy; // homing missiles
   hit?: Set<Enemy>; // piercing missiles
   crit?: boolean;
+  bolt?: boolean; // Runaan's Hurricane extra bolt
 }
 
 /** Floating combat text (damage dealt/taken, XP), rendered by the HUD. */
@@ -103,6 +104,7 @@ export class Game {
   private spellbladeArmed = false;
   private spellbladeCd = 0;
   private autoCount = 0; // Kraken Slayer counts every 3rd attack
+  private immolateTimer = 0; // Sunfire Aegis ticks once per second
   private guardianAngelReadyAt = 0;
   stasis = 0; // Guardian Angel revive timer
   stunned = 0; // seconds of crowd control left (Baron knock-up / tentacle pull)
@@ -167,7 +169,7 @@ export class Game {
       attackTimer: 0, windup: -1, windupTarget: null, castLock: 0, animLock: 0, pendingCast: null,
       enemies: [], missiles: [], floaters: [], nextEvent: 0, spawnBudget: 0, spawnLog: [], killLog: [],
       nextHordeAt: HORDE.every, slots: [], legendary: -1, blueprintDropped: false, items: sumStats([]), spellbladeArmed: false, spellbladeCd: 0,
-      autoCount: 0, guardianAngelReadyAt: 0, stasis: 0, stunned: 0, stunLength: 0, arena: null, pull: null,
+      autoCount: 0, immolateTimer: 0, guardianAngelReadyAt: 0, stasis: 0, stunned: 0, stunLength: 0, arena: null, pull: null,
       hazards: [], effects: [],
     });
     this.ranks = { Q: 0, W: 0, E: 0, R: 0 };
@@ -331,6 +333,7 @@ export class Game {
     this.hp = Math.min(this.maxHp, this.hp + (grow(B.hpRegen5, B.hpRegen5PerLevel, this.level) / 5) * dt);
     this.mana = Math.min(this.maxMana, this.mana + (grow(B.manaRegen5, B.manaRegen5PerLevel, this.level) / 5) * dt);
     this.spellbladeCd -= dt;
+    this.immolate(dt);
     for (const k of SKILL_KEYS) this.cooldowns[k] = Math.max(0, this.cooldowns[k] - dt);
     this.passiveTimer -= dt;
     if (this.passiveTimer <= 0) this.passiveStacks = 0;
@@ -423,13 +426,34 @@ export class Game {
   private fireAuto(target: Enemy) {
     const dmg = this.ad * (this.pendingCrit ? B.critDamage + this.items.critDamage : 1);
     this.spawnMissile('auto', this.pos, target.pos, { speed: B.missileSpeed, range: 3000, radius: 10, damage: dmg, target, crit: this.pendingCrit });
+    if (!this.has('3085')) return;
+    // Runaan's Hurricane: bolts at up to 2 other enemies in attack range, 55% damage, applying on-hit
+    const hit = new Set([target]);
+    for (let i = 0; i < 2; i++) {
+      const extra = this.nearestEnemy(this.pos, B.attackRange + B.radius, (e) => !hit.has(e) && this.inAttackRange(e));
+      if (!extra) break;
+      hit.add(extra);
+      this.spawnMissile('auto', this.pos, extra.pos, {
+        speed: B.missileSpeed, range: 3000, radius: 10, damage: 0.55 * dmg, target: extra, crit: this.pendingCrit, bolt: true,
+      });
+    }
+  }
+
+  /** Sunfire Aegis: magic damage every second to enemies around Ezreal. */
+  private immolate(dt: number) {
+    if (!this.has('3068') || (this.immolateTimer -= dt) > 0) return;
+    this.immolateTimer = 1;
+    const dmg = 15 + 3 * this.level + 0.02 * this.items.hp;
+    for (const e of this.enemies) {
+      if (e.deadFor < 0 && e.pos.distanceTo(this.pos) - e.def.radius <= 400) this.hurtEnemy(e, dmg, 'burn');
+    }
   }
 
   /** On-hit item effects for basic attacks (and Mystic Shot, which applies on-hit in LoL). */
-  private onHit(e: Enemy, source: MissileKind) {
+  private onHit(e: Enemy, source: MissileKind, bolt: boolean) {
     let bonus = 0;
     if (this.has('3153')) bonus += Math.min(e.def.tier === 'epic' ? Infinity : 100, 0.06 * e.hp); // Blade of the Ruined King
-    if (source !== 'auto') return bonus;
+    if (source !== 'auto' || bolt) return bonus; // Runaan bolts skip Kraken and Spellblade
     if (this.has('6672') && ++this.autoCount % 3 === 0) {
       bonus += (140 + 0.45 * this.bonusAd) * (1 + 0.75 * (1 - e.hp / e.maxHp)); // Kraken Slayer
     }
@@ -475,7 +499,7 @@ export class Game {
   }
 
   private spawnMissile(kind: MissileKind, from: THREE.Vector3, to: THREE.Vector3,
-    o: { speed: number; range: number; radius: number; damage: number; target?: Enemy; hit?: Set<Enemy>; crit?: boolean }) {
+    o: { speed: number; range: number; radius: number; damage: number; target?: Enemy; hit?: Set<Enemy>; crit?: boolean; bolt?: boolean }) {
     const fx = this.vfx.missile(kind, o.crit);
     const mesh = fx.root;
     const pos = from.clone().setY(kind === 'R' ? 60 : 110);
@@ -502,7 +526,7 @@ export class Game {
       } else if (m.target) {
         if (m.pos.distanceTo(m.target.pos.clone().setY(m.pos.y)) <= m.target.def.radius) {
           this.vfx.hit(m.kind, m.pos, m.crit, Math.atan2(m.dir.x, m.dir.z));
-          this.hurtEnemy(m.target, m.damage, m.kind, m.crit);
+          this.hurtEnemy(m.target, m.damage, m.kind, m.crit, m.bolt);
           return this.removeMesh(m.mesh);
         }
       } else {
@@ -549,14 +573,14 @@ export class Game {
     return amount * (100 / (100 + armor));
   }
 
-  private hurtEnemy(e: Enemy, amount: number, source: MissileKind, crit = false) {
+  private hurtEnemy(e: Enemy, amount: number, source: MissileKind, crit = false, bolt = false) {
     if (e.deadFor >= 0) return;
-    if (source !== 'auto') this.stackPassive();
+    if (source !== 'auto' && source !== 'burn') this.stackPassive();
     // Ezreal's autos and Q are physical; W, E and R are magic
     const type: DamageType = source === 'auto' || source === 'Q' ? 'physical' : 'magic';
-    let physical = type === 'physical' ? amount + this.onHit(e, source) : 0;
+    let physical = type === 'physical' ? amount + this.onHit(e, source, bolt) : 0;
     let magic = type === 'magic' ? amount : 0;
-    if (e.markedUntil > this.time) {
+    if (e.markedUntil > this.time && source !== 'burn') {
       // Essence Flux detonation; ability detonations refund mana
       e.markedUntil = 0;
       this.vfx.hit('W-burst', e.pos.clone().setY(100));
