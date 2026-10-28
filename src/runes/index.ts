@@ -4,14 +4,14 @@
 import type { Game } from '../game';
 import type { FxStat, ItemEffect } from '../itemEffects';
 import type { Page } from '../progress';
-import { IMG, type RuneDef, type TreeId } from './def';
+import { ADAPTIVE_AD, IMG, type RuneDef, type TreeId } from './def';
 import { DOMINATION } from './domination';
 import { INSPIRATION } from './inspiration';
 import { PRECISION } from './precision';
 import { RESOLVE } from './resolve';
 import { SORCERY } from './sorcery';
 
-export { runeList, type RuneDef, type TreeId } from './def';
+export { ADAPTIVE_AD, runeList, type RuneDef, type TreeId } from './def';
 
 export const TREES: Record<TreeId, { name: string; icon: string }> = {
   precision: { name: 'Precisão', icon: `${IMG}Styles/7201_Precision.png` },
@@ -29,7 +29,6 @@ export const RUNES: Record<string, RuneDef> = Object.fromEntries(
 export const runesOf = (tree: TreeId, row?: number) =>
   Object.values(RUNES).filter((r) => r.tree === tree && (row === undefined || r.row === row));
 
-export const ADAPTIVE_AD = 0.6; // no AP in this game: adaptive force is bonus AD at LoL's conversion
 
 export type ShardStat = 'adaptive' | 'as' | 'ah' | 'ms' | 'hpScaling' | 'hp' | 'tenacity';
 const shard = (name: string, stat: ShardStat, icon: string) => ({ name, stat, icon: `${IMG}StatMods/${icon}.png` });
