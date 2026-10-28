@@ -94,11 +94,12 @@
       .node.root { border-color: #ffb347; }
       .node.owned { border-color: #4fdc7a; } .node.owned em { color: #4fdc7a; }
       .node.missing { border-style: dashed; border-color: #a33; } .node.missing img { filter: grayscale(1) brightness(0.6); } .node.missing em { color: #ff8a7a; }
-      #restart, #continue { background: var(--panel); color: var(--text); border: 1px solid var(--gold-dim); padding: 10px 12px; text-align: left; cursor: pointer; font: inherit; display: flex; gap: 10px; align-items: flex-start; }
+      #restart, #continue, #menu button { background: var(--panel); color: var(--text); border: 1px solid var(--gold-dim); padding: 10px 12px; text-align: left; cursor: pointer; font: inherit; display: flex; gap: 10px; align-items: flex-start; }
       #choices button.skill-choice { background: var(--panel); color: var(--text); border: 1px solid var(--gold-dim); padding: 10px 12px; text-align: left; cursor: pointer; font: inherit; display: flex; gap: 10px; align-items: flex-start; }
       #choices button.skill-choice > img { width: 44px; height: 44px; flex: none; }
       #choices button.skill-choice div { display: flex; flex-direction: column; gap: 3px; }
-      #choices button.skill-choice:hover, #restart:hover, #continue:hover { border-color: var(--gold); }
+      #choices button.skill-choice:hover, #restart:hover, #continue:hover, #menu button:hover { border-color: var(--gold); }
+      #menu button { justify-content: center; width: min(260px, 80vw); }
       #continue { justify-content: center; }
       .passive { color: #9fd8ff; }
       #end-items { display: flex; gap: 4px; } #end-items img { width: 40px; height: 40px; }
@@ -133,7 +134,8 @@
       Botão direito no inimigo: focar alvo · T: ataque automático<br />
       Ataque manual (auto desligado): botão esquerdo no inimigo<br />
       Level-up: 1–9 escolhem a opção<br />
-      Q W E R: habilidades na direção do cursor
+      Q W E R: habilidades na direção do cursor<br />
+      Esc: pausa e som
     </div>
     <div id="levelup" class="overlay">
       <h2 id="levelup-title"></h2>
@@ -145,6 +147,12 @@
         </div>
         <div id="tree"></div>
       </div>
+    </div>
+    <div id="menu" class="overlay">
+      <h2>Pausado</h2>
+      <button id="menu-resume">Continuar</button>
+      <button id="menu-music"></button>
+      <button id="menu-sfx"></button>
     </div>
     <div id="end" class="overlay"><h2 id="end-title"></h2><div id="end-stats"></div><div id="end-items"></div><button id="restart">Jogar novamente</button></div>
     <script type="module" src="/src/main.ts"></script>

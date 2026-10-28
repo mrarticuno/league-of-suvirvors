@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { audio } from './audio';
 import { EZREAL, HORDE, SKILL_KEYS, xpToNext, type SkillKey } from './data';
 import type { Game } from './game';
 import {
@@ -13,8 +14,12 @@ export class Hud {
   /** Number-key handlers for the open level-up step (index 0 = key 1). */
   private keyActions: (() => void)[] = [];
   choosing = false;
+  menuOpen = false;
 
   constructor() {
+    $('menu-resume').onclick = () => this.toggleMenu();
+    $('menu-music').onclick = () => { audio.setMusic(!audio.musicOn); this.menuLabels(); };
+    $('menu-sfx').onclick = () => { audio.setSfx(!audio.sfxOn); this.menuLabels(); };
     $('skills').innerHTML = SKILL_KEYS.map((k) => `
       <div class="skill" id="skill-${k}">
         <img src="https://ddragon.leagueoflegends.com/cdn/16.21.1/img/spell/Ezreal${k}.png" alt="">
@@ -87,6 +92,20 @@ export class Hud {
       el.style.transform = `translate(${x}px, ${y}px) translate(-50%, -50%)`;
       el.style.opacity = String(1 - Math.max(0, f.age - 0.5) / 0.4);
     });
+  }
+
+  /** ESC menu: pauses the game and toggles music / sound effects. */
+  toggleMenu() {
+    this.menuOpen = !this.menuOpen;
+    $('menu').style.display = this.menuOpen ? 'flex' : 'none';
+    audio.setPaused(this.menuOpen);
+    audio.play(this.menuOpen ? 'hud_open' : 'hud_close');
+    this.menuLabels();
+  }
+
+  private menuLabels() {
+    $('menu-music').textContent = `Música: ${audio.musicOn ? 'Ligada' : 'Desligada'}`;
+    $('menu-sfx').textContent = `Efeitos sonoros: ${audio.sfxOn ? 'Ligados' : 'Desligados'}`;
   }
 
   /** Level-up: pick a skill rank (when one is available), then an item (or a potion once the build is complete). */

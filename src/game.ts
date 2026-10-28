@@ -6,11 +6,15 @@ import {
 } from './data';
 import { BLUEPRINT_CHANCE, buildComplete, isFinal, MAX_ITEMS, POTION, slotItem, sumStats, type Slot } from './items';
 import { loadMapPieces, loadMapTextures, WorldMap } from './map';
+import { audio } from './audio';
 import { loadVfx, Vfx, type MissileFx } from './vfx';
 
 const B = EZREAL.base;
 const SPAWN_RADIUS = 1800;
 const DESPAWN_RADIUS = 3600;
+const HIT_SOUND: Partial<Record<MissileKind, string>> = { auto: 'ezreal_auto_hit', Q: 'ezreal_Q_hit', W: 'ezreal_W_hit', E: 'ezreal_E_hit', R: 'ezreal_R_hit' };
+/** Sound key prefix of an enemy: the drakes share one bank for spawn/death. */
+const voice = (def: EnemyDef) => (def.model.startsWith('dragon_') ? 'dragon' : def.model);
 
 /** LoL per-level stat growth formula. */
 const grow = (base: number, perLevel: number, level: number) => {
@@ -137,6 +141,7 @@ export class Game {
     let done = 0;
     await Promise.all([
       loadVfx(),
+      audio.load(),
       ...ids.map((id) => {
         const def = Object.values(ENEMIES).find((e) => e.model === id);
         return loadModel(id, def?.hide, def?.mesh).then(() => onProgress(++done, ids.length));
@@ -224,10 +229,15 @@ export class Game {
     this.hp = Math.max(1, Math.min(this.maxHp, this.hp + this.maxHp - hpBefore));
     this.mana = Math.max(0, Math.min(this.maxMana, this.mana + this.maxMana - manaBefore));
   }
-  takeItem(base: string) { if (this.slots.length < MAX_ITEMS) this.setSlots([...this.slots, { base, path: [] }]); }
+  takeItem(base: string) {
+    if (this.slots.length >= MAX_ITEMS) return;
+    this.setSlots([...this.slots, { base, path: [] }]);
+    audio.play('hud_item');
+  }
   /** Evolve slot i one step; callers only pass steps from nextSteps(). */
   evolve(i: number, step: string) {
     this.setSlots(this.slots.map((s, j) => (j === i ? { ...s, path: [...s.path, step] } : s)));
+    audio.play('hud_item');
   }
   drinkPotion(kind: keyof typeof POTION) {
     if (kind === 'hp') this.hp = Math.min(this.maxHp, this.hp + POTION.hp * this.maxHp);
@@ -248,6 +258,7 @@ export class Game {
       this.hp += this.maxHp - hpBefore;
       this.mana += this.maxMana - manaBefore;
       this.pendingLevelUps++;
+      audio.play('hud_levelup');
     }
   }
 
@@ -274,6 +285,7 @@ export class Game {
     this.pendingCast = { key, point: point.clone() };
     this.player.play(EZREAL.anims[key], { loop: false, restart: true, fade: 0.05 });
     this.vfx.cast(key, this.pos, this.facing);
+    audio.play(`ezreal_${key}`);
     this.animLock = Math.min(this.player.duration(EZREAL.anims[key]), EZREAL[key].castTime + 0.6);
   }
 
@@ -317,6 +329,7 @@ export class Game {
     this.legendary = finals[Math.floor(Math.random() * finals.length)];
     this.setSlots(this.slots);
     this.float(this.pos, 'Item Lendário!', 'crit');
+    audio.play('hud_legendary');
   }
 
   private updatePlayer(dt: number, move: THREE.Vector3) {
@@ -420,6 +433,7 @@ export class Game {
     const anim = crit ? EZREAL.anims.crit : EZREAL.anims.attacks[this.attackIndex++ % EZREAL.anims.attacks.length];
     const length = Math.min(this.player.duration(anim), delay);
     this.player.play(anim, { loop: false, restart: true, duration: length, fade: 0.05 });
+    audio.play(crit ? 'ezreal_crit' : this.attackIndex % 2 ? 'ezreal_auto' : 'ezreal_auto2');
     this.animLock = length;
   }
 
@@ -492,6 +506,7 @@ export class Game {
       });
     } else {
       const R = EZREAL.R;
+      audio.play('ezreal_R_launch');
       this.spawnMissile('R', this.pos, point, {
         speed: R.speed, range: R.range, radius: R.width / 2, damage: R.damage[r] + R.bonusAdRatio * this.bonusAd, hit: new Set(),
       });
@@ -526,6 +541,7 @@ export class Game {
       } else if (m.target) {
         if (m.pos.distanceTo(m.target.pos.clone().setY(m.pos.y)) <= m.target.def.radius) {
           this.vfx.hit(m.kind, m.pos, m.crit, Math.atan2(m.dir.x, m.dir.z));
+          audio.play(m.crit ? 'ezreal_crit_hit' : HIT_SOUND[m.kind]!);
           this.hurtEnemy(m.target, m.damage, m.kind, m.crit, m.bolt);
           return this.removeMesh(m.mesh);
         }
@@ -536,16 +552,19 @@ export class Game {
           if (m.kind === 'W') {
             e.markedUntil = this.time + EZREAL.W.markDuration;
             this.vfx.hit('W-burst', m.pos);
+            audio.play('ezreal_W_hit');
             this.stackPassive();
             return this.removeMesh(m.mesh);
           }
           if (m.kind === 'R') {
             m.hit!.add(e);
             this.vfx.hit('R', e.pos.clone().setY(m.pos.y));
+            audio.play('ezreal_R_hit');
             this.hurtEnemy(e, m.damage * (e.def.tier === 'epic' ? 1 : EZREAL.R.nonEpicMultiplier), 'R');
             continue;
           }
           this.vfx.hit(m.kind, m.pos, false, Math.atan2(m.dir.x, m.dir.z));
+          audio.play(HIT_SOUND[m.kind]!);
           this.hurtEnemy(e, m.damage, m.kind);
           if (m.kind === 'Q') for (const k of SKILL_KEYS) this.cooldowns[k] = Math.max(0, this.cooldowns[k] - EZREAL.Q.cdRefundOnHit);
           return this.removeMesh(m.mesh);
@@ -584,6 +603,7 @@ export class Game {
       // Essence Flux detonation; ability detonations refund mana
       e.markedUntil = 0;
       this.vfx.hit('W-burst', e.pos.clone().setY(100));
+      audio.play('ezreal_W_detonate');
       magic += EZREAL.W.damage[this.ranks.W - 1] + EZREAL.W.bonusAdRatio * this.bonusAd;
       if (source !== 'auto') this.mana = Math.min(this.maxMana, this.mana + EZREAL.W.manaRestore + this.costOf(source as SkillKey));
     }
@@ -621,6 +641,7 @@ export class Game {
       this.hp = 0;
       this.over = 'lost';
       this.player.play(EZREAL.anims.death, { loop: false, fade: 0.1 });
+      audio.play('ezreal_death');
     }
   }
 
@@ -630,6 +651,7 @@ export class Game {
     this.kills++;
     this.killLog.push(this.time);
     e.actor.play(e.def.anims.death, { loop: false, fade: 0.08 });
+    audio.playAt(`${voice(e.def)}_death`, e.pos, this.pos);
     this.gainXp(e.def.xp); // XP is absorbed on kill (no gems to collect)
     if (!this.blueprintDropped && buildComplete(this.slots) && this.slots.some(isFinal) && Math.random() < BLUEPRINT_CHANCE) {
       this.blueprintDropped = true;
@@ -722,6 +744,7 @@ export class Game {
       armor: (def.armor ?? ENEMY_ARMOR[def.tier]) * (epic ? 1 : enemyArmorScale(this.time)), shred: 0, shredUntil: 0,
     };
     actor.play(def.anims.run);
+    if (def.tier === 'elite' || def.tier === 'epic') audio.play(`${voice(def)}_spawn`);
     this.scene.add(actor.root);
     this.enemies.push(e);
     this.spawnLog.push(this.time);
@@ -747,6 +770,7 @@ export class Game {
       if (e.windup >= 0) {
         e.windup -= dt;
         if (e.windup < 0 && this.alive && this.stasis <= 0) {
+          audio.playAt(`${e.def.model}_hit`, e.pos, this.pos);
           if (e.def.ranged) {
             // aimed at where Ezreal is now, then flies straight so it can be dodged
             this.spawnMissile('enemy', e.pos, this.pos, {
@@ -855,10 +879,12 @@ export class Game {
         // bite: instant, cannot be dodged
         anim = BARON.anims.bite;
         cast = 0.5;
+        audio.play('baron_bite');
         this.hurtPlayer(BARON.lethal);
       } else {
         anim = BARON.anims.whip;
         cast = this.baronWhip(e);
+        audio.play('baron_whip');
       }
     } else {
       const pick = Math.floor(Math.random() * 3);
@@ -872,12 +898,14 @@ export class Game {
   /** Circles erupt around Ezreal: knock-up, stun and heavy (non-lethal) damage. */
   private baronKnockup() {
     const k = BARON.knockup;
+    audio.play('baron_knockup');
     let hit = false; // overlapping circles only hit once
     for (let i = 0; i < k.count; i++) {
       const a = Math.random() * Math.PI * 2, r = i === 0 ? 0 : k.spread * Math.sqrt(Math.random());
       const at = this.inArena(this.pos.clone().add(new THREE.Vector3(Math.cos(a) * r, 0, Math.sin(a) * r)));
       this.telegraph(at, circleGeo, k.radius, 0, k.cast, 0x9a4dff, () => {
         this.spike(at, k.radius * 0.8, 220, 0xb070ff);
+        audio.playAt('baron_knockup_hit', at, this.pos);
         if (hit || !this.playerWithin(at, k.radius)) return;
         hit = true;
         this.hurtPlayer(k.damage, true);
@@ -893,6 +921,7 @@ export class Game {
     const at = this.pos.clone();
     this.telegraph(at, circleGeo, t.radius, 0, t.cast, 0xff3050, () => {
       this.spike(at, t.radius * 0.6, 520, 0x5a2a7a);
+      audio.play('baron_tentacle');
       if (this.playerWithin(at, t.radius)) this.hurtPlayer(BARON.lethal);
     });
     return t.cast;
@@ -902,7 +931,9 @@ export class Game {
   private baronSpit(e: Enemy) {
     const s = BARON.spit;
     const dir = this.pos.clone().sub(e.pos).setY(0).normalize();
+    audio.play('baron_spit');
     this.telegraph(e.pos, lineGeo, s.range, Math.atan2(dir.x, dir.z), s.cast, 0x60ff40, () => {
+      audio.play('baron_spit_launch');
       this.spawnMissile('enemy', e.pos, e.pos.clone().add(dir), { speed: s.speed, range: s.range, radius: s.radius, damage: BARON.lethal });
     }, s.radius * 2);
     return s.cast;
@@ -995,6 +1026,7 @@ export class Game {
     const inside = BARON.arenaRadius - 350;
     if (!this.pull && dist > BARON.arenaRadius && baron && this.alive) {
       this.pull = new THREE.Mesh(tentacleGeo, new THREE.MeshBasicMaterial({ color: 0x5a2a7a }));
+      audio.play('baron_pull');
       this.scene.add(this.pull);
     }
     if (!this.pull) return;
