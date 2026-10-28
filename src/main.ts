@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { Game } from './game';
 import { Hud } from './ui';
-import type { SkillKey } from './data';
+import type { SkillKey } from './champion';
 
 // LoL-style camera: high, pitched ~56°, looking down at the champion
 const CAMERA_OFFSET = new THREE.Vector3(0, 1900, 1250);
@@ -19,7 +19,7 @@ addEventListener('resize', resize);
 resize();
 
 const game = new Game();
-const hud = new Hud();
+const hud = new Hud(game.champ);
 const keys = new Set<string>();
 const cursor = new THREE.Vector3();
 const raycaster = new THREE.Raycaster();

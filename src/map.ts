@@ -106,10 +106,20 @@ interface Chunk {
   mat: THREE.ShaderMaterial; // owned: per-chunk uniforms
 }
 
+// window offsets, nearest first, so the chunks under the player exist on the very first call
+const OFFSETS: ReadonlyArray<readonly [number, number]> = [-1, 0, 1].flatMap((dz) => [-1, 0, 1].map((dx) => [dx, dz] as const))
+  .sort((a, b) => Math.abs(a[0]) + Math.abs(a[1]) - (Math.abs(b[0]) + Math.abs(b[1])));
+const WINDOW = OFFSETS.length;
+// numeric chunk keys (16 bits per axis): collideCircle runs per unit per frame and must not build strings
+const cellKey = (cx: number, cz: number) => ((cx & 0xffff) << 16) | (cz & 0xffff);
+const scratch = { x: 0, z: 0 };
+
 export class WorldMap {
-  private readonly chunks = new Map<string, Chunk>();
+  private readonly chunks = new Map<number, Chunk>();
   // kinds outlive their chunk: a chunk's border blend needs its neighbours' kinds before they are built
-  private readonly kinds = new Map<string, SessionKind>();
+  private readonly kinds = new Map<number, SessionKind>();
+  private pcx = NaN; // chunk of the last ensureChunks call
+  private pcz = NaN;
   private readonly shared: Record<string, THREE.IUniform>;
   private readonly obstacleMat = new THREE.MeshBasicMaterial({ color: 0x2b2b2b });
   private readonly boxGeo = new THREE.BoxGeometry(1, 1, 1);
@@ -137,17 +147,17 @@ export class WorldMap {
   /** Generates at most 2 new chunks per call and drops everything outside the 3x3 window. */
   ensureChunks(pos: THREE.Vector3): void {
     const pcx = Math.floor(pos.x / CHUNK), pcz = Math.floor(pos.z / CHUNK);
+    // steady state (same chunk, window complete): nothing to do
+    if (pcx === this.pcx && pcz === this.pcz && this.chunks.size === WINDOW) return;
+    this.pcx = pcx;
+    this.pcz = pcz;
     for (const [key, c] of this.chunks) {
       if (Math.abs(c.cx - pcx) > MARGIN_CELLS || Math.abs(c.cz - pcz) > MARGIN_CELLS) this.removeChunk(key);
     }
-    // nearest first, so the chunks under the player exist on the very first call
-    const offsets: Array<[number, number]> = [];
-    for (let dz = -1; dz <= 1; dz++) for (let dx = -1; dx <= 1; dx++) offsets.push([dx, dz]);
-    offsets.sort((a, b) => Math.abs(a[0]) + Math.abs(a[1]) - (Math.abs(b[0]) + Math.abs(b[1])));
     let made = 0;
-    for (const [dx, dz] of offsets) {
+    for (const [dx, dz] of OFFSETS) {
       if (made >= MAX_GEN) break;
-      const cx = pcx + dx, cz = pcz + dz, key = `${cx},${cz}`;
+      const cx = pcx + dx, cz = pcz + dz, key = cellKey(cx, cz);
       if (this.chunks.has(key)) continue;
       this.chunks.set(key, this.build(cx, cz));
       made++;
@@ -157,11 +167,13 @@ export class WorldMap {
   /** Resolves only against the chunk containing `pos`; no-op when it is not loaded. */
   collideCircle(pos: THREE.Vector3, radius: number): void {
     const cx = Math.floor(pos.x / CHUNK), cz = Math.floor(pos.z / CHUNK);
-    const c = this.chunks.get(`${cx},${cz}`);
+    const c = this.chunks.get(cellKey(cx, cz));
     if (!c) return;
     // layouts are chunk-local (origin = chunk centre), so resolve there and shift back
     const ox = (cx + 0.5) * CHUNK, oz = (cz + 0.5) * CHUNK;
-    const local = { x: pos.x - ox, z: pos.z - oz };
+    const local = scratch;
+    local.x = pos.x - ox;
+    local.z = pos.z - oz;
     resolveCircle(local, radius, c.layout.obstacles);
     pos.x = local.x + ox;
     pos.z = local.z + oz;
@@ -172,7 +184,7 @@ export class WorldMap {
   }
 
   kindAt(x: number, z: number): SessionKind | null {
-    return this.chunks.get(chunkKey(x, z))?.kind ?? null;
+    return this.chunks.get(cellKey(Math.floor(x / CHUNK), Math.floor(z / CHUNK)))?.kind ?? null;
   }
 
   dispose(): void {
@@ -242,7 +254,7 @@ export class WorldMap {
     return { kind, cx, cz, layout, group, geos, mat };
   }
 
-  private removeChunk(key: string): void {
+  private removeChunk(key: number): void {
     const c = this.chunks.get(key);
     if (!c) return;
     c.group.removeFromParent();
@@ -252,14 +264,13 @@ export class WorldMap {
   }
 
   private kindOf(cx: number, cz: number): SessionKind {
-    const key = `${cx},${cz}`;
+    const key = cellKey(cx, cz);
     let kind = this.kinds.get(key);
     if (!kind) this.kinds.set(key, (kind = randomKind(this.rand)));
     return kind;
   }
 }
 
-const chunkKey = (x: number, z: number) => `${Math.floor(x / CHUNK)},${Math.floor(z / CHUNK)}`;
 
 const loader = new THREE.TextureLoader();
 const loadTex = (name: string) =>

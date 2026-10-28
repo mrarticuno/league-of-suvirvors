@@ -1,58 +1,5 @@
-// Game data. Ezreal numbers mirror League of Legends (source: Meraki Analytics champion JSON).
+// Game data: enemies, spawns and the run timeline. Champions live in src/champions/, item passives in src/itemEffects.ts.
 // Enemy numbers are tuned for the survivors-like genre (many weak enemies), keeping LoL relative scale.
-
-export const EZREAL = {
-  model: 'ezreal',
-  base: {
-    hp: 600, hpPerLevel: 102,
-    hpRegen5: 4, hpRegen5PerLevel: 0.65, // LoL regen is per 5 seconds
-    mana: 375, manaPerLevel: 70,
-    manaRegen5: 8.5, manaRegen5PerLevel: 1,
-    ad: 60, adPerLevel: 2.75,
-    attackSpeed: 0.625, attackSpeedPerLevel: 0.025, // +2.5% bonus AS per level
-    attackRange: 550,
-    moveSpeed: 325,
-    critDamage: 1.75,
-    windupPercent: 0.3 / 1.6, // attackCastTime / attackTotalTime
-    missileSpeed: 2000,
-    radius: 65,
-    armor: 24, armorPerLevel: 4.2,
-  },
-  passive: { asPerStack: 0.10, maxStacks: 5, duration: 6 },
-  Q: {
-    name: 'Mystic Shot', maxRank: 5,
-    cooldown: [5.5, 5.25, 5, 4.75, 4.5], cost: [28, 31, 34, 37, 40],
-    damage: [20, 45, 70, 95, 120], adRatio: 1.3,
-    range: 1200, speed: 2000, width: 120, castTime: 0.25, cdRefundOnHit: 1.5,
-  },
-  W: {
-    name: 'Essence Flux', maxRank: 5,
-    cooldown: [8, 8, 8, 8, 8], cost: [50, 50, 50, 50, 50],
-    damage: [80, 135, 190, 245, 300], bonusAdRatio: 1.0,
-    range: 1200, speed: 1700, width: 160, castTime: 0.25, markDuration: 4, manaRestore: 60,
-  },
-  E: {
-    name: 'Arcane Shift', maxRank: 5,
-    cooldown: [26, 23, 20, 17, 14], cost: [70, 70, 70, 70, 70],
-    damage: [80, 130, 180, 230, 280], bonusAdRatio: 0.5,
-    blinkRange: 475, boltRange: 750, speed: 2000, castTime: 0.25,
-  },
-  R: {
-    name: 'Trueshot Barrage', maxRank: 3,
-    cooldown: [120, 105, 90], cost: [100, 100, 100],
-    damage: [350, 550, 750], bonusAdRatio: 1.0,
-    range: 6000, speed: 2000, width: 320, castTime: 1, nonEpicMultiplier: 0.5,
-  },
-  anims: {
-    idle: 'ezreal_idle', run: 'ezreal_run', death: 'ezreal_death',
-    attacks: ['ezreal_attack1', 'ezreal_attack2', 'ezreal_attack3', 'ezreal_attack4'], crit: 'ezreal_crit',
-    Q: 'ezreal_spell1', W: 'ezreal_spell2', E: 'ezreal_spell3_generic', R: 'ezreal_spell4',
-  },
-} as const;
-
-export type SkillKey = 'Q' | 'W' | 'E' | 'R';
-export const SKILL_KEYS: SkillKey[] = ['Q', 'W', 'E', 'R'];
-export const MAX_CHAMPION_LEVEL = 18;
 
 export interface EnemyDef {
   model: string;
@@ -70,6 +17,7 @@ export interface EnemyDef {
   scale?: number;
   tier: 'minion' | 'monster' | 'elite' | 'epic';
   armor?: number; // defaults by tier (ENEMY_ARMOR)
+  immovable?: boolean; // unit collision never pushes it
   hide?: string[]; // material names to hide (unused submeshes)
   anims: { run: string; idle: string; death: string; attacks: string[] };
 }
@@ -142,9 +90,9 @@ export const ENEMIES: Record<string, EnemyDef> = {
     anims: { run: 'sru_riftherald_run', idle: 'sru_riftherald_angry_idle', death: 'sru_riftherald_death', attacks: ['sru_riftherald_attack1', 'sru_riftherald_attack2'] },
   },
   baron: {
-    // Baron never moves (as in LoL); its abilities are driven by BARON in game.ts, not the generic attack loop
+    // Baron never moves (as in LoL); its abilities are driven by src/enemies/baron.ts, not the generic attack loop
     model: 'baron', name: 'Barão Na\'Shor', hp: 150000, speed: 0, damage: 0, attackRange: 0, attackCooldown: 0, windup: 0,
-    xp: 500, radius: 250, tier: 'epic', hide: ['Horn', 'Eye'], // LoL hides these submeshes (initialSubmeshToHide)
+    xp: 500, radius: 250, tier: 'epic', immovable: true, hide: ['Horn', 'Eye'], // LoL hides these submeshes (initialSubmeshToHide)
     anims: { run: 'sru_baron_idle1_aggro', idle: 'sru_baron_idle1_aggro', death: 'sru_baron_death', attacks: ['sru_baron_attack1', 'sru_baron_attack2'] },
   },
 };

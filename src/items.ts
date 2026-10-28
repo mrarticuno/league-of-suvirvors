@@ -16,21 +16,7 @@ export const ITEMS = data.items as Record<string, Item>;
 export const MAX_ITEMS = 6;
 export const itemIcon = (id: string) => `https://ddragon.leagueoflegends.com/cdn/${data.version}/img/item/${id}.png`;
 
-// Passive descriptions for items whose effect is implemented in game.ts
-export const PASSIVES: Record<string, string> = {
-  '3057': 'Lâmina Arcana: após usar uma habilidade, o próximo ataque causa +100% do DdA base.',
-  '3078': 'Lâmina Arcana: após usar uma habilidade, o próximo ataque causa +200% do DdA base.',
-  '3508': 'Lâmina Arcana: próximo ataque após habilidade causa +100% DdA base +40% DdA adicional e restaura mana.',
-  '3004': 'Fascínio: recebe DdA adicional igual a 2,5% da Mana máxima.',
-  '6672': 'Derrubar: a cada 3 ataques, causa dano físico adicional (maior contra alvos feridos).',
-  '3153': 'Gume da Névoa: ataques causam 6% da Vida atual do alvo como dano físico.',
-  '3031': '+30% de dano de acerto crítico.',
-  '3071': 'Talhar: dano físico reduz a Armadura do alvo em 6% (acumula 5x).',
-  '3026': 'Renascimento: ao sofrer dano letal, revive com 50% da Vida base (1x a cada 5 min).',
-  '3110': 'Carícia do Inverno: inimigos próximos atacam 20% mais devagar.',
-  '3085': 'Fúria do Vento: ataques disparam projéteis em até 2 inimigos próximos, causando 55% do dano e efeitos ao acertar.',
-  '3068': 'Imolação: queima inimigos próximos, causando dano mágico por segundo (aumenta com nível e Vida adicional).',
-};
+// Passive descriptions and effects: src/itemEffects.ts
 
 /** Evolution paths per base item (steps after the base). Copies needed for a path = its length + 1. */
 export const LINES: Record<string, string[][]> = {

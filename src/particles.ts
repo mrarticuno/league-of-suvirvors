@@ -3,6 +3,7 @@
 // Frames: a system's local space is League's (X, Y up, Z forward) rotated by the caster's facing; missile systems
 // use X side, Y along the flight direction, Z up (the bin offsets/velocities of every Ezreal missile agree on this).
 import * as THREE from 'three';
+import { compact } from './util';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type Bin = any; // bin JSON is loosely typed: fields are optional and nested Value* objects
@@ -230,7 +231,7 @@ class Emitter {
       }
     }
     const worldAcc = vec3(val(e.worldAcceleration, et));
-    this.particles = this.particles.filter((p) => {
+    compact(this.particles, (p) => {
       p.age += dt;
       if (p.age >= p.life) return false;
       const pt = p.age / p.life;

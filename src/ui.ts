@@ -1,13 +1,25 @@
 import * as THREE from 'three';
 import { audio } from './audio';
-import { EZREAL, HORDE, SKILL_KEYS, xpToNext, type SkillKey } from './data';
+import { SKILL_KEYS, type ChampionDef, type SkillKey } from './champion';
+import { HORDE, xpToNext } from './data';
 import type { Game } from './game';
+import { PASSIVES } from './itemEffects';
 import {
   buildComplete, claimed, describeStats, finalsVia, isFinal, isLocked, itemIcon, ITEMS, LEGENDARY_BONUS, lineTree, MAX_ITEMS,
-  nextSteps, PASSIVES, rollOffers, slotItem, type LineNode,
+  nextSteps, rollOffers, slotItem, type LineNode,
 } from './items';
 
-const $ = (id: string) => document.getElementById(id)!;
+const els = new Map<string, HTMLElement>();
+const $ = (id: string) => {
+  let el = els.get(id);
+  if (!el) els.set(id, (el = document.getElementById(id)!));
+  return el;
+};
+// The HUD redraws every frame but most values rarely change: only touch the DOM when the written value differs
+const shown = new Map<string, string>();
+const changed = (key: string, v: string) => shown.get(key) !== v && !!shown.set(key, v);
+const text = (id: string, v: string) => { if (changed(id, v)) $(id).textContent = v; };
+const style = (id: string, prop: 'width' | 'height' | 'display', v: string) => { if (changed(`${id}.${prop}`, v)) $(id).style[prop] = v; };
 const fmt = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 
 export class Hud {
@@ -16,55 +28,66 @@ export class Hud {
   choosing = false;
   menuOpen = false;
 
-  constructor() {
+  private skillEls: Record<SkillKey, { root: HTMLElement; cd: HTMLElement; cdText: HTMLElement; pips: HTMLElement }>;
+
+  constructor(champ: ChampionDef) {
     $('menu-resume').onclick = () => this.toggleMenu();
     $('menu-music').onclick = () => { audio.setMusic(!audio.musicOn); this.menuLabels(); };
     $('menu-sfx').onclick = () => { audio.setSfx(!audio.sfxOn); this.menuLabels(); };
     $('skills').innerHTML = SKILL_KEYS.map((k) => `
       <div class="skill" id="skill-${k}">
-        <img src="https://ddragon.leagueoflegends.com/cdn/16.21.1/img/spell/Ezreal${k}.png" alt="">
+        <img src="${champ.skills[k].icon}" alt="">
         <div class="cd"></div><div class="cd-text"></div><span class="key">${k}</span><div class="pips"></div>
       </div>`).join('');
+    const part = (k: SkillKey, sel: string) => $(`skill-${k}`).querySelector<HTMLElement>(sel)!;
+    this.skillEls = Object.fromEntries(SKILL_KEYS.map((k) => [k, {
+      root: $(`skill-${k}`), cd: part(k, '.cd'), cdText: part(k, '.cd-text'), pips: part(k, '.pips'),
+    }])) as Hud['skillEls'];
+    shown.clear(); // a new HUD (new champion) redraws everything
   }
 
   update(g: Game) {
-    $('timer').textContent = fmt(g.time);
-    $('kills').textContent = `${g.kills} abates`;
-    $('level').textContent = String(g.level);
-    $('xp-fill').style.width = `${(g.xp / xpToNext(g.level)) * 100}%`;
-    $('hp-fill').style.width = `${(g.hp / g.maxHp) * 100}%`;
-    $('hp-text').textContent = g.stasis > 0 ? `Anjo Guardião ${g.stasis.toFixed(1)}s` : `${Math.ceil(g.hp)} / ${Math.ceil(g.maxHp)}`;
-    $('mana-fill').style.width = `${(g.mana / g.maxMana) * 100}%`;
-    $('mana-text').textContent = `${Math.floor(g.mana)} / ${Math.floor(g.maxMana)}`;
-    $('auto').textContent = `Ataque automático: ${g.autoAttack ? 'LIGADO' : 'DESLIGADO'} (T)`;
-    $('auto').classList.toggle('off', !g.autoAttack);
-    $('stats').textContent =
-      `DdA ${Math.round(g.ad)} · VA ${g.attackSpeed.toFixed(2)} · Arm ${Math.round(g.armor)} · VM ${g.moveSpeed} · AH ${g.abilityHaste} · Crit ${Math.round(g.critChance * 100)}% · Passiva ${g.passiveStacks}/5`;
+    text('timer', fmt(g.time));
+    text('kills', `${g.kills} abates`);
+    text('level', String(g.level));
+    style('xp-fill', 'width', `${((g.xp / xpToNext(g.level)) * 100).toFixed(1)}%`);
+    style('hp-fill', 'width', `${((g.hp / g.maxHp) * 100).toFixed(1)}%`);
+    text('hp-text', g.stasis > 0 ? `Anjo Guardião ${g.stasis.toFixed(1)}s` : `${Math.ceil(g.hp)} / ${Math.ceil(g.maxHp)}`);
+    style('mana-fill', 'width', `${((g.mana / g.maxMana) * 100).toFixed(1)}%`);
+    text('mana-text', `${Math.floor(g.mana)} / ${Math.floor(g.maxMana)}`);
+    if (changed('auto', String(g.autoAttack))) {
+      $('auto').textContent = `Ataque automático: ${g.autoAttack ? 'LIGADO' : 'DESLIGADO'} (T)`;
+      $('auto').classList.toggle('off', !g.autoAttack);
+    }
+    const passive = g.kit.hud?.();
+    text('stats',
+      `DdA ${Math.round(g.ad)} · VA ${g.attackSpeed.toFixed(2)} · Arm ${Math.round(g.armor)} · VM ${g.moveSpeed} · AH ${g.abilityHaste} · Crit ${Math.round(g.critChance * 100)}%${passive ? ` · ${passive}` : ''}`);
     for (const k of SKILL_KEYS) {
-      const el = $(`skill-${k}`);
+      const el = this.skillEls[k];
       const rank = g.ranks[k];
       const cd = g.cooldowns[k];
-      el.classList.toggle('locked', rank === 0);
-      el.classList.toggle('nomana', rank > 0 && g.mana < g.costOf(k));
-      const cdEl = el.querySelector<HTMLElement>('.cd')!;
+      el.root.classList.toggle('locked', rank === 0);
+      el.root.classList.toggle('nomana', rank > 0 && g.mana < g.costOf(k));
       // text stays centered on the icon while the overlay shrinks, so the last seconds stay readable
-      el.querySelector('.cd-text')!.textContent = cd > 0 ? (cd < 1 ? cd.toFixed(1) : String(Math.ceil(cd))) : '';
-      cdEl.style.height = rank > 0 && cd > 0 ? `${(cd / g.cooldownOf(k)) * 100}%` : '0';
-      el.querySelector('.pips')!.innerHTML = Array.from({ length: EZREAL[k].maxRank }, (_, i) => `<i class="${i < rank ? 'on' : ''}"></i>`).join('');
+      const cdText = cd > 0 ? (cd < 1 ? cd.toFixed(1) : String(Math.ceil(cd))) : '';
+      if (changed(`cd-text-${k}`, cdText)) el.cdText.textContent = cdText;
+      const height = rank > 0 && cd > 0 ? `${((cd / g.cooldownOf(k)) * 100).toFixed(1)}%` : '0';
+      if (changed(`cd-${k}`, height)) el.cd.style.height = height;
+      if (changed(`pips-${k}`, String(rank))) {
+        el.pips.innerHTML = Array.from({ length: g.champ.skills[k].maxRank }, (_, i) => `<i class="${i < rank ? 'on' : ''}"></i>`).join('');
+      }
     }
-    const inv = `${g.inventory.join(',')}|${g.legendary}`;
-    if ($('inventory').dataset.inv !== inv) {
-      $('inventory').dataset.inv = inv;
+    if (changed('inventory', `${g.inventory.join(',')}|${g.legendary}`)) {
       $('inventory').innerHTML = slotsHtml(g, (i, cls, title) => `<img src="${itemIcon(slotItem(g.slots[i]))}" class="${cls}" title="${title}">`, '<span></span>');
     }
     const hordeIn = g.nextHordeAt - g.time;
-    $('horde').style.display = hordeIn <= HORDE.warning ? 'block' : 'none';
-    $('horde').textContent = `Horda chegando em ${Math.ceil(hordeIn)}s!`;
+    style('horde', 'display', hordeIn <= HORDE.warning ? 'block' : 'none');
+    if (hordeIn <= HORDE.warning) text('horde', `Horda chegando em ${Math.ceil(hordeIn)}s!`);
     const boss = g.boss;
-    $('boss').style.display = boss ? 'block' : 'none';
+    style('boss', 'display', boss ? 'block' : 'none');
     if (boss) {
-      $('boss-name').textContent = boss.def.name ?? boss.def.model;
-      $('boss-fill').style.width = `${(boss.hp / boss.maxHp) * 100}%`;
+      text('boss-name', boss.def.name ?? boss.def.model);
+      style('boss-fill', 'width', `${((boss.hp / boss.maxHp) * 100).toFixed(1)}%`);
     }
   }
 
@@ -87,8 +110,9 @@ export class Hud {
       const x = (this.projected.x * 0.5 + 0.5) * innerWidth;
       const y = (-this.projected.y * 0.5 + 0.5) * innerHeight - f.age * 60;
       el.style.display = 'block';
-      el.className = `floater ${f.kind}`;
-      el.textContent = f.text;
+      const cls = `floater ${f.kind}`;
+      if (el.className !== cls) el.className = cls;
+      if (el.textContent !== f.text) el.textContent = f.text;
       el.style.transform = `translate(${x}px, ${y}px) translate(-50%, -50%)`;
       el.style.opacity = String(1 - Math.max(0, f.age - 0.5) / 0.4);
     });
@@ -127,10 +151,10 @@ export class Hud {
     $('inv-edit').innerHTML = '';
     $('tree').innerHTML = '';
     $('choices').innerHTML = skills.map((k, i) => {
-      const s = EZREAL[k];
+      const s = g.champ.skills[k];
       const r = g.ranks[k];
       return `<button data-i="${i}" class="skill-choice">
-        <img src="https://ddragon.leagueoflegends.com/cdn/16.21.1/img/spell/Ezreal${k}.png" alt="">
+        <img src="${s.icon}" alt="">
         <div><b>${i + 1}. [${k}] ${s.name}</b>
         <span>${r === 0 ? 'Aprender' : `Rank ${r} → ${r + 1}`} · Recarga ${s.cooldown[r]}s · Custo ${s.cost[r]} mana</span></div></button>`;
     }).join('');

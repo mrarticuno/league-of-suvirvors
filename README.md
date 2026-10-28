@@ -139,7 +139,17 @@ WASD não é usado porque colide com Q/W/E.
     - Tentáculo saindo do chão onde o Ezreal estava: mata.
     - Cuspe ácido em linha: mata.
   - Perto do Barão: 33% de chance de mordida (engole, instantânea, impossível de esquivar). Senão, chicotada em cone: 75% da vida máxima, nunca mata.
-  - Ajustes em `BARON` (`src/data.ts`).
+  - Ajustes em `BARON` (`src/data.ts`); comportamento em `src/enemies/baron.ts`.
+
+## Arquitetura (onde adicionar conteúdo)
+
+- **Campeões** (`src/champion.ts`, `src/champions/`): um campeão é um `ChampionDef` (stats base, skills com ranks/custos/recargas/animação/ícone, animações, VFX do ataque básico) mais um `kit`, criado a cada run, que resolve as skills e guarda as peculiaridades (acúmulos, marcas...). O `Game` cuida do genérico: movimento, ataque básico, recargas, mana, itens e o pipeline de dano.
+  - Novo campeão: criar `src/champions/<nome>.ts` (modelo: `ezreal.ts`) e registrar em `src/champions/index.ts`. Sons seguem `<id>_auto`, `<id>_Q`, `<id>_death`...
+  - Hooks do kit: `cast` (obrigatório), `castStart`, `attackSpeedBonus`, `onDamage` (dano mágico extra antes da mitigação, ex. detonar a marca do W), `update`, `dispose`, `hud`.
+  - Projéteis: `game.spawnMissile(vfx, de, para, { hit, target | pierce, onHit, ... })`. Sem `onHit`, o impacto padrão aplica VFX, som e dano.
+- **Passivas de itens** (`src/itemEffects.ts`): cada entrada tem a descrição e, se implementada, uma fábrica de hooks (`onHit`, `onAttack`, `onCast`, `onPhysical`, `tick`, `onLethal`, `bonusAd`, `enemyAttackCooldown`). `unique` + `rank` reproduzem as passivas ÚNICAS do LoL (ex. Lâmina Arcana: só a melhor funciona). Stats continuam em `items.json`.
+- **Inimigos** (`src/data.ts` + `src/enemies/`): inimigo comum só precisa do `EnemyDef`. Comportamento próprio registra uma IA em `AI`; eventos da linha do tempo com regra especial (dragão sorteado, arena do Barão) registram um spawner em `SPAWNERS`. `src/hazards.ts` tem os marcadores de chão e erupções para chefes.
+- **Desempenho**: inimigos ficam numa grade espacial (`src/spatial.ts`), então colisão entre unidades, alvos, projéteis e auras consultam só os vizinhos (antes, colisão era O(n²)). Listas por frame são filtradas no lugar (`compact`), janelas de spawn/kill são O(1) amortizado, o mapa não refaz nada enquanto o jogador está no mesmo chunk, e o HUD só escreve no DOM quando um valor muda. Inimigos longe do campeão atualizam a animação a cada 3 frames.
 
 ## Limitações conhecidas / próximos passos
 
