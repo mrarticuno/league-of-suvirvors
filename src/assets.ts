@@ -1,0 +1,106 @@
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { clone } from 'three/addons/utils/SkeletonUtils.js';
+
+interface Template {
+  scene: THREE.Object3D;
+  clips: Map<string, THREE.AnimationClip>;
+}
+
+const gltfLoader = new GLTFLoader();
+const texLoader = new THREE.TextureLoader();
+const templates = new Map<string, Template>();
+
+/** `mesh` loads another model's .glb with this model's texture (texture-only skins). */
+export async function loadModel(id: string, hide: readonly string[] = [], mesh = id): Promise<void> {
+  if (templates.has(id)) return;
+  const [gltf, map] = await Promise.all([
+    gltfLoader.loadAsync(`assets/models/${mesh}.glb`),
+    texLoader.loadAsync(`assets/models/${id}.png`),
+  ]);
+  map.flipY = false; // glTF UV convention
+  // League meshes rely on UV wrap (some islands go negative or past 1.0), clamp shows atlas edges
+  map.wrapS = map.wrapT = THREE.RepeatWrapping;
+  map.colorSpace = THREE.SRGBColorSpace;
+  // League shading is mostly baked into the diffuse texture, so an unlit material stays faithful
+  const material = new THREE.MeshBasicMaterial({ map, alphaTest: 0.3 });
+  gltf.scene.traverse((o) => {
+    const mesh = o as THREE.SkinnedMesh;
+    if (!mesh.isMesh) return;
+    const name = (mesh.material as THREE.Material).name;
+    mesh.visible = !hide.includes(name);
+    mesh.material = material;
+    mesh.frustumCulled = false; // skinned bounds don't follow animation
+  });
+  for (const clip of gltf.animations) clip.tracks = clip.tracks.filter((t) => !isUnkeyed(t, gltf.scene));
+  templates.set(id, { scene: gltf.scene, clips: new Map(gltf.animations.map((c) => [c.name, c])) });
+}
+
+/**
+ * Some converted clips (the drakes' flying_attack1/spell1) carry bones the .anm does not key as zero translation /
+ * identity rotation instead of the bind pose, which collapses the mesh. Dropping those tracks lets the bind pose show.
+ */
+function isUnkeyed(track: THREE.KeyframeTrack, scene: THREE.Object3D) {
+  const v = track.values;
+  if (track.name.endsWith('.quaternion')) {
+    for (let i = 0; i < v.length; i += 4) if (Math.abs(v[i + 3]) < 0.9999) return false;
+    return true;
+  }
+  if (!track.name.endsWith('.position')) return false;
+  const bone = scene.getObjectByName(track.name.slice(0, -'.position'.length));
+  if (!bone || bone.position.length() < 1) return false;
+  for (let i = 0; i < v.length; i++) if (Math.abs(v[i]) > 1) return false;
+  return true;
+}
+
+/** An animated instance of a loaded model. */
+export class Actor {
+  readonly root = new THREE.Group();
+  private mixer: THREE.AnimationMixer;
+  private clips: Map<string, THREE.AnimationClip>;
+  private current?: THREE.AnimationAction;
+  currentName = '';
+
+  constructor(id: string, scale = 1) {
+    const t = templates.get(id);
+    if (!t) throw new Error(`model ${id} not loaded`);
+    const model = clone(t.scene);
+    model.scale.setScalar(scale);
+    this.root.add(model);
+    this.mixer = new THREE.AnimationMixer(model);
+    this.clips = t.clips;
+  }
+
+  duration(name: string) {
+    return this.clips.get(name)?.duration ?? 0;
+  }
+
+  /** Crossfade to a clip. `duration` stretches the clip to last that many seconds. */
+  play(name: string, opts: { loop?: boolean; fade?: number; duration?: number; restart?: boolean } = {}) {
+    const clip = this.clips.get(name);
+    if (!clip) return;
+    if (this.currentName === name && !opts.restart) return;
+    const action = this.mixer.clipAction(clip);
+    action.reset();
+    action.setLoop(opts.loop === false ? THREE.LoopOnce : THREE.LoopRepeat, Infinity);
+    action.clampWhenFinished = true;
+    action.timeScale = opts.duration ? clip.duration / opts.duration : 1;
+    action.play();
+    if (this.current && this.current !== action) action.crossFadeFrom(this.current, opts.fade ?? 0.12, false);
+    this.current = action;
+    this.currentName = name;
+  }
+
+  setTimeScale(s: number) {
+    if (this.current) this.current.timeScale = s;
+  }
+
+  update(dt: number) {
+    this.mixer.update(dt);
+  }
+
+  dispose() {
+    this.mixer.stopAllAction();
+    this.root.removeFromParent();
+  }
+}

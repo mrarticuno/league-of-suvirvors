@@ -1,0 +1,550 @@
+{
+ "version": "16.21.1",
+ "items": {
+  "3078": {
+   "id": "3078",
+   "name": "Força da Trindade",
+   "stats": {
+    "hp": 333,
+    "ad": 36,
+    "as": 0.3,
+    "ah": 15.0
+   },
+   "from": [
+    "3057",
+    "3044",
+    "3051"
+   ],
+   "tier": "legendary",
+   "into": []
+  },
+  "3057": {
+   "id": "3057",
+   "name": "Fulgor",
+   "stats": {
+    "ah": 10.0
+   },
+   "from": [
+    "2022"
+   ],
+   "tier": "epic",
+   "into": [
+    "3078",
+    "3508"
+   ]
+  },
+  "2022": {
+   "id": "2022",
+   "name": "Partícula Brilhante",
+   "stats": {
+    "ah": 5.0
+   },
+   "from": [],
+   "tier": "basic",
+   "into": [
+    "3057",
+    "3133",
+    "3024",
+    "3067"
+   ]
+  },
+  "3044": {
+   "id": "3044",
+   "name": "Fago",
+   "stats": {
+    "hp": 200,
+    "ad": 15
+   },
+   "from": [
+    "1028",
+    "1036"
+   ],
+   "tier": "epic",
+   "into": [
+    "3078",
+    "3071"
+   ]
+  },
+  "1028": {
+   "id": "1028",
+   "name": "Cristal de Rubi",
+   "stats": {
+    "hp": 150
+   },
+   "from": [],
+   "tier": "basic",
+   "into": [
+    "3044",
+    "3161",
+    "2021",
+    "3067"
+   ]
+  },
+  "1036": {
+   "id": "1036",
+   "name": "Espada Longa",
+   "stats": {
+    "ad": 10
+   },
+   "from": [],
+   "tier": "basic",
+   "into": [
+    "3044",
+    "3051",
+    "3004",
+    "3133",
+    "2021",
+    "3035",
+    "2517",
+    "2019",
+    "6690",
+    "1053"
+   ]
+  },
+  "3051": {
+   "id": "3051",
+   "name": "Machado Termestre",
+   "stats": {
+    "ad": 20,
+    "as": 0.2
+   },
+   "from": [
+    "1036",
+    "1042",
+    "1036"
+   ],
+   "tier": "epic",
+   "into": [
+    "3078",
+    "6672"
+   ]
+  },
+  "1042": {
+   "id": "1042",
+   "name": "Adaga",
+   "stats": {
+    "as": 0.1
+   },
+   "from": [],
+   "tier": "basic",
+   "into": [
+    "3051",
+    "1043"
+   ]
+  },
+  "3004": {
+   "id": "3004",
+   "name": "Manamune",
+   "stats": {
+    "mana": 500,
+    "ad": 35,
+    "ah": 15.0
+   },
+   "from": [
+    "3070",
+    "3133",
+    "1036"
+   ],
+   "tier": "legendary",
+   "into": []
+  },
+  "3070": {
+   "id": "3070",
+   "name": "Lágrima da Deusa",
+   "stats": {
+    "mana": 240
+   },
+   "from": [],
+   "tier": "basic",
+   "into": [
+    "3004"
+   ]
+  },
+  "3133": {
+   "id": "3133",
+   "name": "Martelo de Guerra de Caulfield",
+   "stats": {
+    "ad": 20,
+    "ah": 10.0
+   },
+   "from": [
+    "1036",
+    "2022",
+    "1036"
+   ],
+   "tier": "epic",
+   "into": [
+    "3004",
+    "6694",
+    "2517",
+    "3508"
+   ]
+  },
+  "3161": {
+   "id": "3161",
+   "name": "Lança de Shojin",
+   "stats": {
+    "hp": 450,
+    "ad": 45,
+    "ah": 25.0
+   },
+   "from": [
+    "1037",
+    "2021",
+    "1028"
+   ],
+   "tier": "legendary",
+   "into": []
+  },
+  "1037": {
+   "id": "1037",
+   "name": "Picareta",
+   "stats": {
+    "ad": 25
+   },
+   "from": [],
+   "tier": "basic",
+   "into": [
+    "3161",
+    "2517",
+    "3071",
+    "3153",
+    "3031"
+   ]
+  },
+  "2021": {
+   "id": "2021",
+   "name": "Tunelizador",
+   "stats": {
+    "hp": 250,
+    "ad": 15
+   },
+   "from": [
+    "1036",
+    "1028"
+   ],
+   "tier": "epic",
+   "into": [
+    "3161"
+   ]
+  },
+  "6694": {
+   "id": "6694",
+   "name": "Rancor de Serylda",
+   "stats": {
+    "ad": 45,
+    "ah": 15.0,
+    "armorPen": 0.35
+   },
+   "from": [
+    "3133",
+    "3035"
+   ],
+   "tier": "legendary",
+   "into": []
+  },
+  "3035": {
+   "id": "3035",
+   "name": "Último Sussurro",
+   "stats": {
+    "ad": 20,
+    "armorPen": 0.18
+   },
+   "from": [
+    "1036",
+    "1036"
+   ],
+   "tier": "epic",
+   "into": [
+    "6694"
+   ]
+  },
+  "2517": {
+   "id": "2517",
+   "name": "Fome Eterna",
+   "stats": {
+    "ad": 65,
+    "omnivamp": 0.05
+   },
+   "from": [
+    "3133",
+    "1037",
+    "1036"
+   ],
+   "tier": "legendary",
+   "into": []
+  },
+  "3110": {
+   "id": "3110",
+   "name": "Coração Congelado",
+   "stats": {
+    "mana": 400,
+    "armor": 75,
+    "ah": 20.0
+   },
+   "from": [
+    "3082",
+    "3024"
+   ],
+   "tier": "legendary",
+   "into": []
+  },
+  "3082": {
+   "id": "3082",
+   "name": "Carapaça do Vigia",
+   "stats": {
+    "armor": 40
+   },
+   "from": [
+    "1029",
+    "1029"
+   ],
+   "tier": "epic",
+   "into": [
+    "3110"
+   ]
+  },
+  "1029": {
+   "id": "1029",
+   "name": "Couraça de Pano",
+   "stats": {
+    "armor": 15
+   },
+   "from": [],
+   "tier": "basic",
+   "into": [
+    "3082",
+    "3024",
+    "2019"
+   ]
+  },
+  "3024": {
+   "id": "3024",
+   "name": "Broquel Glacial",
+   "stats": {
+    "mana": 300,
+    "armor": 25,
+    "ah": 10.0
+   },
+   "from": [
+    "1029",
+    "1027",
+    "2022"
+   ],
+   "tier": "epic",
+   "into": [
+    "3110"
+   ]
+  },
+  "1027": {
+   "id": "1027",
+   "name": "Cristal de Safira",
+   "stats": {
+    "mana": 300
+   },
+   "from": [],
+   "tier": "basic",
+   "into": [
+    "3024"
+   ]
+  },
+  "3026": {
+   "id": "3026",
+   "name": "Anjo Guardião",
+   "stats": {
+    "armor": 45,
+    "ad": 55
+   },
+   "from": [
+    "2019",
+    "1038"
+   ],
+   "tier": "legendary",
+   "into": []
+  },
+  "2019": {
+   "id": "2019",
+   "name": "Sigilo de Aço",
+   "stats": {
+    "armor": 30,
+    "ad": 15
+   },
+   "from": [
+    "1029",
+    "1036",
+    "1029"
+   ],
+   "tier": "epic",
+   "into": [
+    "3026"
+   ]
+  },
+  "1038": {
+   "id": "1038",
+   "name": "Espada G. p. C.",
+   "stats": {
+    "ad": 40
+   },
+   "from": [],
+   "tier": "basic",
+   "into": [
+    "3026",
+    "3031"
+   ]
+  },
+  "3071": {
+   "id": "3071",
+   "name": "Cutelo Negro",
+   "stats": {
+    "hp": 400,
+    "ad": 45,
+    "ah": 20.0
+   },
+   "from": [
+    "3044",
+    "3067",
+    "1037"
+   ],
+   "tier": "legendary",
+   "into": []
+  },
+  "3067": {
+   "id": "3067",
+   "name": "Gema Ardente",
+   "stats": {
+    "hp": 200,
+    "ah": 10.0
+   },
+   "from": [
+    "1028",
+    "2022"
+   ],
+   "tier": "epic",
+   "into": [
+    "3071"
+   ]
+  },
+  "6672": {
+   "id": "6672",
+   "name": "Mata-Cráquens",
+   "stats": {
+    "ad": 45,
+    "as": 0.4,
+    "msPct": 0.04
+   },
+   "from": [
+    "6690",
+    "3051",
+    "1043"
+   ],
+   "tier": "legendary",
+   "into": []
+  },
+  "6690": {
+   "id": "6690",
+   "name": "Retriz",
+   "stats": {
+    "ad": 15,
+    "msPct": 0.04
+   },
+   "from": [
+    "1036"
+   ],
+   "tier": "epic",
+   "into": [
+    "6672"
+   ]
+  },
+  "1043": {
+   "id": "1043",
+   "name": "Arco Recurvo",
+   "stats": {
+    "as": 0.15
+   },
+   "from": [
+    "1042"
+   ],
+   "tier": "epic",
+   "into": [
+    "6672",
+    "3153"
+   ]
+  },
+  "3153": {
+   "id": "3153",
+   "name": "Espada do Rei Destruído",
+   "stats": {
+    "ad": 40,
+    "as": 0.25,
+    "lifesteal": 0.1
+   },
+   "from": [
+    "1053",
+    "1043",
+    "1037"
+   ],
+   "tier": "legendary",
+   "into": []
+  },
+  "1053": {
+   "id": "1053",
+   "name": "Cetro Vampírico",
+   "stats": {
+    "ad": 15,
+    "lifesteal": 0.07
+   },
+   "from": [
+    "1036"
+   ],
+   "tier": "epic",
+   "into": [
+    "3153"
+   ]
+  },
+  "3031": {
+   "id": "3031",
+   "name": "Gume do Infinito",
+   "stats": {
+    "crit": 0.25,
+    "ad": 75,
+    "critDamage": 0.3
+   },
+   "from": [
+    "1038",
+    "1037",
+    "1018"
+   ],
+   "tier": "legendary",
+   "into": []
+  },
+  "1018": {
+   "id": "1018",
+   "name": "Capa da Agilidade",
+   "stats": {
+    "crit": 0.15
+   },
+   "from": [],
+   "tier": "basic",
+   "into": [
+    "3031",
+    "3508"
+   ]
+  },
+  "3508": {
+   "id": "3508",
+   "name": "Colhedor de Essência",
+   "stats": {
+    "crit": 0.25,
+    "ad": 50,
+    "ah": 20.0
+   },
+   "from": [
+    "3057",
+    "3133",
+    "1018"
+   ],
+   "tier": "legendary",
+   "into": []
+  }
+ }
+}
