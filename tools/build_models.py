@@ -16,6 +16,9 @@ OUT = Path("public/assets/models")
 # id -> (raw folder, main texture, extra anm folders to borrow missing clips from[, use the folder's own clips])
 MODELS = {
     "ezreal": ("ezreal", "ezreal_base_tx_cm.png", []),
+    "samira": ("samira", "samira_base_tx_cm.png", []),
+    # weapons texture of the samira mesh (ChampionDef.textures)
+    "samira_weapons": ("samira", "../samira/samira_base_weapons_tx_cm.png", []),
     "minion_melee": ("sru_chaosminionmelee", "chaosminion_melee_tx_cm.png", ["sru_orderminionmelee"]),
     "minion_caster": ("sru_chaosminionranged", "red_caster_tx_cm.png", []),
     "minion_siege": ("sru_chaosminionsiege", "chaos_minion_siege_tx_cm.png", []),

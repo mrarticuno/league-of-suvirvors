@@ -122,6 +122,7 @@ export class Game {
   private castLock = 0;
   private animLock = 0;
   private pendingCast: { key: SkillKey; point: THREE.Vector3 } | null = null;
+  private dashMove: { dir: THREE.Vector3; left: number; speed: number } | null = null; // forced movement (dash)
   stasis = 0; // frozen and untargetable (Guardian Angel)
   private stasisEnd: (() => void) | null = null;
   stunned = 0; // seconds of crowd control left
@@ -158,14 +159,16 @@ export class Game {
 
   async load(onProgress: (done: number, total: number) => void) {
     const defs = new Map(Object.values(ENEMIES).map((e) => [e.model, e]));
-    const ids = [this.champ.model, ...defs.keys()];
+    const c = this.champ;
+    const ids = [c.model, ...defs.keys()];
     let done = 0;
     await Promise.all([
-      loadVfx(),
+      loadVfx(`assets/vfx/${c.id}/`),
       audio.load(),
       ...ids.map((id) => {
         const def = defs.get(id);
-        return loadModel(id, def?.hide, def?.mesh).then(() => onProgress(++done, ids.length));
+        const load = id === c.model ? loadModel(id, c.hide, id, c.textures) : loadModel(id, def?.hide, def?.mesh);
+        return load.then(() => onProgress(++done, ids.length));
       }),
     ]);
     this.scene.background = new THREE.Color(0x0b1410);
@@ -190,7 +193,7 @@ export class Game {
     Object.assign(this, {
       time: 0, kills: 0, over: null, paused: false, level: 1, xp: 0, facing: 0,
       focus: null, manualTarget: null, pendingLevelUps: 1,
-      attackTimer: 0, windup: -1, windupTarget: null, castLock: 0, animLock: 0, pendingCast: null,
+      attackTimer: 0, windup: -1, windupTarget: null, castLock: 0, animLock: 0, pendingCast: null, dashMove: null,
       enemies: [], aliveCount: 0, epics: [], nextId: 0, missiles: [], floaters: [], nextEvent: 0, spawnBudget: 0,
       nextHordeAt: HORDE.every, legendary: -1, blueprintDropped: false,
       stasis: 0, stasisEnd: null, stunned: 0, stunLength: 0, airborne: true, arena: null,
@@ -228,7 +231,7 @@ export class Game {
     const bonus = grow(0, B.attackSpeedPerLevel, this.level) + this.items.as + (this.kit.attackSpeedBonus?.() ?? 0);
     return Math.min(2.5, B.attackSpeed * (1 + bonus));
   }
-  get moveSpeed() { return Math.round(this.champ.base.moveSpeed * (1 + this.items.msPct)); }
+  get moveSpeed() { return Math.round(this.champ.base.moveSpeed * (1 + this.items.msPct + (this.kit.moveSpeedBonus?.() ?? 0))); }
   get critChance() { return Math.min(1, this.items.crit); }
   get armor() { const B = this.champ.base; return grow(B.armor, B.armorPerLevel, this.level) + this.items.armor; }
   get abilityHaste() { return this.items.ah; }
@@ -325,7 +328,7 @@ export class Game {
 
   cast(key: SkillKey, point: THREE.Vector3) {
     if (!this.alive || this.stunned > 0 || this.ranks[key] === 0 || this.cooldowns[key] > 0 || this.castLock > 0) return;
-    if (this.mana < this.costOf(key)) return;
+    if (this.mana < this.costOf(key) || this.kit.canCast?.(key) === false) return;
     const skill = this.champ.skills[key];
     this.mana -= this.costOf(key);
     this.cooldowns[key] = this.cooldownOf(key);
@@ -405,11 +408,25 @@ export class Game {
 
     if (this.stunned > 0) {
       // knocked up: arc into the air and land, no actions
+      this.dashMove = null; // crowd control interrupts dashes
       this.stunned -= dt;
       const t = 1 - Math.max(0, this.stunned) / this.stunLength;
       this.player.root.position.set(this.pos.x, this.airborne ? Math.sin(Math.min(1, t * 1.6) * Math.PI) * 260 : 0, this.pos.z);
       this.player.update(dt);
       return;
+    }
+
+    if (this.dashMove) {
+      // dashes keep going through casts (a skill cast mid-dash resolves at its usual time)
+      const d = this.dashMove;
+      const step = Math.min(d.left, d.speed * dt);
+      this.pos.addScaledVector(d.dir, step);
+      this.clampToArena();
+      this.collidePlayer();
+      this.facing = Math.atan2(d.dir.x, d.dir.z);
+      if ((d.left -= step) <= 0) this.dashMove = null;
+      this.player.root.position.copy(this.pos);
+      this.player.root.rotation.y = this.facing;
     }
 
     if (this.castLock > 0) {
@@ -423,17 +440,18 @@ export class Game {
       return; // champions stand still while casting
     }
 
+    if (this.dashMove) {
+      // no walking nor attacking while dashing
+      this.player.update(dt);
+      return;
+    }
+
     const moving = move.lengthSq() > 0;
     // Survivors rule: the champion attacks while moving. During the windup it turns to the target; after it, back to running.
     this.tryAttack(dt);
     if (moving) {
       this.pos.addScaledVector(move, this.moveSpeed * dt);
-      if (this.arena) {
-        // the arena wall blocks walking out
-        const off = this.tmp.copy(this.pos).sub(this.arena.center);
-        const max = this.arena.radius - B.radius;
-        if (off.length() > max) this.pos.copy(this.arena.center).addScaledVector(off.normalize(), max);
-      }
+      this.clampToArena();
       if (this.windup < 0) {
         this.facing = Math.atan2(move.x, move.z);
         this.animLock = 0;
@@ -456,6 +474,29 @@ export class Game {
   /** Pushes the champion out of scenery. */
   collidePlayer() { this.map.collideCircle(this.pos, this.champ.base.radius); }
 
+  /** The arena wall blocks walking (and dashing) out. */
+  private clampToArena() {
+    if (!this.arena) return;
+    const off = this.tmp.copy(this.pos).sub(this.arena.center);
+    const max = this.arena.radius - this.champ.base.radius;
+    if (off.length() > max) this.pos.copy(this.arena.center).addScaledVector(off.normalize(), max);
+  }
+
+  /** Moves the champion `distance` along `dir` (ground plane) at `speed`; no walking or attacking meanwhile. */
+  dash(dir: THREE.Vector3, distance: number, speed: number) {
+    this.windup = -1;
+    this.dashMove = { dir: dir.clone().setY(0).normalize(), left: distance, speed };
+  }
+
+  get dashing() { return this.dashMove !== null; }
+
+  /** Destroys hostile missiles within `radius` of `p` (projectile blocks); returns how many. */
+  blockMissiles(p: THREE.Vector3, radius: number) {
+    let n = 0;
+    compact(this.missiles, (m) => m.hit !== undefined || Math.hypot(m.pos.x - p.x, m.pos.z - p.z) > radius + m.radius || (n++, this.removeMesh(m.mesh)));
+    return n;
+  }
+
   inAttackRange(e: Enemy) {
     return e.deadFor < 0 && e.pos.distanceTo(this.pos) - e.def.radius - this.champ.base.radius <= this.champ.base.attackRange;
   }
@@ -469,7 +510,7 @@ export class Game {
       if (this.windup < 0) this.fireAuto(t);
       return;
     }
-    if (this.attackTimer > 0) return;
+    if (this.attackTimer > 0 || this.kit.disarmed?.()) return;
     let target: Enemy | null = null;
     if (this.autoAttack) {
       if (this.focus && this.inAttackRange(this.focus)) target = this.focus;

@@ -7,7 +7,7 @@ Stack: **TypeScript + Three.js + Vite**.
 
 ```bash
 pnpm install
-pnpm dev        # http://localhost:5173
+pnpm dev        # http://localhost:5173 (Ezreal); /?champ=samira joga com a Samira
 ```
 
 Os modelos **não estão no repositório** (são assets da Riot). Gere-os localmente primeiro (abaixo).
@@ -24,12 +24,13 @@ Os modelos **não estão no repositório** (são assets da Riot). Gere-os localm
 2. Lista de hashes (os `.bin` do jogo referenciam texturas/animações por hash xxh64):
    ```bash
    curl -s https://raw.communitydragon.org/data/hashes/lol/hashes.game.txt \
-     | grep -E "assets/characters/(ezreal|sru_|turret|inhibitor|nexus)" > assets-raw/hashes.filtered.txt
+     | grep -E "assets/characters/(ezreal|samira|sru_|turret|inhibitor|nexus)" > assets-raw/hashes.filtered.txt
    ```
 3. Extrair dos WADs (`tools/extract_lol.py`) e converter para `.glb` (`tools/build_models.py`):
    ```bash
    G="/Applications/League of Legends.app/Contents/LoL/Game/DATA/FINAL"
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt ezreal assets-raw/ezreal "$G/Champions/Ezreal.wad.client"
+   .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt samira assets-raw/samira "$G/Champions/Samira.wad.client"
    for c in sru_chaosminion{melee,ranged,siege,super} sru_orderminionmelee sru_krug sru_murkwolf sru_razorbeak sru_razorbeakmini sru_gromp sru_blue sru_red sru_riftherald sru_baron sru_crab sru_dragon sru_dragon_{air,fire,earth,water,hextech,chemtech}; do
      .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt $c assets-raw/$c "$G/Maps/Shipping/Map11.wad.client" "$G/Maps/Shipping/Common.wad.client"
    done
@@ -51,7 +52,7 @@ Os modelos **não estão no repositório** (são assets da Riot). Gere-os localm
    O `pieces` é um parser limitado do `.mapgeo` v14: se for pulado ou falhar (versão diferente do formato, WAD ausente), o runtime desenha caixas/cilindros escuros a partir dos obstáculos do layout — nada quebra.
 5. VFX das habilidades: sistemas de partículas do Ezreal lidos do `.bin` da skin, com todas as texturas e malhas que eles usam. Usa as listas de hashes baixadas no passo 4:
    ```bash
-   (cd tools && ../.venv-tools/bin/python build_vfx.py ../assets-raw/hashes ezreal ../public/assets/vfx/ezreal "$G")
+   for c in ezreal samira; do (cd tools && ../.venv-tools/bin/python build_vfx.py ../assets-raw/hashes $c ../public/assets/vfx/$c "$G"); done
    ```
    Gera `systems.json` (efeitos indexados pelas chaves do `ResourceResolver`, ex. `Ezreal_Q_mis`), `spells.json` (velocidade/largura/alcance dos mísseis) e os PNG/JSON dos assets. `tools/read_bin.py` sozinho converte qualquer `.bin` em JSON. O runtime dos emissores fica em `src/particles.ts`; `src/vfx.ts` só escolhe qual sistema tocar e onde.
 
@@ -100,6 +101,13 @@ WASD não é usado porque colide com Q/W/E.
   - **W**: marca o alvo; a detonação devolve mana quando feita por habilidade.
   - **E**: blink de 475 + projétil teleguiado, priorizando o alvo marcado.
   - **R**: 1 s de conjuração, atravessa inimigos, 50% de dano em não-épicos.
+- **Samira** (`?champ=samira`, dados da Meraki Analytics): alcance 500, crítico de 175%.
+  - **Passiva (Daredevil Impulse)**: acerto de tipo diferente do anterior (tiro, lâmina, Q, W, E, R) sobe um grau de Estilo (E→S, 6 s, +2–3,5% de velocidade de movimento por grau). Ataques a até 200 de distância usam a lâmina: dano mágico extra (2–19 + 3,5–10,5% AD), até dobrado pela vida perdida do alvo; W, E e o corte do Q também aplicam.
+  - **Q**: tiro no primeiro inimigo; com inimigo à frente a até 340, corte em cone. Pode critar (125%).
+  - **W**: dois cortes em área (325), no início e após 0,75 s; destrói projéteis inimigos na área. Sem ataque básico durante o giro.
+  - **E**: dash de 600 na direção do cursor, dano mágico em quem atravessa, +20–40% de velocidade de ataque por 5 s.
+  - **R**: só com Estilo S e inimigo a até 600. 10 rajadas em 2 s contra todos em volta (25% em tropas), pode critar; −30% de velocidade de movimento, consome o Estilo.
+  - Fora do LoL: Estilo conta qualquer inimigo; sem explosivos do Q durante o E; sem o ataque em alvo imobilizado (inimigos não sofrem CC).
 - **Level-up em duas etapas**:
   1. Um rank de habilidade, pela regra do LoL: básicas nos níveis 1/3/5/7/9, R nos níveis 6/11/16. A etapa é pulada quando não há rank disponível.
   2. Um item entre 3 sorteados (ou uma poção, com a build completa).

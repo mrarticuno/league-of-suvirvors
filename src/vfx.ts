@@ -2,7 +2,7 @@
 // champion's skin ResourceResolver; champions pass their own keys. Enemy skillshots keep a small hand-made look.
 import * as THREE from 'three';
 import { createSystem, facingQuat, loadParticles, missileQuat, type ParticleSystem } from './particles';
-import { compact, IMG } from './util';
+import { compact } from './util';
 
 export const loadVfx = loadParticles;
 
@@ -13,7 +13,7 @@ export class Vfx {
   private live: Live[] = [];
   private time = 0;
   private flashes: { s: THREE.Sprite; age: number }[] = [];
-  private enemyTex = new THREE.TextureLoader().load(`assets/vfx/ezreal/ezreal_base_z_glow.${IMG}`);
+  private enemyTex = glowTexture(); // drawn in code: enemy skillshots look the same for every champion
   constructor(private scene: THREE.Scene) {}
 
   clear() {
@@ -104,6 +104,20 @@ export class Vfx {
     this.scene.add(s);
     this.flashes.push({ s, age: 0 });
   }
+}
+
+/** Soft white radial glow, tinted by the sprite colour. */
+function glowTexture() {
+  const c = document.createElement('canvas');
+  c.width = c.height = 64;
+  const ctx = c.getContext('2d')!;
+  const g = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+  g.addColorStop(0, 'rgba(255,255,255,1)');
+  g.addColorStop(0.35, 'rgba(255,255,255,0.45)');
+  g.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, 64, 64);
+  return new THREE.CanvasTexture(c);
 }
 
 export interface MissileFx {

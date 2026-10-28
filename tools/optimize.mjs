@@ -18,7 +18,7 @@ import { MeshoptEncoder } from 'meshoptimizer';
 
 const DIST = 'dist';
 const ASSETS = join(DIST, 'assets');
-const VFX = join(ASSETS, 'vfx/ezreal');
+const VFX = join(ASSETS, 'vfx'); // one folder per champion
 
 const walk = (dir) => readdirSync(dir, { withFileTypes: true })
   .flatMap((e) => (e.isDirectory() ? walk(join(dir, e.name)) : [join(dir, e.name)]));
@@ -38,12 +38,12 @@ const used = (name) => bundle.includes(name);
 const before = dirSize(DIST);
 
 // 1. Unused files
-const vfxRefs = readFileSync(join(VFX, 'systems.json'), 'utf8');
+const vfxRefs = Object.fromEntries(readdirSync(VFX).map((c) => [c, readFileSync(join(VFX, c, 'systems.json'), 'utf8')]));
 for (const f of walk(ASSETS)) {
-  const dir = f.slice(ASSETS.length + 1).split('/')[0];
+  const [dir, champ] = f.slice(ASSETS.length + 1).split('/');
   const drop = basename(f) === '.DS_Store'
     || ((dir === 'models' || dir === 'map') && !used(stem(f)))
-    || (dir === 'vfx' && basename(f) !== 'systems.json' && !vfxRefs.includes(basename(f)) && !used(stem(f)));
+    || (dir === 'vfx' && basename(f) !== 'systems.json' && !vfxRefs[champ]?.includes(basename(f)) && !used(stem(f)));
   if (drop) {
     rmSync(f);
     console.log(`drop ${f}`);
@@ -82,7 +82,7 @@ for (const f of walk(ASSETS).filter((f) => f.endsWith('.png'))) {
   execFileSync('cwebp', ['-quiet', '-q', '88', '-alpha_q', '100', '-m', '6', f, '-o', f.replace(/\.png$/, '.webp')]);
   rmSync(f);
 }
-writeFileSync(join(VFX, 'systems.json'), vfxRefs.replace(/\.png"/g, '.webp"'));
+for (const [c, refs] of Object.entries(vfxRefs)) writeFileSync(join(VFX, c, 'systems.json'), refs.replace(/\.png"/g, '.webp"'));
 
 // 4. Audio (ffmpeg runs in parallel, one process per core)
 const sounds = walk(ASSETS).filter((f) => f.endsWith('.mp3'));

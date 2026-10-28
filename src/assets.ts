@@ -13,25 +13,34 @@ const gltfLoader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder); // build:
 const texLoader = new THREE.TextureLoader();
 const templates = new Map<string, Template>();
 
-/** `mesh` loads another model's .glb with this model's texture (texture-only skins). */
-export async function loadModel(id: string, hide: readonly string[] = [], mesh = id): Promise<void> {
-  if (templates.has(id)) return;
-  const [gltf, map] = await Promise.all([
-    gltfLoader.loadAsync(`assets/models/${mesh}.glb`),
-    texLoader.loadAsync(`assets/models/${id}.${IMG}`),
-  ]);
+async function loadMaterial(texture: string) {
+  const map = await texLoader.loadAsync(`assets/models/${texture}.${IMG}`);
   map.flipY = false; // glTF UV convention
   // League meshes rely on UV wrap (some islands go negative or past 1.0), clamp shows atlas edges
   map.wrapS = map.wrapT = THREE.RepeatWrapping;
   map.colorSpace = THREE.SRGBColorSpace;
   // League shading is mostly baked into the diffuse texture, so an unlit material stays faithful
-  const material = new THREE.MeshBasicMaterial({ map, alphaTest: 0.3 });
+  return new THREE.MeshBasicMaterial({ map, alphaTest: 0.3 });
+}
+
+/**
+ * `mesh` loads another model's .glb with this model's texture (texture-only skins).
+ * `textures` gives submeshes their own texture (the skin bin's materialOverride): submesh name -> texture file stem.
+ */
+export async function loadModel(id: string, hide: readonly string[] = [], mesh = id, textures: Readonly<Record<string, string>> = {}): Promise<void> {
+  if (templates.has(id)) return;
+  const stems = [...new Set(Object.values(textures))];
+  const [gltf, material, ...overrides] = await Promise.all([
+    gltfLoader.loadAsync(`assets/models/${mesh}.glb`),
+    loadMaterial(id),
+    ...stems.map(loadMaterial),
+  ]);
   gltf.scene.traverse((o) => {
     const mesh = o as THREE.SkinnedMesh;
     if (!mesh.isMesh) return;
     const name = (mesh.material as THREE.Material).name;
     mesh.visible = !hide.includes(name);
-    mesh.material = material;
+    mesh.material = name in textures ? overrides[stems.indexOf(textures[name])] : material;
     mesh.frustumCulled = false; // skinned bounds don't follow animation
   });
   for (const clip of gltf.animations) {

@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { CHAMPIONS } from './champions';
 import { Game } from './game';
 import { Hud } from './ui';
 import type { SkillKey } from './champion';
@@ -18,7 +19,8 @@ const resize = () => {
 addEventListener('resize', resize);
 resize();
 
-const game = new Game();
+// no champion select yet: ?champ=<id> picks one, default otherwise
+const game = new Game(CHAMPIONS[new URLSearchParams(location.search).get('champ') ?? '']);
 const hud = new Hud(game.champ);
 const keys = new Set<string>();
 const cursor = new THREE.Vector3();

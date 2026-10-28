@@ -53,6 +53,10 @@ export interface ChampionDef {
   id: string; // prefix of the sound keys
   name: string;
   model: string;
+  /** Submeshes hidden at load (the skin bin's initialSubmeshToHide). */
+  hide?: readonly string[];
+  /** Submeshes with their own texture (the skin bin's materialOverride): submesh name -> texture file stem. */
+  textures?: Readonly<Record<string, string>>;
   base: BaseStats;
   skills: Readonly<Record<SkillKey, SkillDef>>;
   /** Levels that unlock each R rank (default LoL 6/11/16); basic skills follow the LoL rule. */
@@ -72,6 +76,12 @@ export interface ChampionKit {
   castStart?(key: SkillKey, point: THREE.Vector3): void;
   /** Bonus attack speed (fraction) from the champion's own mechanics. */
   attackSpeedBonus?(): number;
+  /** Bonus (or, negative, reduced) movement speed (fraction) from the champion's own mechanics. */
+  moveSpeedBonus?(): number;
+  /** Extra cast condition checked before mana and cooldown are spent (e.g. an ultimate that needs stacks). */
+  canCast?(key: SkillKey): boolean;
+  /** True while the champion's own mechanics forbid basic attacks (e.g. a channel that replaces them). */
+  disarmed?(): boolean;
   /** Extra magic damage added to a hit on `e` before mitigation (e.g. a mark detonating). */
   onDamage?(e: Enemy, hit: Hit): number;
   update?(dt: number): void;

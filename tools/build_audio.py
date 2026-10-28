@@ -1,4 +1,4 @@
-"""Extract the game's sounds (Ezreal, monsters, HUD, Summoner's Rift music) from Wwise banks into mp3 files.
+"""Extract the game's sounds (champions, monsters, HUD, Summoner's Rift music) from Wwise banks into mp3 files.
 
 Usage: python tools/build_audio.py <wwiser.py> <out_dir> <DATA/FINAL dir>
 
@@ -24,6 +24,7 @@ MAX_VARIANTS = 4
 SFX = "assets/sounds/wwise2016/sfx/"
 SHARED = SFX + "shared/"
 EZ = "Play_sfx_Ezreal_Ezreal"
+SA = "Play_sfx_Samira_Samira"
 
 # bank path (without _events/_audio) -> {sound key: event name candidates (first match wins) or an event id}
 BANKS: dict[str, dict[str, list[str] | int]] = {
@@ -44,6 +45,27 @@ BANKS: dict[str, dict[str, list[str] | int]] = {
         "ezreal_R_launch": [EZ + "R_OnMissileCast"],
         "ezreal_R_hit": [EZ + "R_OnHit"],
         "ezreal_death": ["Play_sfx_Ezreal_Death3D_cast"],
+    },
+    SFX + "characters/samira/skins/base/samira_base_sfx": {
+        "samira_auto": [SA + "BasicAttack_OnCast"],
+        "samira_auto2": [SA + "BasicAttack2_OnCast"],
+        "samira_auto_hit": [SA + "BasicAttack_OnHit"],
+        "samira_crit": [SA + "CritAttack_OnCast"],
+        "samira_crit_hit": [SA + "CritAttack_OnHit"],
+        "samira_melee_hit": [SA + "BasicAttackMelee_OnHit"],
+        "samira_style": [SA + "PassiveCombo_style_cast"],
+        "samira_R_ready": [SA + "RReadyBuff_OnBuffActivate"],
+        "samira_Q": [SA + "QGun_OnCast"],
+        "samira_Q_hit": [SA + "QGun_OnHit"],
+        "samira_Q_slash": [SA + "QSword_OnHit"],
+        "samira_W": [SA + "W_OnCast"],
+        "samira_W_hit": [SA + "W_hit"],
+        "samira_W_block": [SA + "W_hit_block_sml"],
+        "samira_E": [SA + "E_cast"],
+        "samira_E_hit": [SA + "E_hit"],
+        "samira_R": [SA + "R_OnCast"],
+        "samira_R_shot": [SA + "RMissile_OnMissileCast"],
+        "samira_death": ["Play_sfx_Samira_Death3D_cast"],
     },
     SHARED + "hud_global": {
         "hud_levelup": ["Play_sfx_hud_base_spell_levelup"],
@@ -140,7 +162,7 @@ def render(txtp_path, mp3, music):
 
 def main(wwiser, out_dir, final_dir):
     final = Path(final_dir)
-    wads = [Wad(final / w) for w in ("Champions/Ezreal.wad.client", "Maps/Shipping/Map11.wad.client", "Maps/Shipping/Common.wad.client")]
+    wads = [Wad(final / w) for w in ("Champions/Ezreal.wad.client", "Champions/Samira.wad.client", "Maps/Shipping/Map11.wad.client", "Maps/Shipping/Common.wad.client")]
     read = lambda p: next((d for d in (w.read(p) for w in wads) if d is not None), None)
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)

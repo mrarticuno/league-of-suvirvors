@@ -1,14 +1,13 @@
 // Runtime for League particle systems (VfxSystemDefinitionData), exported by tools/build_vfx.py into systems.json.
 // Each emitter is CPU-simulated and rebuilt every frame into one dynamic mesh (billboards, quads, meshes, trails).
 // Frames: a system's local space is League's (X, Y up, Z forward) rotated by the caster's facing; missile systems
-// use X side, Y along the flight direction, Z up (the bin offsets/velocities of every Ezreal missile agree on this).
+// use X side, Y along the flight direction, Z up (the bin offsets/velocities of the champions' missiles agree on this).
 import * as THREE from 'three';
 import { compact } from './util';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type Bin = any; // bin JSON is loosely typed: fields are optional and nested Value* objects
 
-const DIR = 'assets/vfx/ezreal/';
 let systems: Record<string, Bin> = {};
 const textures = new Map<string, THREE.Texture>();
 const meshes = new Map<string, { pos: number[]; uv: number[] }>();
@@ -19,15 +18,16 @@ function assetNames(v: Bin, out: Set<string>) {
   else if (v && typeof v === 'object') for (const x of Object.values(v)) assetNames(x, out);
 }
 
-export async function loadParticles() {
-  systems = await (await fetch(`${DIR}systems.json`)).json();
+/** `dir`: the champion's folder from tools/build_vfx.py (assets/vfx/<id>/). */
+export async function loadParticles(dir: string) {
+  systems = await (await fetch(`${dir}systems.json`)).json();
   const names = new Set<string>();
   assetNames(systems, names);
   const loader = new THREE.TextureLoader();
   await Promise.all([...names].map(async (n) => {
-    if (n.endsWith('.json')) meshes.set(n, await (await fetch(DIR + n)).json());
+    if (n.endsWith('.json')) meshes.set(n, await (await fetch(dir + n)).json());
     else {
-      const t = await loader.loadAsync(DIR + n);
+      const t = await loader.loadAsync(dir + n);
       t.flipY = false; // League UVs (meshes and flipbooks) have v=0 at the top
       t.wrapS = t.wrapT = THREE.RepeatWrapping;
       textures.set(n, t);

@@ -23,8 +23,7 @@ Contrato completo e comentado: `src/champion.ts`. Exemplo de referência: `src/c
 | `tools/build_audio.py` | Entradas em `BANKS` com as chaves de som do campeão |
 | `tools/extract_lol.py` | Extrair `Champions/<Champ>.wad.client` para `assets-raw/<id>` (antes de `build_models.py`) |
 | `tools/build_vfx.py` | Rodar com `<id>` → `public/assets/vfx/<id>/systems.json` (+ `spells.json` com os números do LoL) |
-| `src/particles.ts` + `src/vfx.ts` | **Hoje fixos no Ezreal:** `DIR = 'assets/vfx/ezreal/'` e a textura `enemyTex`. O segundo campeão exige `loadParticles(dir)` com a pasta do campeão (passada por `Game.load`) |
-| `src/main.ts` | `new Game()` usa `DEFAULT_CHAMPION`; não há tela de seleção. Para jogar: `new Game(CHAMPIONS.<id>)` |
+| `src/main.ts` | Sem tela de seleção: `?champ=<id>` na URL escolhe o campeão (padrão `DEFAULT_CHAMPION`) |
 | `README.md` | "Regras implementadas" (kit) e "Pipeline de assets" (a regex de hashes e os comandos de extração citam `ezreal`: acrescente o campeão) |
 
 Assets (`assets-raw/`, `public/assets/`) não vão para o git.
@@ -33,6 +32,7 @@ Assets (`assets-raw/`, `public/assets/`) não vão para o git.
 
 - `id`: minúsculo; é o prefixo de **todos** os sons. O `Game` toca sozinho: `<id>_auto`, `<id>_auto2`, `<id>_crit`, `<id>_auto_hit`, `<id>_crit_hit`, `<id>_Q|W|E|R` (início do cast), `<id>_death`. Sons extras (impacto de skill etc.) o kit toca com `audio.play`. Chave ausente no manifest toca nada, sem erro.
 - `model`: nome do `.glb`/`.png` em `public/assets/models/`.
+- `hide` / `textures`: submeshes escondidos (`initialSubmeshToHide`) e com textura própria (`materialOverride`, submesh -> stem do PNG em `public/assets/models/`), lidos do `skin0.bin` (`tools/read_bin.py`). A textura extra entra em `MODELS` com caminho `../<pasta>/<arquivo>.png` (ex.: `samira_weapons`).
 - `base`: stats do LoL (fonte: Meraki Analytics / `spells.json`), regen **por 5 s**, `*PerLevel` usa a fórmula de crescimento do LoL. `windupPercent = attackCastTime / attackTotalTime`.
 - `skills`: as 4 chaves `Q W E R`, cada uma com `name, maxRank, cooldown[], cost[], castTime, anim, icon`. Arrays com `maxRank` itens. Números próprios do kit (dano, ratios, alcance) ficam no mesmo objeto: declare com `as const satisfies Record<SkillKey, SkillDef & Record<string, unknown>>` e leia do objeto local no kit.
 - `ultimateLevels`: só se o R não segue 6/11/16.
@@ -49,14 +49,16 @@ function luxKit(g: Game): ChampionKit { /* estado da run aqui, em closures */ re
 - Estado do campeão (acúmulos, marcas, cargas) vive **no closure do kit**, nunca em `Game` ou em `Enemy`. Estado por inimigo: `Map<Enemy, ...>`, limpo em `update` quando `e.deadFor >= 0`.
 - `cast(key, rank, point)`: chamado ao fim do `castTime`; `rank` é 0-based (`damage[rank]`). Fora de `cast` (`onDamage`, `update`), o rank é `g.ranks.<K> - 1`. `point` é o cursor no chão: skill com alvo usa `g.enemyAt(point) ?? g.nearestEnemy(point, r)`.
 - `castTime` é a canalização (campeão parado). Atordoamento ou estase cancelam o cast sem avisar o kit: VFX longo de `castStart` deve se autodestruir (sistema com duração, não preso ao cast). Mana, recarga, animação, som `<id>_<K>` e hooks de item já foram aplicados.
-- `castStart`: VFX de conjuração. `attackSpeedBonus`: fração. `hud`: texto curto da passiva.
+- `castStart`: VFX de conjuração. `attackSpeedBonus`/`moveSpeedBonus`: fração. `canCast(key)`: condição extra antes de gastar mana/recarga (ex.: R que exige acúmulos). `disarmed()`: bloqueia ataque básico (canalização, giro). `hud`: texto curto da passiva.
+- `castTime` precisa ser > 0 (o cast resolve quando a trava zera); skill instantânea usa `0.05`.
 - `onDamage(e, hit)`: roda em **todo** dano do campeão, antes da mitigação; retorna dano **mágico** extra. Ignore `hit.source === 'item'` se a passiva não deve reagir a queimaduras de item.
 - `dispose`: remova da cena tudo que o kit criou (meshes de marca etc.). `update` roda todo frame depois dos inimigos.
 - Cada hit declara um `Hit` (`type`, `source`, `skill`, `onHit`). Defina como constantes. `onHit: true` só se a skill aplica efeitos ao acertar no LoL. Sempre preencha `skill` em `source: 'ability'` (o tipo não obriga, mas reembolsos usam `g.costOf(hit.skill)`).
-- Deslocamento (blink/dash): altere `g.pos` e chame `g.collidePlayer()`. Não existe dash ao longo do tempo nem clamp de arena para blink.
+- Blink: altere `g.pos` e chame `g.collidePlayer()` (sem clamp de arena). Dash: `g.dash(dir, dist, speed)` (respeita arena e colisão, sem andar/atacar; CC interrompe); `g.dashing` diz se ainda corre (dano no caminho: cheque no `update`).
+- Bloquear projéteis inimigos: `g.blockMissiles(p, r)` (retorna quantos).
 - Objetos de chão do campeão (armadilhas, zonas): meshes do kit em `g.scene`, checados no `update` com `g.enemiesNear`, removidos em `dispose`. `g.hazards` só fere o campeão (é dos chefes).
 
-API pública do `Game` para o kit: `pos`, `facing`, `time`, `level`, `ranks`, `cooldowns`, `hp`/`maxHp`, `mana`/`maxMana`, `ad`/`baseAd`/`bonusAd`, `attackSpeed`, `critChance`, `items`, `costOf`, `spawnMissile`, `basicAttack`, `impact`, `hurtEnemy`, `float`, `enemyAt`, `nearestEnemy`, `enemiesNear`, `inAttackRange`, `collidePlayer`, `vfx` (`play`, `playAt`, `hit`, `attach`), `scene`.
+API pública do `Game` para o kit: `pos`, `facing`, `time`, `level`, `ranks`, `cooldowns`, `hp`/`maxHp`, `mana`/`maxMana`, `ad`/`baseAd`/`bonusAd`, `attackSpeed`, `critChance`, `items`, `costOf`, `spawnMissile`, `basicAttack`, `impact`, `hurtEnemy`, `float`, `enemyAt`, `nearestEnemy`, `enemiesNear`, `inAttackRange`, `collidePlayer`, `dash`/`dashing`, `blockMissiles`, `vfx` (`play`, `playAt`, `hit`, `attach`), `scene`.
 
 ## Mecânicas que ainda NÃO têm hook
 
@@ -66,7 +68,6 @@ Precisa de uma destas? Primeiro estenda o contrato de forma genérica (`src/cham
 |---|---|---|
 | Contar/alterar ataques básicos ao disparar (Headshot, "a cada N ataques") | Kit não tem `onAttack`; `onDamage` só soma dano **mágico** | Hook do kit `onAttack(target, damage, crit)` e/ou `onDamage` retornando `{ physical, magic }` |
 | CC em inimigos (root, slow, stun) | `Enemy` não tem campo de CC; loop genérico e `EnemyAI` não param | `rootedUntil`/`slowUntil` genéricos em `Enemy` + `g.rootEnemy(e, s)`, respeitados no loop genérico e documentados para `EnemyAI` |
-| Dash com duração | Só existe blink instantâneo | Movimento forçado no `updatePlayer` (vetor + tempo), respeitando arena e colisão |
 
 CC em `Enemy` é estado **genérico** (qualquer campeão usa); a regra "estado no kit" vale para mecânicas exclusivas do campeão.
 
@@ -88,7 +89,7 @@ Busca de alvos: sempre `g.nearestEnemy`/`g.enemiesNear` (grade espacial). Nunca 
 | Marca/acúmulo como campo de `Enemy` | `Map<Enemy, ...>` no kit |
 | Esquecer `dispose` | Marcas ficam na cena após reiniciar |
 | `damage[rank - 1]` dentro de `cast` | Lá `rank` já é 0-based; fora de `cast` use `g.ranks.<K> - 1` |
-| VFX não aparece | `particles.ts`/`vfx.ts` só leem a pasta do Ezreal; chave errada não dá erro |
+| VFX não aparece | Chave errada não dá erro. Sistemas que o `ResourceResolver` só nomeia por hash ficam como `0x...` no `systems.json` (identifique pelo `particleName`) |
 | Percorrer `g.enemies` para achar alvo | `g.nearestEnemy` / `g.enemiesNear` |
 | Som mudo | Chave fora de `<id>_...` ou ausente em `BANKS` |
 
