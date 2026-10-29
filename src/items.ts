@@ -91,16 +91,6 @@ export function rollOffers(slots: Slot[], count = 3): string[] {
   return out;
 }
 
-/** Path tree of a line, for the UI: each node keeps the steps that lead to it. */
-export interface LineNode { id: string; path: string[]; kids: LineNode[] }
-export function lineTree(base: string): LineNode {
-  const node = (id: string, path: string[]): LineNode => {
-    const next = [...new Set(LINES[base].filter((p) => p.length > path.length && startsWith(p, path)).map((p) => p[path.length]))];
-    return { id, path, kids: next.map((n) => node(n, [...path, n])) };
-  };
-  return node(base, []);
-}
-
 export const POTION = { hp: 0.2, mana: 0.2 }; // fraction of max HP / mana restored by the build-complete potions
 /** The build-complete potions (also offered by Triple Tonic): name and effect text. */
 export const POTIONS = {
@@ -136,6 +126,85 @@ export function sumStats(inventory: string[], legendary = -1): Required<ItemStat
 }
 
 const PERCENT = new Set<keyof ItemStats>(['as', 'crit', 'msPct', 'lifesteal', 'omnivamp', 'armorPen', 'critDamage']);
-const statLabel = (k: keyof ItemStats, v: number) => (PERCENT.has(k) ? `+${Math.round(v * 100)}% ${t(`stat.${k}`)}` : `+${Math.round(v)} ${t(`stat.${k}`)}`);
+const sign = (v: number) => (v < 0 ? '−' : '+');
+const statLabel = (k: keyof ItemStats, v: number) =>
+  (PERCENT.has(k) ? `${sign(v)}${Math.abs(Math.round(v * 100))}% ${t(`stat.${k}`)}` : `${sign(v)}${Math.abs(Math.round(v))} ${t(`stat.${k}`)}`);
 export const describeStats = (s: ItemStats, mult = 1) =>
   Object.entries(s).map(([k, v]) => statLabel(k as keyof ItemStats, v * mult)).join(' · ');
+
+/**
+ * One way to spend a level-up offer: take the base as a new item, or evolve slot `slot` one `step` along its line.
+ * The UI shows finished items, not the intermediate steps, so a plan carries what the player decides on.
+ */
+export interface Plan {
+  kind: 'new' | 'evolve';
+  base: string;
+  slot: number; // the slot it fills or evolves
+  step?: string; // evolve: the item the slot becomes now
+  from?: string; // evolve: the item the slot is now
+  finals: string[]; // finished items still reachable after this choice
+  done: number; // steps taken on this line after the choice (0 = base item)
+  left: number; // copies still needed for the nearest reachable finished item (0 = completes one)
+  completes: boolean;
+  locks: number[]; // other slots this choice leaves with no evolution (it claims their last finished item)
+  dead: boolean; // the new slot could never be finished: every finished item of the line is taken
+}
+
+/** Every plan an offered base allows, given the current slots. */
+export function planOffer(slots: Slot[], base: string): Plan[] {
+  const plans: Plan[] = [];
+  const make = (kind: Plan['kind'], slot: number, result: Slot[], step?: string, from?: string): Plan => {
+    const s = result[slot];
+    const taken = claimed(result, slot);
+    const open = pathsOf(s).filter((p) => !taken.has(p.at(-1)!));
+    const completes = isFinal(s);
+    const left = completes ? 0 : Math.min(...open.map((p) => p.length - s.path.length));
+    const locks = slots.map((_, j) => j).filter((j) => j !== slot && !isFinal(slots[j]) && !isLocked(slots, j) && isLocked(result, j));
+    return {
+      kind, base, slot, step, from, done: s.path.length, completes, locks,
+      finals: [...new Set(open.map((p) => p.at(-1)!))], left: Number.isFinite(left) ? left : 0, dead: !completes && !open.length,
+    };
+  };
+  if (slots.length < MAX_ITEMS) plans.push(make('new', slots.length, [...slots, { base, path: [] }]));
+  slots.forEach((s, i) => {
+    if (s.base !== base) return;
+    for (const step of nextSteps(slots, i)) {
+      const result = slots.map((x, j) => (j === i ? { ...x, path: [...x.path, step] } : x));
+      plans.push(make('evolve', i, result, step, slotItem(s)));
+    }
+  });
+  return plans;
+}
+
+/**
+ * Recommendation score (higher is better): finishing an item first, then advancing a line close to its end, then a
+ * fresh line while slots are free. Plans that lock another slot or can never be finished sink to the bottom.
+ */
+export function planScore(p: Plan, owned: number) {
+  if (p.dead) return -100;
+  let s = p.completes ? 60 : 0;
+  s += p.kind === 'evolve' ? 25 + 25 * (p.done / (p.done + p.left)) : owned < 3 ? 35 : 14;
+  return s - 3 * p.left - 45 * p.locks.length;
+}
+
+/** Stats gained (or lost) going from one item to another, for an evolve step. */
+export function statDelta(from: ItemStats, to: ItemStats): ItemStats {
+  const out: ItemStats = {};
+  for (const k of new Set([...Object.keys(from), ...Object.keys(to)]) as Set<keyof ItemStats>) {
+    const d = (to[k] ?? 0) - (from[k] ?? 0);
+    if (Math.abs(d) > 1e-9) out[k] = d;
+  }
+  return out;
+}
+
+/** Every finished item a line can end in. */
+export const lineFinals = (base: string) => [...new Set(LINES[base].map((p) => p.at(-1)!))];
+
+/** Steps done on slot i and copies left to its nearest still-open finished item (0: finished, null: locked). */
+export function slotProgress(slots: Slot[], i: number) {
+  const s = slots[i];
+  if (isFinal(s)) return { done: s.path.length, left: 0 };
+  const taken = claimed(slots, i);
+  const open = pathsOf(s).filter((p) => !taken.has(p.at(-1)!));
+  return { done: s.path.length, left: open.length ? Math.min(...open.map((p) => p.length - s.path.length)) : null };
+}

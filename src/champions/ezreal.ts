@@ -11,25 +11,25 @@ const PASSIVE = { asPerStack: 0.10, maxStacks: 5, duration: 6 };
 
 const SKILLS = {
   Q: {
-    name: t('champion.ezreal.Q'), maxRank: 5, anim: 'ezreal_spell1', icon: `${ICON}/spell/EzrealQ.png`,
+    name: t('champion.ezreal.Q'), desc: t('champion.ezreal.Q.desc'), damageType: 'physical', maxRank: 5, anim: 'ezreal_spell1', icon: `${ICON}/spell/EzrealQ.png`,
     cooldown: [5.5, 5.25, 5, 4.75, 4.5], cost: [28, 31, 34, 37, 40],
     damage: [20, 45, 70, 95, 120], adRatio: 1.3,
     range: 1200, aim: 1200, speed: 2000, width: 120, castTime: 0.25, cdRefundOnHit: 1.5,
   },
   W: {
-    name: t('champion.ezreal.W'), maxRank: 5, anim: 'ezreal_spell2', icon: `${ICON}/spell/EzrealW.png`,
+    name: t('champion.ezreal.W'), desc: t('champion.ezreal.W.desc'), damageType: 'magic', maxRank: 5, anim: 'ezreal_spell2', icon: `${ICON}/spell/EzrealW.png`,
     cooldown: [8, 8, 8, 8, 8], cost: [50, 50, 50, 50, 50],
     damage: [80, 135, 190, 245, 300], bonusAdRatio: 1.0,
     range: 1200, aim: 1200, speed: 1700, width: 160, castTime: 0.25, markDuration: 4, manaRestore: 60,
   },
   E: {
-    name: t('champion.ezreal.E'), maxRank: 5, anim: 'ezreal_spell3_generic', icon: `${ICON}/spell/EzrealE.png`,
+    name: t('champion.ezreal.E'), desc: t('champion.ezreal.E.desc'), damageType: 'magic', maxRank: 5, anim: 'ezreal_spell3_generic', icon: `${ICON}/spell/EzrealE.png`,
     cooldown: [26, 23, 20, 17, 14], cost: [70, 70, 70, 70, 70],
     damage: [80, 130, 180, 230, 280], bonusAdRatio: 0.5,
     aim: 'move', blinkRange: 475, boltRange: 750, speed: 2000, castTime: 0.25,
   },
   R: {
-    name: t('champion.ezreal.R'), maxRank: 3, anim: 'ezreal_spell4', icon: `${ICON}/spell/EzrealR.png`,
+    name: t('champion.ezreal.R'), desc: t('champion.ezreal.R.desc'), damageType: 'magic', maxRank: 3, anim: 'ezreal_spell4', icon: `${ICON}/spell/EzrealR.png`,
     cooldown: [120, 105, 90], cost: [100, 100, 100],
     damage: [350, 550, 750], bonusAdRatio: 1.0,
     range: 6000, aim: 2500, speed: 2000, width: 320, castTime: 1, nonEpicMultiplier: 0.5,
@@ -47,6 +47,8 @@ const CAST_VFX: Partial<Record<SkillKey, string[]>> = { Q: ['Ezreal_Q_bow01'], W
 
 export const EZREAL: ChampionDef = {
   id: 'ezreal', name: t('champion.ezreal.name'), model: 'ezreal', icon: `${ICON}/champion/Ezreal.png`,
+  title: t('champion.ezreal.title'), splash: 'https://ddragon.leagueoflegends.com/cdn/img/champion/splash/Ezreal_0.jpg',
+  roles: ['marksman', 'mage'], difficulty: 7,
   base: {
     hp: 600, hpPerLevel: 102,
     hpRegen5: 4, hpRegen5PerLevel: 0.65,

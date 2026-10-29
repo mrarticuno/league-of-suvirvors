@@ -60,10 +60,12 @@ describe('keys used by the code exist', () => {
     const texts = [
       ...Object.values(RUNES).flatMap((r) => [r.name, r.desc]), ...Object.values(TREES).map((x) => x.name),
       ...SHARDS.flat().map((s) => s.name), ...Object.values(ITEMS).map((i) => i.name), ...Object.values(PASSIVES),
-      ...Object.values(CHAMPIONS).flatMap((c) => [c.name, c.passive.name, ...Object.values(c.skills).map((s) => s.name)]),
+      ...Object.values(CHAMPIONS).flatMap((c) => [c.name, c.title, c.passive.name, ...Object.values(c.skills).flatMap((s) => [s.name, s.desc])]),
       ...Object.values(ENEMIES).flatMap((e) => (e.name ? [e.name] : [])), ...Object.values(BUFF.names),
     ];
     expect(texts.length).toBeGreaterThan(150);
     for (const s of texts) expect(EN, s).not.toHaveProperty([s]);
+    const { ROLES } = await import('../src/champion');
+    for (const r of ROLES) expect(EN).toHaveProperty([`role.${r}`]); // champion select filters
   });
 });

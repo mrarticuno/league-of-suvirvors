@@ -104,6 +104,7 @@ export class Game {
   kills = 0;
   paused = false;
   over: 'won' | 'lost' | null = null;
+  readonly winAt = new THREE.Vector3(); // where the run was won (the slain boss), for the victory cinematic
 
   // champion state
   player!: Actor;
@@ -473,7 +474,12 @@ export class Game {
   // ---- simulation ----
   update(dt: number, move: THREE.Vector3) {
     if (this.paused || this.over) {
-      if (this.over) this.player.update(dt); // let the death animation finish
+      if (this.over) { // let the death animations finish (the champion's, or Baron's under the victory cinematic)
+        this.map.ensureChunks(this.pos);
+        this.player.update(dt);
+        for (const e of this.enemies) if (e.deadFor >= 0) e.actor.update(dt);
+        this.vfx.update(dt);
+      }
       return;
     }
     this.map.ensureChunks(this.pos);
@@ -851,6 +857,7 @@ export class Game {
 
   win() {
     this.over = 'won';
+    this.winAt.copy(this.epics.find((e) => e.deadFor >= 0)?.pos ?? this.pos);
     this.player.play(this.champ.anims.idle);
   }
 

@@ -5,6 +5,7 @@ import { browserStorage, credit, loadProgress, saveProgress } from './progress';
 import { showChampionSelect, showRunePage } from './runePage';
 import { IS_TOUCH, TouchControls } from './touch';
 import { Hud } from './ui';
+import { Cinematic } from './cinematic';
 import type { ChampionDef, SkillKey } from './champion';
 
 // LoL-style camera: high, pitched ~56°, looking down at the champion
@@ -75,31 +76,45 @@ renderer.domElement.addEventListener('pointerdown', (e) => {
 
 let inMenu = true; // champion select / rune page open: the run doesn't simulate, nothing is drawn behind them
 let credited = false; // rune points of the finished run already saved
+let cine: Cinematic | null = null; // end-of-run cinematic, then the end screen (keeps the camera until the menus open)
 
-/** Champion select, then the rune page; Jogar starts a fresh run with the page. */
+/** Champion select, then the rune page. */
 function openMenus() {
-  inMenu = true;
-  document.body.classList.add('menus');
-  keys.clear();
-  showChampionSelect((champ) => showRunePage(champ, async (page) => {
+  enterMenus();
+  showChampionSelect(openRunes);
+}
+
+/** The rune page of `champ`; Jogar starts a fresh run with the page, Back returns to champion select. */
+function openRunes(champ: ChampionDef) {
+  enterMenus();
+  showRunePage(champ, async (page) => {
     loading.textContent = t('loading.champion', { champion: champ.name });
     loading.style.display = '';
     await game.setChampion(champ);
     loading.style.display = 'none';
     if (champ !== hudChamp) {
-      hud = new Hud(champ);
+      hud = new Hud(champ, toggleAuto);
       hudChamp = champ;
     }
     document.body.classList.remove('menus');
     game.reset(page);
     credited = false;
     inMenu = false;
-  }));
+  }, openMenus);
+}
+
+function enterMenus() {
+  inMenu = true;
+  cine?.dispose();
+  cine = null;
+  document.body.classList.add('menus');
+  keys.clear();
 }
 
 addEventListener('keydown', (e) => {
   if (inMenu) return;
   const k = e.key.toLowerCase();
+  if (cine && ['escape', 'enter', ' '].includes(k)) return cine.skip();
   if (k === 'escape' && !game.over) {
     hud.toggleMenu();
     keys.clear();
@@ -170,7 +185,10 @@ function checkPrompts() {
     credited = true; // once per run, however often this runs before Continuar
     const r = credit(loadProgress(browserStorage), game.kills, game.bonusRunePoints);
     saveProgress(r.progress, browserStorage);
-    hud.showEnd(game, r.gained, r.progress.killRemainder, openMenus);
+    hud.closePrompts();
+    if (hud.menuOpen) hud.toggleMenu();
+    cine = new Cinematic(game, camera, CAMERA_OFFSET, () =>
+      hud.showEnd(game, r.gained, r.progress, { runePage: () => openRunes(game.champ), again: openMenus }));
   } else if (game.choices.length && !hud.choosing) {
     game.paused = true;
     hud.choice(game.choices.shift()!, () => { game.paused = game.pendingLevelUps > 0; });
@@ -189,10 +207,13 @@ function frame(now = last) {
   last = now;
   requestAnimationFrame(frame);
   if (inMenu) return renderer.clear(); // black behind champion select and the rune page
-  if (!hud.menuOpen) game.update(dt, moveInput()); // the ESC menu pauses the simulation
+  if (!hud.menuOpen) game.update(dt * (cine?.timeScale ?? 1), moveInput()); // the ESC menu pauses the simulation
   checkPrompts();
-  camera.position.copy(game.pos).add(CAMERA_OFFSET);
-  camera.lookAt(game.pos);
+  if (cine) cine.update();
+  else {
+    camera.position.copy(game.pos).add(CAMERA_OFFSET);
+    camera.lookAt(game.pos);
+  }
   hud.update(game);
   touch?.update(game);
   hud.floaters(game, camera);

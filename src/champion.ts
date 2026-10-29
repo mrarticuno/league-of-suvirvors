@@ -53,12 +53,57 @@ export interface SkillDef {
    * 'move' casts along the movement direction (free dashes and blinks); 'none' ignores the point (self casts).
    */
   aim: number | 'move' | 'none';
+  /** Level-up card (src/ui.ts): what the skill does, t('champion.<id>.<K>.desc'), and the numbers it shows per rank. */
+  desc: string;
+  damageType: DamageType;
+  damage: readonly number[]; // base damage per rank (per hit)
+  adRatio?: number | readonly number[]; // total AD ratio (per rank when a list)
+  bonusAdRatio?: number;
+  hits?: number; // damage instances per cast (Blade Whirl: 2, Inferno Trigger: 10 volleys)
+  extra?: { label: string; values: readonly number[]; percent?: boolean }; // one more per-rank number (a buff)
 }
+
+/** The champion stats a skill's numbers depend on. */
+export interface SkillStats { ad: number; bonusAd: number; haste: number }
+
+/** One cast at rank index `r` (0-based): damage per hit and per cast, cooldown after ability haste, damage per second. */
+export function skillNumbers(s: SkillDef, r: number, st: SkillStats) {
+  const ratio = typeof s.adRatio === 'number' ? s.adRatio : (s.adRatio?.[r] ?? 0);
+  const perHit = s.damage[r] + ratio * st.ad + (s.bonusAdRatio ?? 0) * st.bonusAd;
+  const damage = perHit * (s.hits ?? 1);
+  const cooldown = s.cooldown[r] * (100 / (100 + st.haste));
+  return { perHit, damage, cooldown, cost: s.cost[r], dps: cooldown > 0 ? damage / cooldown : 0 };
+}
+
+/**
+ * Level-up advice, higher is better: the ultimate first, then a skill not learned yet, then the rank that adds the
+ * largest share of damage per second. `rank` is the current rank (0 = not learned).
+ */
+export function skillScore(key: SkillKey, s: SkillDef, rank: number, st: SkillStats) {
+  if (key === 'R') return 1000;
+  if (rank === 0) return 500;
+  return dpsGain(s, rank, st);
+}
+
+/** Percent of damage per second the next rank adds (0 for a skill not learned yet). */
+export function dpsGain(s: SkillDef, rank: number, st: SkillStats) {
+  if (rank === 0) return 0;
+  const now = skillNumbers(s, rank - 1, st).dps, next = skillNumbers(s, rank, st).dps;
+  return now > 0 ? ((next - now) / now) * 100 : 0;
+}
+
+export const ROLES = ['marksman', 'assassin', 'fighter', 'mage', 'tank', 'support'] as const;
+/** Champion class (role.<id> in src/locales). */
+export type Role = (typeof ROLES)[number];
 
 export interface ChampionDef {
   id: string; // prefix of the sound keys
   name: string; // player-facing: t('champion.<id>.name')
   icon: string; // portrait (Data Dragon img/champion/<Champ>.png)
+  title: string; // epithet under the name on champion select: t('champion.<id>.title') (Data Dragon `title`, zh: `name`)
+  splash: string; // champion select art (Data Dragon img/champion/splash/<Champ>_0.jpg)
+  roles: readonly Role[]; // champion select filters: the Data Dragon tags
+  difficulty: number; // Data Dragon info.difficulty, 1-10
   model: string;
   /** Submeshes hidden at load (the skin bin's initialSubmeshToHide). */
   hide?: readonly string[];

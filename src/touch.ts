@@ -32,6 +32,7 @@ export class TouchControls {
     $('menu').insertBefore($('stats'), $('menu-resume'));
     $('touch-flash').querySelector('img')!.src = RUNES['hextech-flashtraption'].icon;
     $('touch-pause').setAttribute('aria-label', t('static.paused'));
+    $('touch-attack').setAttribute('aria-label', t('hud.auto'));
     $('touch-pause').onclick = pause;
     $('touch-attack').onclick = toggleAuto;
     this.joystick($('joy-zone'), $('joy'), $('joy-knob'));
@@ -119,7 +120,7 @@ export class TouchControls {
     });
     const attack = document.getElementById('touch-attack')!;
     set('auto', String(g.autoAttack), () => {
-      attack.textContent = t(g.autoAttack ? 'touch.autoOn' : 'touch.autoOff');
+      document.getElementById('touch-attack-label')!.textContent = t(g.autoAttack ? 'touch.autoOn' : 'touch.autoOff');
       attack.classList.toggle('off', !g.autoAttack);
     });
   }
