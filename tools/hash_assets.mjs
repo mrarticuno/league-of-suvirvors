@@ -5,7 +5,7 @@
 // - writes dist/_headers with the cache rules (index.html stays revalidated so a deploy shows up at once)
 // - drops the .br/.gz siblings: Cloudflare ignores them and compresses at the edge itself
 import { createHash } from 'node:crypto';
-import { readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import { readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { extname, join } from 'node:path';
 
 const DIST = 'dist';
@@ -14,6 +14,11 @@ const walk = (dir) => readdirSync(dir, { withFileTypes: true })
 
 const html = readFileSync(join(DIST, 'index.html'), 'utf8');
 if (html.includes('__ASSETS')) throw new Error('dist/ is already hashed, run `pnpm deploy:cf`');
+// optimize.mjs turns every .png into .webp: a .png left means a plain `vite build`, whose raw models exceed the limit
+if (walk(join(DIST, 'assets')).some((f) => f.endsWith('.png'))) throw new Error('dist/ is not optimized, run `pnpm deploy:cf`');
+// Cloudflare Workers static assets reject any file over 25 MiB
+const big = walk(DIST).filter((f) => !/\.(br|gz)$/.test(f) && statSync(f).size > 25 * 1024 ** 2);
+if (big.length) throw new Error(`over the 25 MiB Cloudflare asset limit: ${big.join(', ')}`);
 
 for (const f of walk(DIST)) if (/\.(br|gz)$/.test(f)) rmSync(f);
 

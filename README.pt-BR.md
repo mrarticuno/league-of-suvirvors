@@ -26,16 +26,26 @@
   <img src="docs/media/ezreal.gif" alt="Ezreal enfrentando uma horda" width="80%">
 </p>
 
+> O jogo está em inglês, português, espanhol e chinês simplificado, escolhido pelo idioma do navegador.
+
 ## Galeria
 
-| Samira (`?champ=samira`) | Barão Na'Shor (20:00) |
+| Seleção de campeão | Página de runas |
 |---|---|
-| ![Samira: Estilo subindo até S, Blade Whirl e Inferno Trigger](docs/media/samira.gif) | ![Arena do Barão com ataques telegrafados](docs/media/baron.gif) |
-| ![Samira com o gauge de Estilo contra o Aronguejo](docs/media/samira.jpg) | ![Chicotada em cone do Barão](docs/media/baron.jpg) |
+| ![Seleção de campeão com a splash art e o kit do Ezreal](docs/media/champion-select.jpg) | ![Página de runas: Precisão + Feitiçaria com fragmentos](docs/media/rune-page.jpg) |
 
-| Level-up: evolução de itens | Página de runas |
+| Level-up: habilidades | Level-up: evolução de itens |
 |---|---|
-| ![Escolha de item com árvore de evolução](docs/media/item-shop.jpg) | ![Página de runas entre runs](docs/media/rune-page.jpg) |
+| ![Cartas de habilidade com dano, recarga e recomendação](docs/media/skill-pick.jpg) | ![Cartas de item com os itens finais de cada linha e os planos de evolução](docs/media/item-shop.jpg) |
+
+| Samira | Barão Na'Shor (20:00) |
+|---|---|
+| ![Samira enfrentando uma horda em volta do Aronguejo](docs/media/samira.gif) | ![Arena do Barão com ataques telegrafados](docs/media/baron.gif) |
+| ![Samira com o gauge de Estilo contra o Aronguejo](docs/media/samira.jpg) | ![Ezreal desviando da chicotada do Barão](docs/media/baron.jpg) |
+
+| Vitória | Celular (controles de toque) |
+|---|---|
+| ![Barão cai: cinemática e tela de vitória](docs/media/victory.gif) | ![HUD de toque com joystick e botões de skill em paisagem](docs/media/mobile.jpg) |
 
 <sub>Logo e banner: fonte em `docs/media/logo.html` (abra no Chromium e capture `#logo` / `#banner`). As capturas são do protótipo rodando com os assets gerados localmente.</sub>
 
@@ -43,7 +53,7 @@
 
 ```bash
 pnpm install
-pnpm dev        # http://localhost:5173 (Ezreal); /?champ=samira joga com a Samira
+pnpm dev        # http://localhost:5173 (escolha o campeão na primeira tela)
 ```
 
 Os modelos **não estão no repositório** (são assets da Riot). Gere-os localmente primeiro (abaixo).
@@ -137,7 +147,7 @@ WASD não é usado porque colide com Q/W/E.
   - **W**: marca o alvo; a detonação devolve mana quando feita por habilidade.
   - **E**: blink de 475 + projétil teleguiado, priorizando o alvo marcado.
   - **R**: 1 s de conjuração, atravessa inimigos, 50% de dano em não-épicos.
-- **Samira** (`?champ=samira`, dados da Meraki Analytics): alcance 500, crítico de 175%.
+- **Samira** (dados da Meraki Analytics): alcance 500, crítico de 175%.
   - **Passiva (Daredevil Impulse)**: acerto de tipo diferente do anterior (tiro, lâmina, Q, W, E, R) sobe um grau de Estilo (E→S, 6 s, +2–3,5% de velocidade de movimento por grau). Ataques a até 200 de distância usam a lâmina: dano mágico extra (2–19 + 3,5–10,5% AD), até dobrado pela vida perdida do alvo; W, E e o corte do Q também aplicam.
   - **Q**: tiro no primeiro inimigo; com inimigo à frente a até 340, corte em cone. Pode critar (125%).
   - **W**: dois cortes em área (325), no início e após 0,75 s; destrói projéteis inimigos na área. Sem ataque básico durante o giro.

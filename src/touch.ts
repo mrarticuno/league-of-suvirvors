@@ -35,6 +35,7 @@ export class TouchControls {
     $('touch-attack').setAttribute('aria-label', t('hud.auto'));
     $('touch-pause').onclick = pause;
     $('touch-attack').onclick = toggleAuto;
+    this.fullscreen($('touch-fs'));
     this.joystick($('joy-zone'), $('joy'), $('joy-knob'));
     const aim = $('aim');
     const drag = (el: HTMLElement, key: (e: PointerEvent) => SkillKey | 'flash' | null) => {
@@ -73,6 +74,34 @@ export class TouchControls {
       return slot ? (slot.id.slice('skill-'.length) as SkillKey) : null;
     });
     drag($('touch-flash'), () => 'flash');
+  }
+
+  /** Enters fullscreen on the first tap (browsers only allow it from a gesture) and toggles it from the button.
+   *  iPhone has no Fullscreen API (Safari and Chrome alike): the button explains the home screen shortcut instead,
+   *  which opens without the URL bar. Already opened from the home screen, it stays hidden. */
+  private fullscreen(btn: HTMLElement) {
+    if (!document.fullscreenEnabled) {
+      if (matchMedia('(display-mode: standalone)').matches || (navigator as { standalone?: boolean }).standalone) return;
+      const tip = document.getElementById('touch-fs-tip')!;
+      tip.textContent = t('hud.fullscreenTip');
+      btn.hidden = false;
+      btn.setAttribute('aria-label', t('hud.fullscreen'));
+      btn.onclick = () => { tip.hidden = !tip.hidden; };
+      tip.onclick = () => { tip.hidden = true; };
+      return;
+    }
+    btn.hidden = false;
+    const sync = () => {
+      const on = !!document.fullscreenElement;
+      btn.classList.toggle('on', on);
+      btn.setAttribute('aria-label', t(on ? 'hud.fullscreenExit' : 'hud.fullscreen'));
+    };
+    const enter = () => document.documentElement.requestFullscreen({ navigationUI: 'hide' }).catch(() => {});
+    sync();
+    document.addEventListener('fullscreenchange', sync);
+    // pointerup (not pointerdown) counts as user activation for touch; the button's own tap is left to its handler
+    document.addEventListener('pointerup', (e) => { if (e.target !== btn && !btn.contains(e.target as Node)) enter(); }, { once: true });
+    btn.onclick = () => (document.fullscreenElement ? document.exitFullscreen().catch(() => {}) : enter());
   }
 
   /** Floating joystick: appears where the thumb lands inside the zone, the knob follows up to JOY_RADIUS. */

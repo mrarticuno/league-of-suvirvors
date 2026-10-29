@@ -26,18 +26,26 @@
   <img src="docs/media/ezreal.gif" alt="Ezreal fighting a horde" width="80%">
 </p>
 
-> The in-game UI is in Brazilian Portuguese.
+> The game is in English, Portuguese, Spanish and Simplified Chinese, picked from the browser language.
 
 ## Gallery
 
-| Samira (`?champ=samira`) | Baron Nashor (20:00) |
+| Champion select | Rune page |
 |---|---|
-| ![Samira: Style rising to S, Blade Whirl and Inferno Trigger](docs/media/samira.gif) | ![Baron arena with telegraphed attacks](docs/media/baron.gif) |
-| ![Samira with the Style gauge against the Rift Scuttler](docs/media/samira.jpg) | ![Baron's cone whip](docs/media/baron.jpg) |
+| ![Champion select with Ezreal's splash art and kit](docs/media/champion-select.jpg) | ![Rune page: Precision + Sorcery with shards](docs/media/rune-page.jpg) |
 
-| Level-up: item evolution | Rune page |
+| Level-up: abilities | Level-up: item evolution |
 |---|---|
-| ![Item choice with the evolution tree](docs/media/item-shop.jpg) | ![Rune page between runs](docs/media/rune-page.jpg) |
+| ![Ability cards with damage, cooldown and a recommendation](docs/media/skill-pick.jpg) | ![Item cards with the finished items of each line and the evolution plans](docs/media/item-shop.jpg) |
+
+| Samira | Baron Nashor (20:00) |
+|---|---|
+| ![Samira fighting a horde around the Rift Scuttler](docs/media/samira.gif) | ![Baron arena with telegraphed attacks](docs/media/baron.gif) |
+| ![Samira with the Style gauge against the Rift Scuttler](docs/media/samira.jpg) | ![Ezreal dodging Baron's whip](docs/media/baron.jpg) |
+
+| Victory | Phone (touch controls) |
+|---|---|
+| ![Baron falls: cinematic and victory screen](docs/media/victory.gif) | ![Touch HUD with joystick and skill buttons in landscape](docs/media/mobile.jpg) |
 
 <sub>Logo and banner source: `docs/media/logo.html` (open it in Chromium and capture `#logo` / `#banner`). Screenshots are from the prototype running with locally generated assets.</sub>
 
@@ -45,7 +53,7 @@
 
 ```bash
 pnpm install
-pnpm dev        # http://localhost:5173 (Ezreal); /?champ=samira plays as Samira
+pnpm dev        # http://localhost:5173 (pick the champion on the first screen)
 ```
 
 The models are **not in the repository** (they are Riot assets). Generate them locally first (below).
@@ -139,7 +147,7 @@ WASD is not used because it clashes with Q/W/E.
   - **W**: marks the target; detonating it with an ability refunds mana.
   - **E**: 475 blink + homing projectile, prioritizing the marked target.
   - **R**: 1 s cast, passes through enemies, 50% damage to non-epic units.
-- **Samira** (`?champ=samira`, Meraki Analytics data): 500 range, 175% crit.
+- **Samira** (Meraki Analytics data): 500 range, 175% crit.
   - **Passive (Daredevil Impulse)**: a hit of a different type than the previous one (shot, blade, Q, W, E, R) raises the Style grade by one (E→S, 6 s, +2–3.5% movement speed per grade). Attacks within 200 range use the blade: bonus magic damage (2–19 + 3.5–10.5% AD), up to doubled by the target's missing health; W, E and the Q slash also apply it.
   - **Q**: shot at the first enemy; with an enemy ahead within 340, a cone slash. Can crit (125%).
   - **W**: two area slashes (325), at the start and after 0.75 s; destroys enemy projectiles in the area. No basic attacks while spinning.

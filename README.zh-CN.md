@@ -26,18 +26,26 @@
   <img src="docs/media/ezreal.gif" alt="伊泽瑞尔对抗怪潮" width="80%">
 </p>
 
-> 游戏内界面为巴西葡萄牙语。
+> 游戏支持英语、葡萄牙语、西班牙语和简体中文，根据浏览器语言自动选择。
 
 ## 截图
 
-| 莎弥拉（`?champ=samira`） | 纳什男爵（20:00） |
+| 英雄选择 | 符文页 |
 |---|---|
-| ![莎弥拉：风格评级升至 S，W 和 E](docs/media/samira.gif) | ![男爵竞技场与预警攻击](docs/media/baron.gif) |
-| ![莎弥拉与风格计量条，对战峡谷迅捷蟹](docs/media/samira.jpg) | ![男爵的锥形鞭击](docs/media/baron.jpg) |
+| ![英雄选择：伊泽瑞尔的原画与技能](docs/media/champion-select.jpg) | ![符文页：精密 + 巫术与符文碎片](docs/media/rune-page.jpg) |
 
-| 升级：装备进化 | 符文页 |
+| 升级：技能 | 升级：装备进化 |
 |---|---|
-| ![带进化树的装备选择](docs/media/item-shop.jpg) | ![对局之间的符文页](docs/media/rune-page.jpg) |
+| ![技能卡片：伤害、冷却与推荐](docs/media/skill-pick.jpg) | ![装备卡片：每条路线的成装与进化方案](docs/media/item-shop.jpg) |
+
+| 莎弥拉 | 纳什男爵（20:00） |
+|---|---|
+| ![莎弥拉在峡谷迅捷蟹周围对抗怪潮](docs/media/samira.gif) | ![男爵竞技场与预警攻击](docs/media/baron.gif) |
+| ![莎弥拉与风格计量条，对战峡谷迅捷蟹](docs/media/samira.jpg) | ![伊泽瑞尔躲避男爵的鞭击](docs/media/baron.jpg) |
+
+| 胜利 | 手机（触控操作） |
+|---|---|
+| ![男爵倒下：过场动画与胜利界面](docs/media/victory.gif) | ![横屏触控界面：摇杆与技能按钮](docs/media/mobile.jpg) |
 
 <sub>Logo 与横幅源文件：`docs/media/logo.html`（用 Chromium 打开并截取 `#logo` / `#banner`）。截图来自使用本地生成资源运行的原型。</sub>
 
@@ -45,7 +53,7 @@
 
 ```bash
 pnpm install
-pnpm dev        # http://localhost:5173（伊泽瑞尔）；/?champ=samira 使用莎弥拉
+pnpm dev        # http://localhost:5173（在第一个界面选择英雄）
 ```
 
 模型**不在仓库中**（属于 Riot 的资源）。请先在本地生成（见下文）。
@@ -139,7 +147,7 @@ pnpm dev        # http://localhost:5173（伊泽瑞尔）；/?champ=samira 使�
   - **W**：标记目标；用技能引爆时返还法力。
   - **E**：475 距离闪烁 + 追踪弹，优先攻击被标记的目标。
   - **R**：1 秒施法，穿透敌人，对非史诗单位造成 50% 伤害。
-- **莎弥拉**（`?champ=samira`，Meraki Analytics 数据）：射程 500，暴击 175%。
+- **莎弥拉**（Meraki Analytics 数据）：射程 500，暴击 175%。
   - **被动（Daredevil Impulse）**：与上一次类型不同的命中（射击、刀刃、Q、W、E、R）使风格评级提升一级（E→S，6 秒，每级 +2–3.5% 移动速度）。200 距离内的攻击使用刀刃：额外魔法伤害（2–19 + 3.5–10.5% 攻击力），根据目标已损失生命值最多翻倍；W、E 和 Q 的斩击也会触发。
   - **Q**：射击第一个敌人；若前方 340 内有敌人，则改为锥形斩击。可暴击（125%）。
   - **W**：两次范围斩击（325），开始时一次，0.75 秒后一次；摧毁范围内的敌方投射物。旋转期间不能普攻。

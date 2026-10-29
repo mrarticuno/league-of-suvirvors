@@ -3,6 +3,11 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <!-- iPhone has no Fullscreen API: added to the home screen, the game opens without the URL bar -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <!-- not black-translucent: in portrait it leaves a status-bar-tall black strip under the page -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="black" />
     <title>League of Survivors</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -287,15 +292,15 @@
       @media (max-width: 760px) {
         #levelup h2 { font-size: 20px; margin-top: 6px; }
         #inv-edit { gap: 5px; } #inv-edit .slot { width: 44px; height: 44px; }
-        #offers { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: 12px; margin: 0 -20px; padding: 4px 20px 8px; width: calc(100% + 40px); scrollbar-width: none; }
+        #offers { flex-shrink: 0; display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: 12px; margin: 0 -20px; padding: 4px 20px 8px; width: calc(100% + 40px); scrollbar-width: none; }
         .ioffer { flex: 0 0 86%; scroll-snap-align: center; padding: 14px; }
         #continue { width: 100%; }
       }
       @media (max-height: 520px) {
         #levelup { gap: 8px; } #levelup h2 { font-size: 18px; margin: 0; }
         #inv-edit .slot { width: 38px; height: 38px; }
-        #offers { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; width: 100%; }
-        .ioffer { flex: 0 0 min(380px, 62vw); scroll-snap-align: start; padding: 12px; gap: 8px; max-height: calc(100vh - 150px); overflow-y: auto; }
+        #offers { flex-shrink: 0; display: flex; overflow-x: auto; scroll-snap-type: x mandatory; width: 100%; }
+        .ioffer { flex: 0 0 min(340px, 46vw); scroll-snap-align: start; padding: 12px; gap: 8px; }
         .io-icon { width: 44px; height: 44px; } .io-head b { font-size: 16px; }
         .chips { max-height: 46px; } .ichip { width: 34px; height: 34px; } .io-detail { display: none; }
       }
@@ -611,12 +616,14 @@
       /* ---------- touch (src/touch.ts): joystick left, round action cluster right, compact status card top-left ---------- */
       #touch, #aim { display: none; }
       body.touch { touch-action: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
-      body.touch .overlay { touch-action: pan-y; }
+      body.touch .overlay { touch-action: pan-y; background: rgba(3, 6, 12, 0.95); }
       body.touch:not(.menus) #touch { display: block; }
       body.touch #hud-tr, body.touch #hud-tl #kills-plate, body.touch #flash-slot, body.touch .sep { display: none; }
       body.touch #kills-touch { display: block; }
       body.touch #hud-tl { top: calc(148px + env(safe-area-inset-top)); left: calc(14px + env(safe-area-inset-left)); }
       body.touch #hud-top { top: max(8px, env(safe-area-inset-top)); width: min(320px, 38vw); gap: 5px; }
+      /* after the base #hud-top rule: its 38vw width would push the boss bar into the status card */
+      @media (orientation: landscape) { body.touch #hud-top { left: auto; right: calc(120px + env(safe-area-inset-right)); transform: none; width: min(300px, 34vw); align-items: flex-end; } }
       body.touch #timer { font-size: 22px; } body.touch #timer-plate .in { padding: 3px 18px 5px; }
       body.touch #horde { font-size: 13px; padding: 3px 14px; white-space: nowrap; }
       body.touch #boss-name { font-size: 12px; } body.touch #boss .bar { height: 10px; }
@@ -643,8 +650,8 @@
         body.touch #bottom { right: calc(68px + env(safe-area-inset-right)); top: max(44px, env(safe-area-inset-top)); }
         body.touch #dock { grid-template-columns: auto 1fr auto; } body.touch #hp-bar { width: auto; }
         body.touch #hud-top { top: calc(max(44px, env(safe-area-inset-top)) + 98px); width: min(300px, 80vw); }
-        body.touch #hud-tl { top: auto; bottom: calc(320px + env(safe-area-inset-bottom)); }
-        body.touch #touch-pause { top: max(50px, env(safe-area-inset-top)); }
+        body.touch #hud-tl { top: auto; bottom: calc(60vh + 8px); } /* just above #joy-zone, so the joystick never covers the buffs */
+        body.touch #touch-pause, body.touch #touch-fs { top: max(50px, env(safe-area-inset-top)); }
       }
       #joy-zone { position: fixed; left: 0; bottom: 0; width: 42vw; height: 60vh; }
       #joy { position: absolute; left: calc(100px + env(safe-area-inset-left)); top: calc(100% - 100px); width: 140px; height: 140px; margin: -70px 0 0 -70px; border-radius: 50%; border: 2px solid rgba(217, 181, 106, 0.45);
@@ -652,7 +659,12 @@
       #joy::before { content: ''; position: absolute; inset: 16px; border-radius: 50%; border: 1px dashed rgba(217, 181, 106, 0.2); }
       #joy.on { opacity: 1; }
       #joy-knob { position: absolute; left: 44px; top: 44px; width: 52px; height: 52px; border-radius: 50%; background: radial-gradient(circle at 40% 35%, #f6e2a6, #9c7a38 70%); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6), 0 0 16px rgba(246, 226, 166, 0.35); }
-      #touch-pause { position: fixed; top: max(10px, env(safe-area-inset-top)); right: calc(10px + env(safe-area-inset-right)); width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; background: var(--panel); border: 2px solid var(--gold-dim); }
+      #touch-pause, #touch-fs { position: fixed; top: max(10px, env(safe-area-inset-top)); right: calc(10px + env(safe-area-inset-right)); width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; background: var(--panel); border: 2px solid var(--gold-dim); }
+      #touch-fs { right: calc(64px + env(safe-area-inset-right)); } #touch-fs[hidden] { display: none; }
+      #touch-fs-tip { position: fixed; top: calc(max(10px, env(safe-area-inset-top)) + 56px); right: calc(10px + env(safe-area-inset-right)); max-width: min(300px, 80vw); margin: 0; padding: 10px 14px;
+        font-size: 13px; line-height: 1.4; color: var(--text); background: var(--panel); border: 1px solid var(--gold-dim); pointer-events: auto; }
+      #touch-fs-tip[hidden] { display: none; }
+      #touch-fs .exit, #touch-fs.on .enter { display: none; } #touch-fs.on .exit { display: block; }
       /* skills on an arc around the attack button (thumb reach), R farthest, Flash above */
       #touch-pad { position: fixed; right: env(safe-area-inset-right); bottom: env(safe-area-inset-bottom); width: 270px; height: 280px; pointer-events: none; }
       #touch-pad > * { pointer-events: auto; }
@@ -762,6 +774,8 @@
     <div id="touch">
       <div id="joy-zone"><div id="joy"><div id="joy-knob"></div></div></div>
       <button id="touch-pause"><svg width="16" height="16" viewBox="0 0 24 24" fill="#d9b56a" aria-hidden="true"><rect x="6" y="5" width="4" height="14"/><rect x="14" y="5" width="4" height="14"/></svg></button>
+      <button id="touch-fs" hidden><svg class="enter" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#d9b56a" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg><svg class="exit" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#d9b56a" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/></svg></button>
+      <p id="touch-fs-tip" hidden></p>
       <div id="touch-pad">
         <button id="touch-attack"><span><svg width="34" height="34" viewBox="0 0 48 48" fill="none" stroke="#f6e2a6" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 38L34 14M28 12l8-2-2 8M14 30l4 4M8 40l4-4"/></svg><b id="touch-attack-label"></b></span></button>
         <button id="touch-flash"><img alt=""><span></span></button>
