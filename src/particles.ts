@@ -3,7 +3,7 @@
 // Frames: a system's local space is League's (X, Y up, Z forward) rotated by the caster's facing; missile systems
 // use X side, Y along the flight direction, Z up (the bin offsets/velocities of the champions' missiles agree on this).
 import * as THREE from 'three';
-import { compact } from './util';
+import { asset, compact } from './util';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type Bin = any; // bin JSON is loosely typed: fields are optional and nested Value* objects
@@ -20,14 +20,14 @@ function assetNames(v: Bin, out: Set<string>) {
 
 /** `dir`: the champion's folder from tools/build_vfx.py (assets/vfx/<id>/). */
 export async function loadParticles(dir: string) {
-  systems = await (await fetch(`${dir}systems.json`)).json();
+  systems = await (await fetch(asset(`${dir}systems.json`))).json();
   const names = new Set<string>();
   assetNames(systems, names);
   const loader = new THREE.TextureLoader();
   await Promise.all([...names].map(async (n) => {
-    if (n.endsWith('.json')) meshes.set(n, await (await fetch(dir + n)).json());
+    if (n.endsWith('.json')) meshes.set(n, await (await fetch(asset(dir + n))).json());
     else {
-      const t = await loader.loadAsync(dir + n);
+      const t = await loader.loadAsync(asset(dir + n));
       t.flipY = false; // League UVs (meshes and flipbooks) have v=0 at the top
       t.wrapS = t.wrapT = THREE.RepeatWrapping;
       textures.set(n, t);

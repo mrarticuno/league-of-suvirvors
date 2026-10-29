@@ -19,6 +19,10 @@
 </p>
 
 <p align="center">
+  <a href="https://league-of-survivors.gabriel-m-lyra.workers.dev"><b>▶ 在线试玩</b></a>
+</p>
+
+<p align="center">
   <img src="docs/media/ezreal.gif" alt="伊泽瑞尔对抗怪潮" width="80%">
 </p>
 

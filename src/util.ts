@@ -27,3 +27,7 @@ export class TimeWindow {
 
 /** Texture extension: build:prod converts the PNGs to WebP (tools/optimize.mjs) and sets VITE_IMG_EXT=webp. */
 export const IMG: string = import.meta.env.VITE_IMG_EXT ?? 'png';
+
+/** Content-hashed URL of a public/ file: tools/hash_assets.mjs injects the map into dist/index.html, dev has none. */
+const HASHED: Record<string, string> = (globalThis as { __ASSETS?: Record<string, string> }).__ASSETS ?? {};
+export const asset = (path: string): string => HASHED[path] ?? path;

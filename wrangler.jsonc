@@ -1,0 +1,7 @@
+// Static-only Worker (no script): asset requests are free and do not count against the Workers request limit.
+// dist/_headers (tools/hash_assets.mjs) sets the cache rules.
+{
+  "name": "league-of-survivors",
+  "compatibility_date": "2026-10-23",
+  "assets": { "directory": "./dist" }
+}

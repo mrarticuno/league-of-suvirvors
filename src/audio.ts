@@ -1,6 +1,7 @@
 // Sound effects and music extracted from the LoL Wwise banks by tools/build_audio.py (assets/sfx/sounds.json:
 // {key: [mp3 files]}, several files = random takes). Keys missing from the manifest play nothing.
 import type * as THREE from 'three';
+import { asset } from './util';
 
 const BASE = 'assets/sfx/';
 const SETTINGS = 'los-audio';
@@ -52,7 +53,7 @@ class GameAudio {
   }
 
   private async readManifest(): Promise<Record<string, string[]>> {
-    const res = await fetch(BASE + 'sounds.json').catch(() => null);
+    const res = await fetch(asset(BASE + 'sounds.json')).catch(() => null);
     if (!res?.ok) return {}; // sounds not extracted: play silently
     // the dev server answers a missing file with index.html (200), so a parse failure also means "not extracted"
     return (await res.json().catch(() => null)) ?? {};
@@ -65,7 +66,7 @@ class GameAudio {
     const manifest = await (this.manifest ??= this.readManifest());
     await Promise.all(Object.entries(manifest).filter(([k]) => k !== 'music' && k.startsWith(`${prefix}_`)).map(async ([key, files]) => {
       const takes = await Promise.all(files.map(async (f) => {
-        const data = await (await fetch(BASE + f)).arrayBuffer();
+        const data = await (await fetch(asset(BASE + f))).arrayBuffer();
         return this.ctx.decodeAudioData(data).catch(() => null);
       }));
       this.buffers.set(key, takes.filter((b): b is AudioBuffer => !!b));
@@ -121,7 +122,7 @@ class GameAudio {
 
   private nextTrack() {
     if (!this.tracks.length) return;
-    this.music.src = BASE + this.tracks[Math.floor(Math.random() * this.tracks.length)];
+    this.music.src = asset(BASE + this.tracks[Math.floor(Math.random() * this.tracks.length)]);
     this.syncMusic();
   }
 }

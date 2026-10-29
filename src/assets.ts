@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone } from 'three/addons/utils/SkeletonUtils.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
-import { IMG } from './util';
+import { asset, IMG } from './util';
 
 interface Template {
   scene: THREE.Object3D;
@@ -15,7 +15,7 @@ const templates = new Map<string, Template>();
 const loading = new Map<string, Promise<void>>(); // in flight or done: concurrent callers share one download
 
 async function loadMaterial(texture: string) {
-  const map = await texLoader.loadAsync(`assets/models/${texture}.${IMG}`);
+  const map = await texLoader.loadAsync(asset(`assets/models/${texture}.${IMG}`));
   map.flipY = false; // glTF UV convention
   // League meshes rely on UV wrap (some islands go negative or past 1.0), clamp shows atlas edges
   map.wrapS = map.wrapT = THREE.RepeatWrapping;
@@ -43,7 +43,7 @@ export const modelLoaded = (id: string) => templates.has(id);
 async function fetchModel(id: string, hide: readonly string[], mesh: string, textures: Readonly<Record<string, string>>) {
   const stems = [...new Set(Object.values(textures))];
   const [gltf, material, ...overrides] = await Promise.all([
-    gltfLoader.loadAsync(`assets/models/${mesh}.glb`),
+    gltfLoader.loadAsync(asset(`assets/models/${mesh}.glb`)),
     loadMaterial(id),
     ...stems.map(loadMaterial),
   ]);

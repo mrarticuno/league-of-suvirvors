@@ -6,7 +6,7 @@ import { clone } from 'three/addons/utils/SkeletonUtils.js';
 import { propModel, loadModel } from './assets';
 import { CHUNK, layoutSession, PIECES, PIECE_MODELS, randomKind, SESSION_KINDS } from './sessions';
 import type { Obstacle, PieceModel, SessionKind, SessionLayout } from './sessions';
-import { IMG } from './util';
+import { asset, IMG } from './util';
 
 export { CHUNK } from './sessions';
 
@@ -284,7 +284,7 @@ export class WorldMap {
 
 const loader = new THREE.TextureLoader();
 const loadTex = (name: string) =>
-  new Promise<THREE.Texture>((ok, err) => loader.load(`assets/map/tex/${name}.${IMG}`, ok, undefined, err));
+  new Promise<THREE.Texture>((ok, err) => loader.load(asset(`assets/map/tex/${name}.${IMG}`), ok, undefined, err));
 
 // The structure meshes stack their damaged variants and tower stages on the intact one, so only the base shows
 const INTACT = ['Stage1', 'Stage2', 'Stage3', 'Rubble', 'Broken1', 'Broken2', 'Broken3', 'Destroyed'];
@@ -305,8 +305,8 @@ const rockLoader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
 /** Rocks are the extracted map meshes: same unlit material and UV conventions as loadModel. */
 async function loadRock(key: string): Promise<THREE.Object3D> {
   const [gltf, map] = await Promise.all([
-    rockLoader.loadAsync(`assets/map/pieces/${key}.glb`),
-    loader.loadAsync(`assets/map/pieces/${key}.${IMG}`),
+    rockLoader.loadAsync(asset(`assets/map/pieces/${key}.glb`)),
+    loader.loadAsync(asset(`assets/map/pieces/${key}.${IMG}`)),
   ]);
   map.flipY = false; // glTF UV convention
   map.wrapS = map.wrapT = THREE.RepeatWrapping;

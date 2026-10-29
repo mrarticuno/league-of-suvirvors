@@ -19,6 +19,10 @@
 </p>
 
 <p align="center">
+  <a href="https://league-of-survivors.gabriel-m-lyra.workers.dev"><b>▶ Play the demo</b></a>
+</p>
+
+<p align="center">
   <img src="docs/media/ezreal.gif" alt="Ezreal fighting a horde" width="80%">
 </p>
 
