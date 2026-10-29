@@ -1,14 +1,14 @@
 // Localization rules (CLAUDE.md "Internacionalização"): every language file has exactly the keys of en.json, with the
 // same placeholders, and every key the code builds from an id (runes, items, champions...) exists.
-import { readdirSync, readFileSync } from 'node:fs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { pickLang } from '../src/i18n';
+import html from '../index.html?raw';
 
 vi.mock('../src/audio', () => ({ audio: {} })); // champion kits import it; node has no AudioContext
 
-const DIR = new URL('../src/locales/', import.meta.url);
-const LOCALES = Object.fromEntries(readdirSync(DIR).filter((f) => f.endsWith('.json'))
-  .map((f) => [f.slice(0, -5), JSON.parse(readFileSync(new URL(f, DIR), 'utf8')) as Record<string, string>]));
+const files = import.meta.glob<Record<string, string>>('../src/locales/*.json', { eager: true, import: 'default' });
+const LOCALES = Object.fromEntries(Object.entries(files).map(([p, d]) => [p.slice('../src/locales/'.length, -'.json'.length), d]));
+const SOURCES = Object.values(import.meta.glob<string>('../src/**/*.ts', { eager: true, query: '?raw', import: 'default' }));
 const EN = LOCALES.en;
 const vars = (s: string) => [...s.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort();
 
@@ -45,10 +45,7 @@ describe('keys used by the code exist', () => {
   afterEach(() => vi.unstubAllGlobals());
 
   it('literal t() keys and data-i18n keys', () => {
-    const files = readdirSync(new URL('../src/', import.meta.url), { recursive: true, encoding: 'utf8' })
-      .filter((f) => f.endsWith('.ts')).map((f) => readFileSync(new URL(`../src/${f}`, import.meta.url), 'utf8'));
-    files.push(readFileSync(new URL('../index.html', import.meta.url), 'utf8'));
-    const used = files.flatMap((s) => [...s.matchAll(/\bt\('([\w.-]+)'|data-i18n="([\w.-]+)"/g)].map((m) => m[1] ?? m[2]));
+    const used = [...SOURCES, html].flatMap((s) => [...s.matchAll(/\bt\('([\w.-]+)'|data-i18n="([\w.-]+)"/g)].map((m) => m[1] ?? m[2]));
     expect(used.length).toBeGreaterThan(50);
     for (const k of used) expect(EN, k).toHaveProperty([k]);
   });

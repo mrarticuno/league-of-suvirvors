@@ -41,7 +41,7 @@ Assets (`assets-raw/`, `public/assets/`) não vão para o git.
 - `vfx`: chaves de sistemas de partícula do ataque básico (`auto`, `crit`, `autoHit`, `critHit`), como no `ResourceResolver` da skin.
 - `icon`: URL do Data Dragon (`.../img/spell/<Champ><K>.png`, `.../img/passive/...`).
 - `icon` do campeão: retrato do Data Dragon (`.../img/champion/<Champ>.png`), usado na seleção.
-- **Textos nos 4 idiomas** (regra do `CLAUDE.md`, "Internacionalização"): `name` do campeão, `skills[k].name`, `passive.name`, `hud()`, `gauge().label` com palavras e qualquer texto de popup/floater usam `L({ en, pt, es, zh })` de `src/i18n.ts`. Nomes oficiais vêm do Data Dragon (`data/{en_US,pt_BR,es_MX,zh_CN}/champion/<Champ>.json`; no zh o nome do campeão é o campo `title`). `tests/i18n.test.ts` já cobre `CHAMPIONS`.
+- **Textos nos 4 idiomas** (regra do `CLAUDE.md`, "Internacionalização"): nada de string no `ChampionDef`. `name: t('champion.<id>.name')`, `skills[k].name: t('champion.<id>.<K>')`, `passive.name: t('champion.<id>.passive')`, e `hud()`/popups/floaters com chaves `champion.<id>.*` e placeholders (ex. `t('champion.ezreal.hud', { stacks, max })`). Adicione as chaves nos 4 arquivos de `src/locales/`. Nomes oficiais vêm do Data Dragon (`data/{en_US,pt_BR,es_MX,zh_CN}/champion/<Champ>.json`; no zh o nome do campeão é o campo `title`). `tests/i18n.test.ts` já cobre `CHAMPIONS`.
 
 ## Kit: regras
 
