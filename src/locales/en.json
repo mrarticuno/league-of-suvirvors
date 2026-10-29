@@ -39,6 +39,8 @@
  "hud.stat.as": "AS",
  "hud.stat.crit": "Crit",
  "hud.stat.ms": "MS",
+ "touch.autoOff": "MANUAL",
+ "touch.autoOn": "AUTO",
  "item.1018": "Cloak of Agility",
  "item.1027": "Sapphire Crystal",
  "item.1028": "Ruby Crystal",

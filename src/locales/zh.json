@@ -39,6 +39,8 @@
  "hud.stat.as": "攻速",
  "hud.stat.crit": "暴击",
  "hud.stat.ms": "移速",
+ "touch.autoOff": "手动",
+ "touch.autoOn": "自动",
  "item.1018": "灵巧披风",
  "item.1027": "蓝水晶",
  "item.1028": "红水晶",

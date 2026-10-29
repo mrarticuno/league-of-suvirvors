@@ -3,6 +3,7 @@ import { Game } from './game';
 import { t, type Key } from './i18n';
 import { browserStorage, credit, loadProgress, saveProgress } from './progress';
 import { showChampionSelect, showRunePage } from './runePage';
+import { IS_TOUCH, TouchControls } from './touch';
 import { Hud } from './ui';
 import type { ChampionDef, SkillKey } from './champion';
 
@@ -64,6 +65,14 @@ addEventListener('mouseup', (e) => {
   if (e.button === 2) rightHeld = false;
 });
 
+// Touch: tapping an enemy marks it as focus (the tap's emulated mousedown above already covers manual targets)
+renderer.domElement.addEventListener('pointerdown', (e) => {
+  if (e.pointerType !== 'touch') return;
+  updateCursor(e);
+  const enemy = game.enemyAt(cursor);
+  if (enemy) game.focus = enemy;
+});
+
 let inMenu = true; // champion select / rune page open: the run doesn't simulate, nothing is drawn behind them
 let credited = false; // rune points of the finished run already saved
 
@@ -107,12 +116,29 @@ addEventListener('keydown', (e) => {
     game.cast(key, (dir.lengthSq() && game.aimPoint(key, dir)) || cursor);
   }
   if (k === 'd') game.flash(cursor);
-  if (k === 't') {
-    game.autoAttack = !game.autoAttack;
-    game.manualTarget = null;
-  }
+  if (k === 't') toggleAuto();
 });
 addEventListener('keyup', (e) => keys.delete(e.key.toLowerCase()));
+
+function toggleAuto() {
+  game.autoAttack = !game.autoAttack;
+  game.manualTarget = null;
+}
+
+const touch = IS_TOUCH ? new TouchControls(
+  (key, dir) => {
+    if (inMenu || hud.menuOpen || game.paused || game.over) return;
+    // tap: like casting while moving with the arrows (auto-aim, else the joystick or facing direction); drag: that way
+    const along = dir ?? (touch!.move.lengthSq() ? touch!.move : new THREE.Vector3(Math.sin(game.facing), 0, Math.cos(game.facing)));
+    if (key === 'flash') return game.flash(game.pos.clone().addScaledVector(along, 5000)); // Flash caps its range
+    const aim = game.champ.skills[key].aim;
+    // same reach as aimPoint, without its auto-target when aimed by hand
+    const point = (!dir && game.aimPoint(key, along)) || game.pos.clone().addScaledVector(along, typeof aim === 'number' ? aim : aim === 'move' ? 5000 : 0);
+    game.cast(key, point);
+  },
+  () => { if (!inMenu && !game.over) hud.toggleMenu(); },
+  toggleAuto,
+) : null;
 addEventListener('blur', () => keys.clear());
 
 // Arrow keys as a survivors-style alternative (WASD would collide with Q/W/E/R)
@@ -126,6 +152,7 @@ function arrowDir() {
 
 function moveInput() {
   const v = arrowDir();
+  if (touch?.move.lengthSq()) v.copy(touch.move);
   if (v.lengthSq()) {
     moveTarget = null;
     return v;
@@ -167,6 +194,7 @@ function frame(now = last) {
   camera.position.copy(game.pos).add(CAMERA_OFFSET);
   camera.lookAt(game.pos);
   hud.update(game);
+  touch?.update(game);
   hud.floaters(game, camera);
   renderer.render(game.scene, camera);
 }

@@ -39,6 +39,8 @@
  "hud.stat.as": "VA",
  "hud.stat.crit": "Crit",
  "hud.stat.ms": "VM",
+ "touch.autoOff": "MANUAL",
+ "touch.autoOn": "AUTO",
  "item.1018": "Capa da Agilidade",
  "item.1027": "Cristal de Safira",
  "item.1028": "Cristal de Rubi",
