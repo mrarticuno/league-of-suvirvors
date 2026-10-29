@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { Game } from './game';
+import { t, type Key } from './i18n';
 import { browserStorage, credit, loadProgress, saveProgress } from './progress';
 import { showChampionSelect, showRunePage } from './runePage';
 import { Hud } from './ui';
@@ -19,6 +20,10 @@ const resize = () => {
 };
 addEventListener('resize', resize);
 resize();
+
+// Static texts of index.html: `data-i18n` holds the src/locales key
+document.documentElement.lang = t('meta.tag');
+document.querySelectorAll<HTMLElement>('[data-i18n]').forEach((el) => { el.innerHTML = t(el.dataset.i18n as Key); });
 
 const game = new Game();
 let hud!: Hud; // built on the first Jogar (the menus come before), rebuilt when the champion changes
@@ -68,7 +73,7 @@ function openMenus() {
   document.body.classList.add('menus');
   keys.clear();
   showChampionSelect((champ) => showRunePage(champ, async (page) => {
-    loading.textContent = `Carregando ${champ.name}…`;
+    loading.textContent = t('loading.champion', { champion: champ.name });
     loading.style.display = '';
     await game.setChampion(champ);
     loading.style.display = 'none';
@@ -167,7 +172,7 @@ function frame(now = last) {
 }
 
 game
-  .load((done, total) => (loading.textContent = `Carregando modelos ${done}/${total}…`))
+  .load((done, total) => (loading.textContent = t('loading.models', { done, total })))
   .then(() => {
     loading.style.display = 'none';
     frame();

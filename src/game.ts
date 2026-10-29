@@ -16,6 +16,7 @@ import { loadMapPieces, loadMapTextures, WorldMap } from './map';
 import { emptyPage, type Page } from './progress';
 import { runeEffects } from './runes';
 import { SpatialGrid } from './spatial';
+import { t } from './i18n';
 import { compact, TimeWindow } from './util';
 import { loadVfx, Vfx, type MissileFx } from './vfx';
 
@@ -510,7 +511,7 @@ export class Game {
     const finals = this.slots.flatMap((s, i) => (isFinal(s) ? [i] : []));
     this.legendary = finals[Math.floor(Math.random() * finals.length)];
     this.setSlots(this.slots);
-    this.float(this.pos, 'Item Lendário!', 'crit');
+    this.float(this.pos, t('float.legendaryItem'), 'crit');
     audio.play('hud_legendary');
   }
 

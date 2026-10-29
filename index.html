@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="pt-BR">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -147,7 +147,7 @@
   <body class="menus">
     <div id="app"></div>
     <div id="floaters"></div>
-    <div id="loading">Carregando…</div>
+    <div id="loading" data-i18n="static.loading"></div>
     <div id="top">
       <div id="xp"><div id="xp-fill"></div></div>
       <div id="top-row"><span id="kills"></span><span id="timer"></span><span id="auto"></span></div>
@@ -160,36 +160,29 @@
       <div class="bar"><div id="mana-fill"></div><span id="mana-text"></span></div>
       <div id="stats"></div>
     </div>
-    <div id="help">
-      Botão direito no chão: mover (segure para seguir) · Setas: mover<br />
-      Botão direito no inimigo: focar alvo · T: ataque automático<br />
-      Ataque manual (auto desligado): botão esquerdo no inimigo<br />
-      Level-up: 1–9 escolhem a opção<br />
-      Q W E R: habilidades na direção do cursor<br />
-      Esc: pausa e som
-    </div>
+    <div id="help" data-i18n="static.help"></div>
     <div id="levelup" class="overlay">
       <h2 id="levelup-title"></h2>
       <div id="inv-edit"></div>
       <div id="shop">
         <div id="shop-left">
           <div id="choices"></div>
-          <button id="continue">Continuar</button>
+          <button id="continue" data-i18n="static.continue"></button>
         </div>
         <div id="tree"></div>
       </div>
     </div>
     <div id="menu" class="overlay">
-      <h2>Pausado</h2>
-      <button id="menu-resume">Continuar</button>
+      <h2 data-i18n="static.paused"></h2>
+      <button id="menu-resume" data-i18n="static.continue"></button>
       <button id="menu-music"></button>
       <button id="menu-sfx"></button>
     </div>
-    <div id="end" class="overlay"><h2 id="end-title"></h2><div id="end-stats"></div><div id="end-runes"></div><div id="end-items"></div><button id="restart">Continuar</button></div>
-    <div id="select" class="overlay"><h2>Escolha o campeão</h2><div id="select-list"></div></div>
+    <div id="end" class="overlay"><h2 id="end-title"></h2><div id="end-stats"></div><div id="end-runes"></div><div id="end-items"></div><button id="restart" data-i18n="static.continue"></button></div>
+    <div id="select" class="overlay"><h2 data-i18n="static.pickChampion"></h2><div id="select-list"></div></div>
     <div id="runes" class="overlay"><h2 id="runes-title"></h2><div id="runes-points"></div>
       <div id="runes-cols"><div class="rune-col" id="runes-primary"></div><div class="rune-col" id="runes-secondary"></div></div>
-      <div id="runes-shards"></div><div id="runes-tip"></div><button id="runes-play">Jogar</button></div>
+      <div id="runes-shards"></div><div id="runes-tip"></div><button id="runes-play" data-i18n="static.play"></button></div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

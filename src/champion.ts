@@ -40,7 +40,7 @@ export interface BaseStats {
 }
 
 export interface SkillDef {
-  name: string;
+  name: string; // player-facing: L({ en, pt, es, zh })
   maxRank: number;
   cooldown: readonly number[];
   cost: readonly number[];
@@ -57,7 +57,8 @@ export interface SkillDef {
 
 export interface ChampionDef {
   id: string; // prefix of the sound keys
-  name: string;
+  name: string; // player-facing: L({ en, pt, es, zh })
+  icon: string; // portrait (Data Dragon img/champion/<Champ>.png)
   model: string;
   /** Submeshes hidden at load (the skin bin's initialSubmeshToHide). */
   hide?: readonly string[];

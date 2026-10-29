@@ -1,10 +1,11 @@
 // Game data: enemies, spawns and the run timeline. Champions live in src/champions/, item passives in src/itemEffects.ts.
 // Enemy numbers are tuned for the survivors-like genre (many weak enemies), keeping LoL relative scale.
+import { t } from './i18n';
 
 export interface EnemyDef {
   model: string;
   mesh?: string; // .glb to load when this model only swaps the texture of another one
-  name?: string; // shown on the boss bar
+  name?: string; // shown on the boss bar (a src/locales key's text)
   hp: number;
   speed: number;
   damage: number;
@@ -80,18 +81,18 @@ export const ENEMIES: Record<string, EnemyDef> = {
   },
   scuttle: {
     // Rift Scuttler never fights in LoL; here it charges in and rams with its dash clip
-    model: 'scuttle', name: 'Aronguejo', hp: 5000, speed: 330, damage: 80, attackRange: 90, attackCooldown: 1.4, windup: 0.45,
+    model: 'scuttle', name: t('enemy.scuttle'), hp: 5000, speed: 330, damage: 80, attackRange: 90, attackCooldown: 1.4, windup: 0.45,
     xp: 100, radius: 120, tier: 'epic',
     anims: { run: 'sru_crab_run2', idle: 'sru_crab_idle1', death: 'sru_crab_burrow', attacks: ['sru_crab_dash'] },
   },
   riftherald: {
-    model: 'riftherald', name: 'Arauto do Vale', hp: 12000, speed: 280, damage: 90, attackRange: 120, attackCooldown: 1.5, windup: 0.5,
+    model: 'riftherald', name: t('enemy.riftherald'), hp: 12000, speed: 280, damage: 90, attackRange: 120, attackCooldown: 1.5, windup: 0.5,
     xp: 150, radius: 150, tier: 'epic',
     anims: { run: 'sru_riftherald_run', idle: 'sru_riftherald_angry_idle', death: 'sru_riftherald_death', attacks: ['sru_riftherald_attack1', 'sru_riftherald_attack2'] },
   },
   baron: {
     // Baron never moves (as in LoL); its abilities are driven by src/enemies/baron.ts, not the generic attack loop
-    model: 'baron', name: 'Barão Na\'Shor', hp: 150000, speed: 0, damage: 0, attackRange: 0, attackCooldown: 0, windup: 0,
+    model: 'baron', name: t('enemy.baron'), hp: 150000, speed: 0, damage: 0, attackRange: 0, attackCooldown: 0, windup: 0,
     xp: 500, radius: 250, tier: 'epic', immovable: true, hide: ['Horn', 'Eye'], // LoL hides these submeshes (initialSubmeshToHide)
     anims: { run: 'sru_baron_idle1_aggro', idle: 'sru_baron_idle1_aggro', death: 'sru_baron_death', attacks: ['sru_baron_attack1', 'sru_baron_attack2'] },
   },
@@ -101,12 +102,12 @@ const DRAGON_SCALE = 1.5; // drakes tower over champions on the Rift; the raw me
 
 // Elemental drakes: the 10:00 'dragon' event rolls one of them, like the Rift. Their buffs are not implemented yet.
 export const DRAGONS: { model: string; name: string; mesh?: string }[] = [
-  { model: 'dragon_earth', name: 'Dragão da Montanha', mesh: 'dragon_air' },
-  { model: 'dragon_air', name: 'Dragão das Nuvens' },
-  { model: 'dragon_water', name: 'Dragão do Oceano' },
-  { model: 'dragon_hextech', name: 'Dragão Hextech' },
-  { model: 'dragon_fire', name: 'Dragão Infernal', mesh: 'dragon_air' },
-  { model: 'dragon_chemtech', name: 'Dragão Quimtech' },
+  { model: 'dragon_earth', name: t('enemy.dragon_earth'), mesh: 'dragon_air' },
+  { model: 'dragon_air', name: t('enemy.dragon_air') },
+  { model: 'dragon_water', name: t('enemy.dragon_water') },
+  { model: 'dragon_hextech', name: t('enemy.dragon_hextech') },
+  { model: 'dragon_fire', name: t('enemy.dragon_fire'), mesh: 'dragon_air' },
+  { model: 'dragon_chemtech', name: t('enemy.dragon_chemtech') },
 ];
 for (const d of DRAGONS) {
   ENEMIES[d.model] = {

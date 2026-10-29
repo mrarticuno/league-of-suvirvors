@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { audio } from '../audio';
 import type { ChampionDef, ChampionKit, Hit, SkillDef, SkillKey } from '../champion';
 import type { Enemy, Game } from '../game';
+import { t } from '../i18n';
 import { facingQuat } from '../particles';
 
 const ICON = 'https://ddragon.leagueoflegends.com/cdn/16.21.1/img';
@@ -24,24 +25,24 @@ const PASSIVE = {
 
 const SKILLS = {
   Q: {
-    name: 'Flair', maxRank: 5, anim: 'spell1_gun', icon: `${ICON}/spell/SamiraQ.png`,
+    name: t('champion.samira.Q'), maxRank: 5, anim: 'spell1_gun', icon: `${ICON}/spell/SamiraQ.png`,
     cooldown: [6, 5, 4, 3, 2], cost: [30, 30, 30, 30, 30],
     damage: [0, 5, 10, 15, 20], adRatio: [0.95, 1.025, 1.1, 1.175, 1.25], critMultiplier: 1.25,
     range: 950, aim: 950, speed: 2600, width: 120, slashRange: 340, slashCone: 0, /* cos of the half angle: 180° in front */ slashFxOffset: 165, castTime: 0.25,
   },
   W: {
-    name: 'Blade Whirl', maxRank: 5, anim: 'spell2', icon: `${ICON}/spell/SamiraW.png`,
+    name: t('champion.samira.W'), maxRank: 5, anim: 'spell2', icon: `${ICON}/spell/SamiraW.png`,
     cooldown: [30, 28, 26, 24, 22], cost: [60, 60, 60, 60, 60],
     damage: [20, 35, 50, 65, 80], bonusAdRatio: 0.6, radius: 325, duration: 0.75, castTime: 0.1, aim: 'none',
   },
   E: {
-    name: 'Wild Rush', maxRank: 5, anim: 'spell3', icon: `${ICON}/spell/SamiraE.png`,
+    name: t('champion.samira.E'), maxRank: 5, anim: 'spell3', icon: `${ICON}/spell/SamiraE.png`,
     cooldown: [20, 18, 16, 14, 12], cost: [40, 40, 40, 40, 40],
     damage: [50, 60, 70, 80, 90], bonusAdRatio: 0.2, attackSpeed: [0.2, 0.25, 0.3, 0.35, 0.4], buffDuration: 5,
     distance: 600, aim: 600, speed: 1600, width: 150, castTime: 0.05,
   },
   R: {
-    name: 'Inferno Trigger', maxRank: 3, anim: 'spell4', icon: `${ICON}/spell/SamiraR.png`,
+    name: t('champion.samira.R'), maxRank: 3, anim: 'spell4', icon: `${ICON}/spell/SamiraR.png`,
     cooldown: [0, 0, 0], cost: [0, 0, 0], // gated by Style S instead of a cooldown
     damage: [5, 15, 25], adRatio: 0.45, minionMultiplier: 0.25, shots: 10, interval: 0.2, range: 600,
     slow: 0.3, speed: 2800, maxMissilesPerShot: 8, castTime: 0.05, aim: 'none',
@@ -62,7 +63,7 @@ const HITS = {
 const BLADE = new Set<Hit>([HITS.slash, HITS.slashCrit, HITS.W, HITS.E]);
 
 export const SAMIRA: ChampionDef = {
-  id: 'samira', name: 'Samira', model: 'samira',
+  id: 'samira', name: t('champion.samira.name'), model: 'samira', icon: `${ICON}/champion/Samira.png`,
   hide: ['Pistol_Blur', 'Revolver_Blur', 'Coin'],
   textures: { Pistol: 'samira_weapons', Revolver: 'samira_weapons', Sword: 'samira_weapons' },
   base: {
@@ -81,7 +82,7 @@ export const SAMIRA: ChampionDef = {
     armor: 26, armorPerLevel: 4.7,
   },
   skills: SKILLS,
-  passive: { name: 'Daredevil Impulse', icon: `${ICON}/passive/SamiraP.png` },
+  passive: { name: t('champion.samira.passive'), icon: `${ICON}/passive/SamiraP.png` },
   anims: {
     idle: 'idle_gun', run: 'run_gun', death: 'death',
     attacks: ['attack1_gun_start', 'attack2_gun_start'], crit: 'crit_gun_start',

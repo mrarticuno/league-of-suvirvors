@@ -2,13 +2,14 @@
 // Each buff is an always-present ItemEffect that only works while its timer runs, so the Game needs no list juggling.
 import type { Game } from './game';
 import type { ItemEffect } from './itemEffects';
+import { t } from './i18n';
 
 export type BuffKey = 'blue' | 'red';
 
 export const BUFF = {
   duration: 180, // seconds the buff lasts once collected
   dropLife: 10, // seconds the drop stays on the ground before vanishing
-  names: { blue: 'Cripta da Percepção', red: 'Crista de Cinzas' } as Record<BuffKey, string>,
+  names: { blue: t('buff.blue'), red: t('buff.red') } as Record<BuffKey, string>,
   colors: { blue: 0x3d8bff, red: 0xff4a2a } as Record<BuffKey, number>,
 };
 

@@ -3,12 +3,13 @@ import { audio } from './audio';
 import { BUFF } from './buffs';
 import { SKILL_KEYS, type ChampionDef, type SkillKey } from './champion';
 import { HORDE, xpToNext } from './data';
+import { t } from './i18n';
 import type { Choice, Game } from './game';
 import { KILLS_PER_POINT } from './progress';
 import { PASSIVES } from './itemEffects';
 import {
   buildComplete, claimed, describeStats, finalsVia, isFinal, isLocked, itemIcon, ITEMS, LEGENDARY_BONUS, lineTree, MAX_ITEMS,
-  nextSteps, rollOffers, slotItem, type LineNode,
+  nextSteps, POTIONS, rollOffers, slotItem, type LineNode,
 } from './items';
 
 const els = new Map<string, HTMLElement>();
@@ -53,21 +54,23 @@ export class Hud {
 
   update(g: Game) {
     text('timer', fmt(g.time));
-    text('kills', `${g.kills} abates`);
+    text('kills', t('hud.kills', { n: g.kills }));
     text('level', String(g.level));
     style('xp-fill', 'width', `${((g.xp / xpToNext(g.level)) * 100).toFixed(1)}%`);
     style('hp-fill', 'width', `${((g.hp / g.maxHp) * 100).toFixed(1)}%`);
-    text('hp-text', g.stasis > 0 ? `Anjo Guardião ${g.stasis.toFixed(1)}s` : `${Math.ceil(g.hp)} / ${Math.ceil(g.maxHp)}`);
+    text('hp-text', g.stasis > 0 ? `${ITEMS['3026'].name} ${g.stasis.toFixed(1)}s` : `${Math.ceil(g.hp)} / ${Math.ceil(g.maxHp)}`);
     style('mana-fill', 'width', `${((g.mana / g.maxMana) * 100).toFixed(1)}%`);
     text('mana-text', `${Math.floor(g.mana)} / ${Math.floor(g.maxMana)}`);
     if (changed('auto', String(g.autoAttack))) {
-      $('auto').textContent = `Ataque automático: ${g.autoAttack ? 'LIGADO' : 'DESLIGADO'} (T)`;
+      $('auto').textContent = t(g.autoAttack ? 'hud.autoOn' : 'hud.autoOff');
       $('auto').classList.toggle('off', !g.autoAttack);
     }
     const passive = g.kit.hud?.();
     const buffs = (['blue', 'red'] as const).filter((k) => g.buffs[k] > g.time).map((k) => ` · ${BUFF.names[k]} ${fmt(g.buffs[k] - g.time)}`).join('');
-    text('stats',
-      `DdA ${Math.round(g.ad)} · VA ${g.attackSpeed.toFixed(2)} · Arm ${Math.round(g.armor)} · VM ${g.moveSpeed} · AH ${g.abilityHaste} · Crit ${Math.round(g.critChance * 100)}%${passive ? ` · ${passive}` : ''}${buffs}`);
+    text('stats', [
+      `${t('hud.stat.ad')} ${Math.round(g.ad)}`, `${t('hud.stat.as')} ${g.attackSpeed.toFixed(2)}`, `${t('hud.stat.armor')} ${Math.round(g.armor)}`,
+      `${t('hud.stat.ms')} ${g.moveSpeed}`, `${t('hud.stat.ah')} ${g.abilityHaste}`, `${t('hud.stat.crit')} ${Math.round(g.critChance * 100)}%`,
+    ].join(' · ') + `${passive ? ` · ${passive}` : ''}${buffs}`);
     const gauge = g.kit.gauge?.();
     style('gauge', 'display', gauge ? 'block' : 'none');
     if (gauge) {
@@ -97,7 +100,7 @@ export class Hud {
     }
     const hordeIn = g.nextHordeAt - g.time;
     style('horde', 'display', hordeIn <= HORDE.warning ? 'block' : 'none');
-    if (hordeIn <= HORDE.warning) text('horde', `Horda chegando em ${Math.ceil(hordeIn)}s!`);
+    if (hordeIn <= HORDE.warning) text('horde', t('hud.horde', { s: Math.ceil(hordeIn) }));
     const boss = g.boss;
     style('boss', 'display', boss ? 'block' : 'none');
     if (boss) {
@@ -143,8 +146,8 @@ export class Hud {
   }
 
   private menuLabels() {
-    $('menu-music').textContent = `Música: ${audio.musicOn ? 'Ligada' : 'Desligada'}`;
-    $('menu-sfx').textContent = `Efeitos sonoros: ${audio.sfxOn ? 'Ligados' : 'Desligados'}`;
+    $('menu-music').textContent = t(audio.musicOn ? 'menu.musicOn' : 'menu.musicOff');
+    $('menu-sfx').textContent = t(audio.sfxOn ? 'menu.sfxOn' : 'menu.sfxOff');
   }
 
   /** Level-up: pick a skill rank (when one is available), then an item (or a potion once the build is complete). */
@@ -162,7 +165,7 @@ export class Hud {
   }
 
   private skillStep(g: Game, skills: SkillKey[], next: () => void) {
-    $('levelup-title').textContent = `Nível ${g.level} — escolha uma habilidade`;
+    $('levelup-title').textContent = t('levelup.skill', { level: g.level });
     $('inv-edit').innerHTML = '';
     $('tree').innerHTML = '';
     $('choices').innerHTML = skills.map((k, i) => {
@@ -171,7 +174,7 @@ export class Hud {
       return `<button data-i="${i}" class="skill-choice">
         <img src="${s.icon}" alt="">
         <div><b>${i + 1}. [${k}] ${s.name}</b>
-        <span>${r === 0 ? 'Aprender' : `Rank ${r} → ${r + 1}`} · Recarga ${s.cooldown[r]}s · Custo ${s.cost[r]} mana</span></div></button>`;
+        <span>${r === 0 ? t('levelup.learn') : t('levelup.rank', { from: r, to: r + 1 })} · ${t('levelup.cooldown', { s: s.cooldown[r] })} · ${t('levelup.cost', { mana: s.cost[r] })}</span></div></button>`;
     }).join('');
     this.keyActions = skills.map((k) => () => { g.rankUp(k); next(); });
     this.bindChoices();
@@ -179,7 +182,7 @@ export class Hud {
   }
 
   private itemStep(g: Game, done: () => void) {
-    $('levelup-title').textContent = `Nível ${g.level} — escolha um item`;
+    $('levelup-title').textContent = t('levelup.item', { level: g.level });
     $('inv-edit').innerHTML = slotsHtml(g, (i, cls, title) =>
       `<div class="slot ${cls}" title="${title}" data-slot="${i}"><img src="${itemIcon(slotItem(g.slots[i]))}" alt=""></div>`,
     '<div class="slot empty"></div>');
@@ -188,7 +191,7 @@ export class Hud {
     $('continue').style.display = 'block';
     $('continue').onclick = () => done();
     if (buildComplete(g.slots)) return this.potionStep(g, done);
-    $('continue').textContent = 'Recusar itens';
+    $('continue').textContent = t('levelup.declineItems');
     const offers = rollOffers(g.slots);
     // every choice is one numbered button: take the offer as a new item, or spend it evolving a slot of its line
     const actions: { label: string; run: () => void }[] = [];
@@ -198,17 +201,17 @@ export class Hud {
         buttons.push(`<button class="act" data-a="${actions.length}">${actions.length + 1}. ${label}</button>`);
         actions.push({ label, run });
       };
-      if (g.slots.length < MAX_ITEMS) add('Pegar como item novo', () => g.takeItem(base));
+      if (g.slots.length < MAX_ITEMS) add(t('levelup.takeNew'), () => g.takeItem(base));
       g.slots.forEach((s, i) => {
         if (s.base !== base) return;
         for (const step of nextSteps(g.slots, i)) {
           const finals = finalsVia(g.slots, i, step).map((f) => ITEMS[f].name).join(' / ');
-          add(`Evoluir ${ITEMS[slotItem(s)].name} → <b>${ITEMS[step].name}</b> <small>(${finals})</small>`, () => g.evolve(i, step));
+          add(t('levelup.evolve', { from: ITEMS[slotItem(s)].name, to: ITEMS[step].name, finals }), () => g.evolve(i, step));
         }
       });
       return `<div class="offer" data-o="${o}">${itemCard(base)}<div class="acts">${buttons.join('')}</div></div>`;
     });
-    $('choices').innerHTML = cards.join('') || '<div class="offer">Nenhum item disponível.</div>';
+    $('choices').innerHTML = cards.join('') || `<div class="offer">${t('levelup.noItems')}</div>`;
     $('choices').querySelectorAll<HTMLElement>('[data-o]').forEach((el) =>
       el.addEventListener('mouseenter', () => showTree(g, offers[Number(el.dataset.o)])));
     this.keyActions = actions.map((a) => () => { a.run(); done(); });
@@ -219,12 +222,12 @@ export class Hud {
 
   /** Build complete: level ups offer potions instead of items. */
   private potionStep(g: Game, done: () => void) {
-    $('levelup-title').textContent = `Nível ${g.level} — build completa, escolha uma poção`;
-    $('continue').textContent = 'Recusar';
+    $('levelup-title').textContent = t('levelup.potion', { level: g.level });
+    $('continue').textContent = t('levelup.decline');
     $('tree').innerHTML = '';
     const potions = [
-      { icon: '2003', name: 'Poção de Vida', text: 'Restaura 20% da Vida máxima.', run: () => g.drinkPotion('hp') },
-      { icon: '2031', name: 'Poção de Mana', text: 'Restaura 20% da Mana máxima.', run: () => g.drinkPotion('mana') },
+      { ...POTIONS.hp, run: () => g.drinkPotion('hp') },
+      { ...POTIONS.mana, run: () => g.drinkPotion('mana') },
     ];
     $('choices').innerHTML = potions.map((p, i) => `<div class="offer" role="button" tabindex="0" data-i="${i}">
       <img src="${itemIcon(p.icon)}" alt=""><div><b>${i + 1}. ${p.name}</b><span>${p.text}</span></div></div>`).join('');
@@ -246,7 +249,7 @@ export class Hud {
     $('inv-edit').innerHTML = '';
     $('tree').innerHTML = '';
     $('continue').style.display = 'block';
-    $('continue').textContent = 'Recusar';
+    $('continue').textContent = t('levelup.decline');
     $('continue').onclick = close;
     $('choices').innerHTML = c.options.map((o, i) => `<div class="offer" role="button" tabindex="0" data-i="${i}">
       <img src="${o.icon}" alt=""><div><b>${i + 1}. ${o.name}</b><span>${o.text}</span></div></div>`).join('');
@@ -256,9 +259,9 @@ export class Hud {
 
   /** `gained`: rune points earned this run; `remainder`: kills already counted towards the next point. */
   showEnd(g: Game, gained: number, remainder: number, onRestart: () => void) {
-    $('end-title').textContent = g.over === 'won' ? 'Vitória!' : 'Derrota';
-    $('end-stats').textContent = `Tempo ${fmt(g.time)} · Nível ${g.level} · ${g.kills} abates`;
-    $('end-runes').textContent = `+${gained} pontos de runa · ${KILLS_PER_POINT - remainder} abates até o próximo ponto`;
+    $('end-title').textContent = t(g.over === 'won' ? 'end.won' : 'end.lost');
+    $('end-stats').textContent = t('end.stats', { time: fmt(g.time), level: g.level, kills: g.kills });
+    $('end-runes').textContent = t('end.runes', { gained, kills: KILLS_PER_POINT - remainder });
     $('end-items').innerHTML = g.inventory.map((id) => `<img src="${itemIcon(id)}" title="${ITEMS[id].name}">`).join('');
     $('end').style.display = 'flex';
     $('restart').onclick = () => { $('end').style.display = 'none'; onRestart(); };
@@ -272,8 +275,8 @@ function slotsHtml(g: Game, cell: (i: number, cls: string, title: string) => str
     if (!s) return empty;
     const legendary = g.legendary === i;
     const state = legendary ? 'legendary' : isFinal(s) ? 'final' : isLocked(g.slots, i) ? 'locked' : '';
-    const label = { legendary: ' (Lendário)', final: ' (Completo)', locked: ' (Travado: sem evolução possível)', '': '' }[state];
-    return cell(i, state, `${ITEMS[slotItem(s)].name}${label}`);
+    const item = ITEMS[slotItem(s)].name;
+    return cell(i, state, state ? t(`slot.${state}`, { item }) : item);
   }).join('');
 }
 
@@ -297,14 +300,14 @@ function showTree(g: Game, base: string) {
     const owned = here(n);
     const finalItem = !n.kids.length;
     const state = owned ? 'owned' : blocked(n) ? 'missing' : finalItem ? 'root' : '';
-    const badge = owned ? `Você tem${owned > 1 ? ` ×${owned}` : ''}` : blocked(n) ? 'Bloqueado' : finalItem ? `${n.path.length + 1} cópias` : '';
+    const badge = owned ? `${t('tree.owned')}${owned > 1 ? ` ×${owned}` : ''}` : blocked(n) ? t('tree.blocked') : finalItem ? t('tree.copies', { n: n.path.length + 1 }) : '';
     const legendary = owned && g.legendary >= 0 && g.slots[g.legendary].base === base && g.slots[g.legendary].path.join() === n.path.join();
     const stats = describeStats(it.stats, legendary ? 1 + LEGENDARY_BONUS : 1);
     return `<li><div class="node ${state}" title="${it.name}${PASSIVES[n.id] ? ` — ${PASSIVES[n.id]}` : ''}">
         <img src="${itemIcon(n.id)}" alt=""><b>${it.name}</b><small>${stats}</small>${badge ? `<em>${badge}</em>` : ''}
       </div>${n.kids.length ? `<ul>${n.kids.map(node).join('')}</ul>` : ''}</li>`;
   };
-  $('tree').innerHTML = `<div class="tree-head"><b>Linha: ${ITEMS[base].name}</b>
-      <span>Cada cópia de ${ITEMS[base].name} evolui um item desta linha um passo. Itens completos são únicos.</span></div>
+  $('tree').innerHTML = `<div class="tree-head"><b>${t('tree.line', { item: ITEMS[base].name })}</b>
+      <span>${t('tree.help', { item: ITEMS[base].name })}</span></div>
     <ul class="tree">${node(lineTree(base))}</ul>`;
 }

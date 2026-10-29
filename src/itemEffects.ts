@@ -4,6 +4,7 @@
 // New passive: add an entry here; no Game change is needed unless it needs a brand new hook.
 import type { Hit, SkillKey } from './champion';
 import type { Enemy, Game } from './game';
+import { t } from './i18n';
 import type { ItemStats } from './items';
 
 /** Stats an effect can add to (item stats plus rune-only ones). `range` is attack range in units. */
@@ -71,26 +72,26 @@ const BURN: Hit = { type: 'magic', source: 'item' };
 
 export const ITEM_PASSIVES: Record<string, ItemPassive> = {
   '3057': { // Sheen
-    desc: 'Lâmina Arcana: após usar uma habilidade, o próximo ataque causa +100% do DdA base.',
+    desc: t('item.3057.passive'),
     effect: spellblade(0, (g) => g.baseAd),
   },
   '3078': { // Trinity Force
-    desc: 'Lâmina Arcana: após usar uma habilidade, o próximo ataque causa +200% do DdA base.',
+    desc: t('item.3078.passive'),
     effect: spellblade(2, (g) => 2 * g.baseAd),
   },
   '3508': { // Essence Reaver
-    desc: 'Lâmina Arcana: próximo ataque após habilidade causa +100% DdA base +40% DdA adicional e restaura mana.',
+    desc: t('item.3508.passive'),
     effect: spellblade(1, (g) => {
       g.mana = Math.min(g.maxMana, g.mana + 0.1 * (g.maxMana - g.mana));
       return g.baseAd + 0.4 * g.bonusAd;
     }),
   },
   '3004': { // Manamune
-    desc: 'Fascínio: recebe DdA adicional igual a 2,5% da Mana máxima.',
+    desc: t('item.3004.passive'),
     effect: (g) => ({ bonusAd: () => 0.025 * g.maxMana }),
   },
   '6672': { // Kraken Slayer
-    desc: 'Derrubar: a cada 3 ataques, causa dano físico adicional (maior contra alvos feridos).',
+    desc: t('item.6672.passive'),
     effect: (g) => {
       let count = 0;
       return {
@@ -100,12 +101,14 @@ export const ITEM_PASSIVES: Record<string, ItemPassive> = {
     },
   },
   '3153': { // Blade of the Ruined King
-    desc: 'Gume da Névoa: ataques causam 6% da Vida atual do alvo como dano físico.',
+    desc: t('item.3153.passive'),
     effect: () => ({ onHit: (e) => Math.min(e.def.tier === 'epic' ? Infinity : 100, 0.06 * e.hp) }),
   },
-  '3031': { desc: '+30% de dano de acerto crítico.' }, // Infinity Edge: the bonus is the critDamage stat
+  '3031': { // Infinity Edge: the bonus is the critDamage stat
+    desc: t('item.3031.passive'),
+  },
   '3071': { // Black Cleaver
-    desc: 'Talhar: dano físico reduz a Armadura do alvo em 6% (acumula 5x).',
+    desc: t('item.3071.passive'),
     effect: (g) => ({
       onPhysical: (e) => {
         e.shred = e.shredUntil > g.time ? Math.min(5, e.shred + 1) : 1;
@@ -114,7 +117,7 @@ export const ITEM_PASSIVES: Record<string, ItemPassive> = {
     }),
   },
   '3026': { // Guardian Angel
-    desc: 'Renascimento: ao sofrer dano letal, revive com 50% da Vida base (1x a cada 5 min).',
+    desc: t('item.3026.passive'),
     effect: (g) => {
       let readyAt = 0;
       return {
@@ -131,11 +134,11 @@ export const ITEM_PASSIVES: Record<string, ItemPassive> = {
     },
   },
   '3110': { // Frozen Heart
-    desc: 'Carícia do Inverno: inimigos próximos atacam 20% mais devagar.',
+    desc: t('item.3110.passive'),
     effect: () => ({ enemyAttackCooldown: (dist) => (dist < 700 ? 1.25 : 1) }),
   },
   '3085': { // Runaan's Hurricane
-    desc: 'Fúria do Vento: ataques disparam projéteis em até 2 inimigos próximos, causando 55% do dano e efeitos ao acertar.',
+    desc: t('item.3085.passive'),
     effect: (g) => ({
       onAttack: (target, damage, crit) => {
         let last = target;
@@ -149,7 +152,7 @@ export const ITEM_PASSIVES: Record<string, ItemPassive> = {
     }),
   },
   '3068': { // Sunfire Aegis
-    desc: 'Imolação: queima inimigos próximos, causando dano mágico por segundo (aumenta com nível e Vida adicional).',
+    desc: t('item.3068.passive'),
     effect: (g) => {
       let timer = 0;
       const near: Enemy[] = [];

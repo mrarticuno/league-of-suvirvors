@@ -10,15 +10,16 @@ import { INSPIRATION } from './inspiration';
 import { PRECISION } from './precision';
 import { RESOLVE } from './resolve';
 import { SORCERY } from './sorcery';
+import { t, type Key } from '../i18n';
 
 export { ADAPTIVE_AD, runeList, type RuneDef, type TreeId } from './def';
 
 export const TREES: Record<TreeId, { name: string; icon: string }> = {
-  precision: { name: 'Precisão', icon: `${IMG}Styles/7201_Precision.png` },
-  domination: { name: 'Dominação', icon: `${IMG}Styles/7200_Domination.png` },
-  sorcery: { name: 'Feitiçaria', icon: `${IMG}Styles/7202_Sorcery.png` },
-  resolve: { name: 'Determinação', icon: `${IMG}Styles/7204_Resolve.png` },
-  inspiration: { name: 'Inspiração', icon: `${IMG}Styles/7203_Whimsy.png` },
+  precision: { name: t('tree.precision'), icon: `${IMG}Styles/7201_Precision.png` },
+  domination: { name: t('tree.domination'), icon: `${IMG}Styles/7200_Domination.png` },
+  sorcery: { name: t('tree.sorcery'), icon: `${IMG}Styles/7202_Sorcery.png` },
+  resolve: { name: t('tree.resolve'), icon: `${IMG}Styles/7204_Resolve.png` },
+  inspiration: { name: t('tree.inspiration'), icon: `${IMG}Styles/7203_Whimsy.png` },
 };
 export const TREE_IDS = Object.keys(TREES) as TreeId[];
 
@@ -31,14 +32,14 @@ export const runesOf = (tree: TreeId, row?: number) =>
 
 
 export type ShardStat = 'adaptive' | 'as' | 'ah' | 'ms' | 'hpScaling' | 'hp' | 'tenacity';
-const shard = (name: string, stat: ShardStat, icon: string) => ({ name, stat, icon: `${IMG}StatMods/${icon}.png` });
-const ADAPTIVE = shard('Força adaptativa +9', 'adaptive', 'StatModsAdaptiveForceIcon');
-const HP_SCALING = shard('Vida +10–180 (por nível)', 'hpScaling', 'StatModsHealthScalingIcon');
+const shard = (stat: ShardStat, icon: string) => ({ name: t(`shard.${stat}` as Key), stat, icon: `${IMG}StatMods/${icon}.png` });
+const ADAPTIVE = shard('adaptive', 'StatModsAdaptiveForceIcon');
+const HP_SCALING = shard('hpScaling', 'StatModsHealthScalingIcon');
 /** Stat shards: 3 rows (offense, flex, defense), one pick per row; rows are unlocked whole. */
 export const SHARDS = [
-  [ADAPTIVE, shard('Vel. de ataque +10%', 'as', 'StatModsAttackSpeedIcon'), shard('Aceleração de habilidade +8', 'ah', 'StatModsCDRScalingIcon')],
-  [ADAPTIVE, shard('Vel. de movimento +2%', 'ms', 'StatModsMovementSpeedIcon'), HP_SCALING],
-  [shard('Vida +65', 'hp', 'StatModsHealthPlusIcon'), shard('Tenacidade +15%', 'tenacity', 'StatModsTenacityIcon'), HP_SCALING],
+  [ADAPTIVE, shard('as', 'StatModsAttackSpeedIcon'), shard('ah', 'StatModsCDRScalingIcon')],
+  [ADAPTIVE, shard('ms', 'StatModsMovementSpeedIcon'), HP_SCALING],
+  [shard('hp', 'StatModsHealthPlusIcon'), shard('tenacity', 'StatModsTenacityIcon'), HP_SCALING],
 ];
 
 /** Stats granted by the picked shards at `level`. */

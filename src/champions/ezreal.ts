@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { audio } from '../audio';
 import { SKILL_KEYS, type ChampionDef, type ChampionKit, type Hit, type SkillDef, type SkillKey } from '../champion';
 import type { Enemy, Game } from '../game';
+import { t } from '../i18n';
 import { facingQuat } from '../particles';
 
 const ICON = 'https://ddragon.leagueoflegends.com/cdn/16.21.1/img';
@@ -10,25 +11,25 @@ const PASSIVE = { asPerStack: 0.10, maxStacks: 5, duration: 6 };
 
 const SKILLS = {
   Q: {
-    name: 'Mystic Shot', maxRank: 5, anim: 'ezreal_spell1', icon: `${ICON}/spell/EzrealQ.png`,
+    name: t('champion.ezreal.Q'), maxRank: 5, anim: 'ezreal_spell1', icon: `${ICON}/spell/EzrealQ.png`,
     cooldown: [5.5, 5.25, 5, 4.75, 4.5], cost: [28, 31, 34, 37, 40],
     damage: [20, 45, 70, 95, 120], adRatio: 1.3,
     range: 1200, aim: 1200, speed: 2000, width: 120, castTime: 0.25, cdRefundOnHit: 1.5,
   },
   W: {
-    name: 'Essence Flux', maxRank: 5, anim: 'ezreal_spell2', icon: `${ICON}/spell/EzrealW.png`,
+    name: t('champion.ezreal.W'), maxRank: 5, anim: 'ezreal_spell2', icon: `${ICON}/spell/EzrealW.png`,
     cooldown: [8, 8, 8, 8, 8], cost: [50, 50, 50, 50, 50],
     damage: [80, 135, 190, 245, 300], bonusAdRatio: 1.0,
     range: 1200, aim: 1200, speed: 1700, width: 160, castTime: 0.25, markDuration: 4, manaRestore: 60,
   },
   E: {
-    name: 'Arcane Shift', maxRank: 5, anim: 'ezreal_spell3_generic', icon: `${ICON}/spell/EzrealE.png`,
+    name: t('champion.ezreal.E'), maxRank: 5, anim: 'ezreal_spell3_generic', icon: `${ICON}/spell/EzrealE.png`,
     cooldown: [26, 23, 20, 17, 14], cost: [70, 70, 70, 70, 70],
     damage: [80, 130, 180, 230, 280], bonusAdRatio: 0.5,
     aim: 'move', blinkRange: 475, boltRange: 750, speed: 2000, castTime: 0.25,
   },
   R: {
-    name: 'Trueshot Barrage', maxRank: 3, anim: 'ezreal_spell4', icon: `${ICON}/spell/EzrealR.png`,
+    name: t('champion.ezreal.R'), maxRank: 3, anim: 'ezreal_spell4', icon: `${ICON}/spell/EzrealR.png`,
     cooldown: [120, 105, 90], cost: [100, 100, 100],
     damage: [350, 550, 750], bonusAdRatio: 1.0,
     range: 6000, aim: 2500, speed: 2000, width: 320, castTime: 1, nonEpicMultiplier: 0.5,
@@ -45,7 +46,7 @@ const HITS: Record<SkillKey, Hit> = {
 const CAST_VFX: Partial<Record<SkillKey, string[]>> = { Q: ['Ezreal_Q_bow01'], W: ['Ezreal_W_Cas'], R: ['Ezreal_R_bow_01', 'Ezreal_R_Gauntlet_Glow'] };
 
 export const EZREAL: ChampionDef = {
-  id: 'ezreal', name: 'Ezreal', model: 'ezreal',
+  id: 'ezreal', name: t('champion.ezreal.name'), model: 'ezreal', icon: `${ICON}/champion/Ezreal.png`,
   base: {
     hp: 600, hpPerLevel: 102,
     hpRegen5: 4, hpRegen5PerLevel: 0.65,
@@ -62,7 +63,7 @@ export const EZREAL: ChampionDef = {
     armor: 24, armorPerLevel: 4.2,
   },
   skills: SKILLS,
-  passive: { name: 'Rising Spell Force', icon: `${ICON}/passive/Ezreal_RisingSpellForce.png` },
+  passive: { name: t('champion.ezreal.passive'), icon: `${ICON}/passive/Ezreal_RisingSpellForce.png` },
   anims: {
     idle: 'ezreal_idle', run: 'ezreal_run', death: 'ezreal_death',
     attacks: ['ezreal_attack1', 'ezreal_attack2', 'ezreal_attack3', 'ezreal_attack4'], crit: 'ezreal_crit',
@@ -88,7 +89,7 @@ function ezrealKit(g: Game): ChampionKit {
 
   return {
     attackSpeedBonus: () => stacks * PASSIVE.asPerStack,
-    hud: () => `Passiva ${stacks}/${PASSIVE.maxStacks}`,
+    hud: () => t('champion.ezreal.hud', { stacks, max: PASSIVE.maxStacks }),
 
     update(dt) {
       if ((stackTimer -= dt) <= 0) stacks = 0;

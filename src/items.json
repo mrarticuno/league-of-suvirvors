@@ -3,7 +3,6 @@
  "items": {
   "3078": {
    "id": "3078",
-   "name": "Força da Trindade",
    "stats": {
     "hp": 333,
     "ad": 36,
@@ -20,7 +19,6 @@
   },
   "3057": {
    "id": "3057",
-   "name": "Fulgor",
    "stats": {
     "ah": 10.0
    },
@@ -35,7 +33,6 @@
   },
   "2022": {
    "id": "2022",
-   "name": "Partícula Brilhante",
    "stats": {
     "ah": 5.0
    },
@@ -51,7 +48,6 @@
   },
   "3044": {
    "id": "3044",
-   "name": "Fago",
    "stats": {
     "hp": 200,
     "ad": 15
@@ -68,7 +64,6 @@
   },
   "1028": {
    "id": "1028",
-   "name": "Cristal de Rubi",
    "stats": {
     "hp": 150
    },
@@ -85,7 +80,6 @@
   },
   "1036": {
    "id": "1036",
-   "name": "Espada Longa",
    "stats": {
     "ad": 10
    },
@@ -107,7 +101,6 @@
   },
   "3051": {
    "id": "3051",
-   "name": "Machado Termestre",
    "stats": {
     "ad": 20,
     "as": 0.2
@@ -125,7 +118,6 @@
   },
   "1042": {
    "id": "1042",
-   "name": "Adaga",
    "stats": {
     "as": 0.1
    },
@@ -140,7 +132,6 @@
   },
   "3004": {
    "id": "3004",
-   "name": "Manamune",
    "stats": {
     "mana": 500,
     "ad": 35,
@@ -156,7 +147,6 @@
   },
   "3070": {
    "id": "3070",
-   "name": "Lágrima da Deusa",
    "stats": {
     "mana": 240
    },
@@ -168,7 +158,6 @@
   },
   "3133": {
    "id": "3133",
-   "name": "Martelo de Guerra de Caulfield",
    "stats": {
     "ad": 20,
     "ah": 10.0
@@ -188,7 +177,6 @@
   },
   "3161": {
    "id": "3161",
-   "name": "Lança de Shojin",
    "stats": {
     "hp": 450,
     "ad": 45,
@@ -204,7 +192,6 @@
   },
   "1037": {
    "id": "1037",
-   "name": "Picareta",
    "stats": {
     "ad": 25
    },
@@ -220,7 +207,6 @@
   },
   "2021": {
    "id": "2021",
-   "name": "Tunelizador",
    "stats": {
     "hp": 250,
     "ad": 15
@@ -236,7 +222,6 @@
   },
   "6694": {
    "id": "6694",
-   "name": "Rancor de Serylda",
    "stats": {
     "ad": 45,
     "ah": 15.0,
@@ -251,7 +236,6 @@
   },
   "3035": {
    "id": "3035",
-   "name": "Último Sussurro",
    "stats": {
     "ad": 20,
     "armorPen": 0.18
@@ -267,7 +251,6 @@
   },
   "2517": {
    "id": "2517",
-   "name": "Fome Eterna",
    "stats": {
     "ad": 65,
     "omnivamp": 0.05
@@ -282,7 +265,6 @@
   },
   "3110": {
    "id": "3110",
-   "name": "Coração Congelado",
    "stats": {
     "mana": 400,
     "armor": 75,
@@ -297,7 +279,6 @@
   },
   "3082": {
    "id": "3082",
-   "name": "Carapaça do Vigia",
    "stats": {
     "armor": 40
    },
@@ -312,7 +293,6 @@
   },
   "1029": {
    "id": "1029",
-   "name": "Couraça de Pano",
    "stats": {
     "armor": 15
    },
@@ -327,7 +307,6 @@
   },
   "3024": {
    "id": "3024",
-   "name": "Broquel Glacial",
    "stats": {
     "mana": 300,
     "armor": 25,
@@ -345,7 +324,6 @@
   },
   "1027": {
    "id": "1027",
-   "name": "Cristal de Safira",
    "stats": {
     "mana": 300
    },
@@ -357,7 +335,6 @@
   },
   "3026": {
    "id": "3026",
-   "name": "Anjo Guardião",
    "stats": {
     "armor": 45,
     "ad": 55
@@ -371,7 +348,6 @@
   },
   "2019": {
    "id": "2019",
-   "name": "Sigilo de Aço",
    "stats": {
     "armor": 30,
     "ad": 15
@@ -388,7 +364,6 @@
   },
   "1038": {
    "id": "1038",
-   "name": "Espada G. p. C.",
    "stats": {
     "ad": 40
    },
@@ -401,7 +376,6 @@
   },
   "3071": {
    "id": "3071",
-   "name": "Cutelo Negro",
    "stats": {
     "hp": 400,
     "ad": 45,
@@ -417,7 +391,6 @@
   },
   "3067": {
    "id": "3067",
-   "name": "Gema Ardente",
    "stats": {
     "hp": 200,
     "ah": 10.0
@@ -433,7 +406,6 @@
   },
   "6672": {
    "id": "6672",
-   "name": "Mata-Cráquens",
    "stats": {
     "ad": 45,
     "as": 0.4,
@@ -449,7 +421,6 @@
   },
   "6690": {
    "id": "6690",
-   "name": "Retriz",
    "stats": {
     "ad": 15,
     "msPct": 0.04
@@ -464,7 +435,6 @@
   },
   "1043": {
    "id": "1043",
-   "name": "Arco Recurvo",
    "stats": {
     "as": 0.15
    },
@@ -479,7 +449,6 @@
   },
   "3153": {
    "id": "3153",
-   "name": "Espada do Rei Destruído",
    "stats": {
     "ad": 40,
     "as": 0.25,
@@ -495,7 +464,6 @@
   },
   "1053": {
    "id": "1053",
-   "name": "Cetro Vampírico",
    "stats": {
     "ad": 15,
     "lifesteal": 0.07
@@ -510,7 +478,6 @@
   },
   "3031": {
    "id": "3031",
-   "name": "Gume do Infinito",
    "stats": {
     "crit": 0.25,
     "ad": 75,
@@ -526,7 +493,6 @@
   },
   "1018": {
    "id": "1018",
-   "name": "Capa da Agilidade",
    "stats": {
     "crit": 0.15
    },
@@ -541,7 +507,6 @@
   },
   "3508": {
    "id": "3508",
-   "name": "Colhedor de Essência",
    "stats": {
     "crit": 0.25,
     "ad": 50,
@@ -557,7 +522,6 @@
   },
   "3085": {
    "id": "3085",
-   "name": "Furacão de Runaan",
    "stats": {
     "crit": 0.25,
     "as": 0.4,
@@ -572,7 +536,6 @@
   },
   "3086": {
    "id": "3086",
-   "name": "Zelo",
    "stats": {
     "crit": 0.15,
     "as": 0.15,
@@ -589,7 +552,6 @@
   },
   "3144": {
    "id": "3144",
-   "name": "Estilingue do Patrulheiro",
    "stats": {
     "as": 0.2
    },
@@ -604,7 +566,6 @@
   },
   "3068": {
    "id": "3068",
-   "name": "Égide de Fogo Solar",
    "stats": {
     "hp": 350,
     "armor": 50,
@@ -620,7 +581,6 @@
   },
   "6660": {
    "id": "6660",
-   "name": "Brasa de Bami",
    "stats": {
     "hp": 150,
     "ah": 5.0
@@ -636,7 +596,6 @@
   },
   "1031": {
    "id": "1031",
-   "name": "Cota de Malha",
    "stats": {
     "armor": 40
    },
@@ -650,7 +609,6 @@
   },
   "6670": {
    "id": "6670",
-   "name": "Aljava Vespertina",
    "stats": {
     "crit": 0.2,
     "ad": 15

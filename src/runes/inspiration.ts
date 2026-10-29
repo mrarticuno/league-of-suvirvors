@@ -1,38 +1,27 @@
 import type { Enemy } from '../game';
-import { itemIcon } from '../items';
+import { itemIcon, POTIONS } from '../items';
 import { IMG, isBig, runeList } from './def';
+import { t } from '../i18n';
 
 const SPELLBOOK = [
-  { name: '+15 DdA', stat: 'ad', value: 15, icon: 'StatMods/StatModsAdaptiveForceIcon.png' },
-  { name: '+15% Vel. de Ataque', stat: 'as', value: 0.15, icon: 'StatMods/StatModsAttackSpeedIcon.png' },
-  { name: '+15 Aceleração de Habilidade', stat: 'ah', value: 15, icon: 'StatMods/StatModsCDRScalingIcon.png' },
+  { name: t('rune.unsealed-spellbook.ad'), stat: 'ad', value: 15, icon: 'StatMods/StatModsAdaptiveForceIcon.png' },
+  { name: t('rune.unsealed-spellbook.as'), stat: 'as', value: 0.15, icon: 'StatMods/StatModsAttackSpeedIcon.png' },
+  { name: t('rune.unsealed-spellbook.ah'), stat: 'ah', value: 15, icon: 'StatMods/StatModsCDRScalingIcon.png' },
 ] as const;
 
 export const INSPIRATION = runeList('inspiration', [
-  ['glacial-augment', 'Aprimoramento Glacial', 0, 'Styles/Inspiration/GlacialAugment/GlacialAugment.png',
-    'O primeiro ataque em um alvo o deixa 30% mais lento por 2s.'],
-  ['unsealed-spellbook', 'Livro de Feitiços Deslacrado', 0, 'Styles/Inspiration/UnsealedSpellbook/UnsealedSpellbook.png',
-    'A cada 2 min, escolha o atributo bônus da partida: DdA, Vel. de Ataque ou Aceleração de Habilidade.'],
-  ['first-strike', 'Primeiro Ataque', 0, 'Styles/Inspiration/FirstStrike/FirstStrike.png',
-    'Causar o primeiro dano a um elite ou épico concede +7% de dano contra ele por 3s.'],
-  ['hextech-flashtraption', 'Flashtração Hextec', 1, 'Styles/Inspiration/HextechFlashtraption/HextechFlashtraption.png',
-    'Habilita Flash na tecla D: avança 400 unidades até o cursor. Recarga de 120s.'],
-  ['magical-footwear', 'Calçados Mágicos', 1, 'Styles/Inspiration/MagicalFootwear/MagicalFootwear.png',
-    'Aos 6 min, +10% de Vel. de Movimento permanente; cada 300 abates antecipa o bônus em 30s.'],
-  ['cash-back', 'Reembolso', 1, 'Styles/Inspiration/CashBack/CashBack2.png',
-    '+10% de XP dos abates.'],
-  ['triple-tonic', 'Tônico Triplo', 2, 'Styles/Inspiration/PerfectTiming/AlchemistCabinet.png',
-    'Nos níveis 3, 6 e 9, escolha uma poção grátis.'],
-  ['time-warp-tonic', 'Tônico de Distorção no Tempo', 2, 'Styles/Inspiration/TimeWarpTonic/TimeWarpTonic.png',
-    'Poções concedem +5% de Vel. de Movimento por 2s.'],
-  ['biscuit-delivery', 'Entrega de Biscoitos', 2, 'Styles/Inspiration/BiscuitDelivery/BiscuitDelivery.png',
-    'A cada 2 min até os 6 min, restaura 8% da Vida e da Mana faltantes e concede +10 de Mana máxima.'],
-  ['cosmic-insight', 'Perspicácia Cósmica', 3, 'Styles/Inspiration/CosmicInsight/CosmicInsight.png',
-    '+18 de Aceleração de Habilidade.'],
-  ['approach-velocity', 'Velocidade de Aproximação', 3, 'Styles/Resolve/ApproachVelocity/ApproachVelocity.png',
-    '+7,5% de Vel. de Movimento ao andar em direção a um inimigo lento ou ao alvo em foco.'],
-  ['jack-of-all-trades', 'Quebra-galho', 3, 'Styles/Inspiration/JackOfAllTrades/JackofAllTrades2.png',
-    '+1 de Aceleração de Habilidade por atributo diferente nos itens. Com 5 atributos, +10 de DdA; com 10, +25.'],
+  ['glacial-augment', 0, 'Styles/Inspiration/GlacialAugment/GlacialAugment.png'],
+  ['unsealed-spellbook', 0, 'Styles/Inspiration/UnsealedSpellbook/UnsealedSpellbook.png'],
+  ['first-strike', 0, 'Styles/Inspiration/FirstStrike/FirstStrike.png'],
+  ['hextech-flashtraption', 1, 'Styles/Inspiration/HextechFlashtraption/HextechFlashtraption.png'],
+  ['magical-footwear', 1, 'Styles/Inspiration/MagicalFootwear/MagicalFootwear.png'],
+  ['cash-back', 1, 'Styles/Inspiration/CashBack/CashBack2.png'],
+  ['triple-tonic', 2, 'Styles/Inspiration/PerfectTiming/AlchemistCabinet.png'],
+  ['time-warp-tonic', 2, 'Styles/Inspiration/TimeWarpTonic/TimeWarpTonic.png'],
+  ['biscuit-delivery', 2, 'Styles/Inspiration/BiscuitDelivery/BiscuitDelivery.png'],
+  ['cosmic-insight', 3, 'Styles/Inspiration/CosmicInsight/CosmicInsight.png'],
+  ['approach-velocity', 3, 'Styles/Resolve/ApproachVelocity/ApproachVelocity.png'],
+  ['jack-of-all-trades', 3, 'Styles/Inspiration/JackOfAllTrades/JackofAllTrades2.png'],
 ], {
   'glacial-augment': (g) => {
     const hit = new WeakSet<Enemy>();
@@ -51,8 +40,8 @@ export const INSPIRATION = runeList('inspiration', [
         if (g.time < next) return;
         next += 120;
         g.choices.push({
-          title: 'Livro de Feitiços Deslacrado — escolha o atributo',
-          options: SPELLBOOK.map((o) => ({ name: o.name, text: 'Substitui a escolha anterior.', icon: IMG + o.icon, run: () => { picked = o; } })),
+          title: t('rune.unsealed-spellbook.title'),
+          options: SPELLBOOK.map((o) => ({ name: o.name, text: t('rune.unsealed-spellbook.option'), icon: IMG + o.icon, run: () => { picked = o; } })),
         });
       },
       stat: (k) => (picked?.stat === k ? picked.value : 0),
@@ -74,10 +63,10 @@ export const INSPIRATION = runeList('inspiration', [
     onLevel: () => {
       if (![3, 6, 9].includes(g.level)) return;
       g.choices.push({
-        title: 'Tônico Triplo — poção grátis',
+        title: t('rune.triple-tonic.title'),
         options: [
-          { name: 'Poção de Vida', text: 'Restaura 20% da Vida máxima.', icon: itemIcon('2003'), run: () => g.drinkPotion('hp') },
-          { name: 'Poção de Mana', text: 'Restaura 20% da Mana máxima.', icon: itemIcon('2031'), run: () => g.drinkPotion('mana') },
+          { name: POTIONS.hp.name, text: POTIONS.hp.text, icon: itemIcon(POTIONS.hp.icon), run: () => g.drinkPotion('hp') },
+          { name: POTIONS.mana.name, text: POTIONS.mana.text, icon: itemIcon(POTIONS.mana.icon), run: () => g.drinkPotion('mana') },
         ],
       });
     },
