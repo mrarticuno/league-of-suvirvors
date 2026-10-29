@@ -1,7 +1,6 @@
 // Enemy peculiarities. Plain enemies only need an EnemyDef (src/data.ts) and use the generic chase-and-attack loop
 // in game.ts. An enemy with its own behaviour registers an AI factory here (one instance per spawned enemy); an
 // event of the timeline (EVENTS) with special spawn rules registers a spawner.
-import { DRAGONS } from '../data';
 import type { Enemy, Game } from '../game';
 import { baronAI, startBaronFight } from './baron';
 
@@ -19,5 +18,5 @@ export const AI: Record<string, (g: Game, e: Enemy) => EnemyAI> = {
 
 export const SPAWNERS: Record<string, (g: Game) => void> = {
   baron: startBaronFight,
-  dragon: (g) => g.spawnEnemy(DRAGONS[Math.floor(Math.random() * DRAGONS.length)].model), // rolls an elemental drake, like the Rift
+  dragon: (g) => g.spawnEnemy(g.dragon), // the elemental drake rolled for the run (reset), like the Rift
 };

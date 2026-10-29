@@ -1,10 +1,9 @@
 import * as THREE from 'three';
-import { CHAMPIONS } from './champions';
 import { Game } from './game';
 import { browserStorage, credit, loadProgress, saveProgress } from './progress';
 import { showChampionSelect, showRunePage } from './runePage';
 import { Hud } from './ui';
-import type { SkillKey } from './champion';
+import type { ChampionDef, SkillKey } from './champion';
 
 // LoL-style camera: high, pitched ~56°, looking down at the champion
 const CAMERA_OFFSET = new THREE.Vector3(0, 1900, 1250);
@@ -21,9 +20,10 @@ const resize = () => {
 addEventListener('resize', resize);
 resize();
 
-// no champion select yet: ?champ=<id> picks one, default otherwise
-const game = new Game(CHAMPIONS[new URLSearchParams(location.search).get('champ') ?? '']);
-let hud = new Hud(game.champ);
+const game = new Game();
+let hud!: Hud; // built on the first Jogar (the menus come before), rebuilt when the champion changes
+let hudChamp: ChampionDef | null = null;
+const loading = document.getElementById('loading')!;
 const keys = new Set<string>();
 const cursor = new THREE.Vector3();
 const raycaster = new THREE.Raycaster();
@@ -59,18 +59,24 @@ addEventListener('mouseup', (e) => {
   if (e.button === 2) rightHeld = false;
 });
 
-let inMenu = true; // champion select / rune page open: the run doesn't simulate
+let inMenu = true; // champion select / rune page open: the run doesn't simulate, nothing is drawn behind them
 let credited = false; // rune points of the finished run already saved
 
 /** Champion select, then the rune page; Jogar starts a fresh run with the page. */
 function openMenus() {
   inMenu = true;
+  document.body.classList.add('menus');
   keys.clear();
   showChampionSelect((champ) => showRunePage(champ, async (page) => {
-    if (champ !== game.champ) {
-      await game.setChampion(champ);
+    loading.textContent = `Carregando ${champ.name}…`;
+    loading.style.display = '';
+    await game.setChampion(champ);
+    loading.style.display = 'none';
+    if (champ !== hudChamp) {
       hud = new Hud(champ);
+      hudChamp = champ;
     }
+    document.body.classList.remove('menus');
     game.reset(page);
     credited = false;
     inMenu = false;
@@ -149,20 +155,21 @@ let last = performance.now();
 function frame(now = last) {
   const dt = Math.min((now - last) / 1000, 0.05);
   last = now;
-  if (!hud.menuOpen && !inMenu) game.update(dt, moveInput()); // ESC menu and the between-run screens pause the simulation
+  requestAnimationFrame(frame);
+  if (inMenu) return renderer.clear(); // black behind champion select and the rune page
+  if (!hud.menuOpen) game.update(dt, moveInput()); // the ESC menu pauses the simulation
   checkPrompts();
   camera.position.copy(game.pos).add(CAMERA_OFFSET);
   camera.lookAt(game.pos);
   hud.update(game);
   hud.floaters(game, camera);
   renderer.render(game.scene, camera);
-  requestAnimationFrame(frame);
 }
 
 game
-  .load((done, total) => (document.getElementById('loading')!.textContent = `Carregando modelos ${done}/${total}…`))
+  .load((done, total) => (loading.textContent = `Carregando modelos ${done}/${total}…`))
   .then(() => {
-    document.getElementById('loading')!.remove();
+    loading.style.display = 'none';
     frame();
     openMenus();
   });

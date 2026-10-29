@@ -12,6 +12,7 @@ interface Template {
 const gltfLoader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder); // build:prod meshopt-compresses the .glb files
 const texLoader = new THREE.TextureLoader();
 const templates = new Map<string, Template>();
+const loading = new Map<string, Promise<void>>(); // in flight or done: concurrent callers share one download
 
 async function loadMaterial(texture: string) {
   const map = await texLoader.loadAsync(`assets/models/${texture}.${IMG}`);
@@ -27,8 +28,19 @@ async function loadMaterial(texture: string) {
  * `mesh` loads another model's .glb with this model's texture (texture-only skins).
  * `textures` gives submeshes their own texture (the skin bin's materialOverride): submesh name -> texture file stem.
  */
-export async function loadModel(id: string, hide: readonly string[] = [], mesh = id, textures: Readonly<Record<string, string>> = {}): Promise<void> {
-  if (templates.has(id)) return;
+export function loadModel(id: string, hide: readonly string[] = [], mesh = id, textures: Readonly<Record<string, string>> = {}): Promise<void> {
+  let p = loading.get(id);
+  if (!p) {
+    p = fetchModel(id, hide, mesh, textures).catch((e) => { loading.delete(id); throw e; }); // a failed download can retry
+    loading.set(id, p);
+  }
+  return p;
+}
+
+/** Whether loadModel(id) finished: Actor and propModel need it. */
+export const modelLoaded = (id: string) => templates.has(id);
+
+async function fetchModel(id: string, hide: readonly string[], mesh: string, textures: Readonly<Record<string, string>>) {
   const stems = [...new Set(Object.values(textures))];
   const [gltf, material, ...overrides] = await Promise.all([
     gltfLoader.loadAsync(`assets/models/${mesh}.glb`),

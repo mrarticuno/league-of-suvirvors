@@ -1,11 +1,11 @@
 import * as THREE from 'three';
-import { Actor, loadModel } from './assets';
+import { Actor, loadModel, modelLoaded } from './assets';
 import { audio } from './audio';
 import { BUFF, buffEffects, isBuffMonster, type BuffKey } from './buffs';
 import { MAX_CHAMPION_LEVEL, SKILL_KEYS, type ChampionDef, type ChampionKit, type Hit, type SkillKey } from './champion';
 import { DEFAULT_CHAMPION } from './champions';
 import {
-  DIRECTOR, ENEMIES, ENEMY_ARMOR, ENEMY_MISSILE_EXTRA_RANGE, EVENTS, enemyArmorScale, enemyDamageScale, enemyHpScale, HORDE,
+  DIRECTOR, DRAGONS, ENEMIES, ENEMY_ARMOR, ENEMY_MISSILE_EXTRA_RANGE, EVENTS, enemyArmorScale, enemyDamageScale, enemyHpScale, HORDE,
   MAX_ENEMIES, POOL, RUN_LENGTH, xpToNext, type EnemyDef,
 } from './data';
 import { AI, SPAWNERS, type EnemyAI } from './enemies';
@@ -31,6 +31,10 @@ const ANIM_LOD_DIST = 1400;
 const ANIM_LOD_STEP = 3;
 /** Sound key prefix of an enemy: the drakes share one bank for spawn/death. */
 const voice = (def: EnemyDef) => (def.model.startsWith('dragon_') ? 'dragon' : def.model);
+const PREFETCH = 60; // seconds before the timeline can first spawn an enemy that its model starts downloading
+const RETRY = 5; // seconds before a failed enemy download is asked for again
+/** Whether an enemy's model is loaded: until then the spawn director and the events skip or wait for it. */
+const ready = (key: string) => modelLoaded(ENEMIES[key].model);
 
 /** LoL per-level stat growth formula. */
 const grow = (base: number, perLevel: number, level: number) => {
@@ -172,6 +176,9 @@ export class Game {
   nextHordeAt = HORDE.every;
   private map!: WorldMap;
   private focusRing = new THREE.Mesh(ringGeo, glow(0xff3030));
+  private vfxFor = ''; // champion whose particle systems are loaded
+  private requested = new Set<string>(); // enemies whose download started (kept across runs, like the model cache)
+  dragon = DRAGONS[0].model; // this run's drake, rolled in reset()
 
   constructor(public champ: ChampionDef = DEFAULT_CHAMPION) {
     // same colour as the background, hides the edge of the loaded chunks
@@ -180,22 +187,25 @@ export class Game {
 
   /** Loads another champion's model and VFX; the next reset() spawns it. */
   async setChampion(c: ChampionDef) {
-    await Promise.all([loadVfx(`assets/vfx/${c.id}/`), loadModel(c.model, c.hide, c.model, c.textures)]);
+    // the particle systems are one champion's at a time (loadVfx replaces them)
+    const vfx = this.vfxFor === c.id ? null : loadVfx(`assets/vfx/${c.id}/`);
+    await Promise.all([vfx, loadModel(c.model, c.hide, c.model, c.textures), audio.loadPrefix(c.id)]);
+    this.vfxFor = c.id;
     this.champ = c;
   }
 
+  /**
+   * Map and the enemies of the first seconds; the champion loads once picked (setChampion), the other enemies
+   * PREFETCH seconds before they can appear (prefetch). Call setChampion and reset before the first update.
+   */
   async load(onProgress: (done: number, total: number) => void) {
-    const defs = new Map(Object.values(ENEMIES).map((e) => [e.model, e]));
-    const c = this.champ;
-    const ids = [c.model, ...defs.keys()];
+    const starters = [...new Set([...POOL.filter((p) => p.from === 0).map((p) => p.enemy), ...HORDE.buffs])];
     let done = 0;
     await Promise.all([
-      loadVfx(`assets/vfx/${c.id}/`),
       audio.load(),
-      ...ids.map((id) => {
-        const def = defs.get(id);
-        const load = id === c.model ? loadModel(id, c.hide, id, c.textures) : loadModel(id, def?.hide, def?.mesh);
-        return load.then(() => onProgress(++done, ids.length));
+      ...starters.map((key) => {
+        this.requested.add(key);
+        return this.loadEnemy(key).then(() => onProgress(++done, starters.length));
       }),
     ]);
     this.scene.background = new THREE.Color(0x0b1410);
@@ -203,7 +213,29 @@ export class Game {
     this.map = new WorldMap(this.scene, textures, pieces, Math.random, water);
     this.focusRing.visible = false;
     this.scene.add(this.focusRing);
-    this.reset();
+  }
+
+  private loadEnemy(key: string) {
+    const def = ENEMIES[key];
+    return Promise.all([loadModel(def.model, def.hide, def.mesh), audio.loadPrefix(voice(def))]);
+  }
+
+  /** Starts downloading the enemies the timeline (POOL, EVENTS) can spawn within PREFETCH seconds. */
+  private prefetch() {
+    const due = (at: number) => this.time >= at - PREFETCH;
+    for (const p of POOL) if (due(p.from)) this.want(p.enemy);
+    for (const e of EVENTS) if (due(e.at)) this.want(this.eventEnemy(e.enemy));
+  }
+
+  private want(key: string) {
+    if (this.requested.has(key)) return;
+    this.requested.add(key);
+    this.loadEnemy(key).catch(() => setTimeout(() => this.requested.delete(key), RETRY * 1000));
+  }
+
+  /** The enemy an event spawns: the 'dragon' event (SPAWNERS.dragon) spawns this run's rolled drake. */
+  private eventEnemy(key: string) {
+    return key === 'dragon' ? this.dragon : key;
   }
 
   reset(page: Page = emptyPage()) {
@@ -227,6 +259,7 @@ export class Game {
       stasis: 0, stasisEnd: null, stunned: 0, stunLength: 0, airborne: true, arena: null,
       page, shield: 0, shieldUntil: 0, choices: [], bonusRunePoints: 0, flashReady: 0,
       buffs: { blue: 0, red: 0 }, buffDrops: [],
+      dragon: DRAGONS[Math.floor(Math.random() * DRAGONS.length)].model,
     });
     this.runeFx = runeEffects(this, page); // fresh every run: rune stacks never carry over
     this.buffFx = buffEffects(this);
@@ -879,6 +912,7 @@ export class Game {
    * recently spawned enemies the player managed to kill. Alive count is capped so early game stays survivable.
    */
   private spawn(dt: number) {
+    this.prefetch();
     if (this.arena) return; // nothing else spawns during an arena fight
     this.spawnBudget += DIRECTOR.baseRate(this.time, this.level) * this.performance() * dt;
     let alive = this.aliveCount;
@@ -890,7 +924,9 @@ export class Game {
       alive++;
     }
     while (this.nextEvent < EVENTS.length && this.time >= EVENTS[this.nextEvent].at) {
-      const key = EVENTS[this.nextEvent++].enemy;
+      const key = EVENTS[this.nextEvent].enemy;
+      if (!ready(this.eventEnemy(key))) break; // still downloading: the event waits for it
+      this.nextEvent++;
       const spawner = SPAWNERS[key];
       if (spawner) spawner(this);
       else this.spawnEnemy(key);
@@ -905,7 +941,7 @@ export class Game {
   }
 
   private pickFromPool() {
-    const active = POOL.filter((p) => this.time >= p.from && this.time <= p.to);
+    const active = POOL.filter((p) => this.time >= p.from && this.time <= p.to && ready(p.enemy));
     let r = Math.random() * active.reduce((sum, p) => sum + p.weight, 0);
     return (active.find((p) => (r -= p.weight) < 0) ?? active[0]).enemy;
   }
@@ -914,7 +950,7 @@ export class Game {
   private horde() {
     if (this.arena || this.time < this.nextHordeAt) return;
     this.nextHordeAt += HORDE.every;
-    const swarmers = POOL.filter((p) => this.time >= p.from && this.time <= p.to && ENEMIES[p.enemy].hp <= 60);
+    const swarmers = POOL.filter((p) => this.time >= p.from && this.time <= p.to && ENEMIES[p.enemy].hp <= 60 && ready(p.enemy));
     const key = swarmers[Math.floor(Math.random() * swarmers.length)].enemy;
     const n = Math.min(HORDE.size(this.level), MAX_ENEMIES - this.aliveCount);
     // ring with an opening (HORDE.gap of the circle) at a random side, so the player can break out

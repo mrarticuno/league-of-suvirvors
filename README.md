@@ -1,7 +1,35 @@
-# League of Survivors (protótipo)
+<p align="center">
+  <img src="docs/media/banner.png" alt="League of Survivors" width="100%">
+</p>
 
-Survivors-like 2.5D no navegador com campeões de League of Legends. Vista superior, modelos 3D e animações originais do LoL.
-Stack: **TypeScript + Three.js + Vite**.
+<p align="center">
+  <b>Survivors-like 2.5D no navegador com campeões de League of Legends.</b><br>
+  Vista superior, modelos 3D e animações originais do LoL. Sobreviva às hordas, evolua itens e derrube o Barão Na'Shor aos 20 minutos.
+</p>
+
+<p align="center">
+  <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white">
+  <img alt="Three.js" src="https://img.shields.io/badge/Three.js-000000?logo=threedotjs&logoColor=white">
+  <img alt="Vite" src="https://img.shields.io/badge/Vite-646CFF?logo=vite&logoColor=white">
+  <img alt="Status" src="https://img.shields.io/badge/status-prot%C3%B3tipo-c8aa6e">
+</p>
+
+<p align="center">
+  <img src="docs/media/ezreal.gif" alt="Ezreal enfrentando uma horda" width="80%">
+</p>
+
+## Galeria
+
+| Samira (`?champ=samira`) | Barão Na'Shor (20:00) |
+|---|---|
+| ![Samira: Estilo subindo até S, Blade Whirl e Inferno Trigger](docs/media/samira.gif) | ![Arena do Barão com ataques telegrafados](docs/media/baron.gif) |
+| ![Samira com o gauge de Estilo contra o Aronguejo](docs/media/samira.jpg) | ![Chicotada em cone do Barão](docs/media/baron.jpg) |
+
+| Level-up: evolução de itens | Página de runas |
+|---|---|
+| ![Escolha de item com árvore de evolução](docs/media/item-shop.jpg) | ![Página de runas entre runs](docs/media/rune-page.jpg) |
+
+<sub>Logo e banner: fonte em `docs/media/logo.html` (abra no Chromium e capture `#logo` / `#banner`). As capturas são do protótipo rodando com os assets gerados localmente.</sub>
 
 ## Rodar
 

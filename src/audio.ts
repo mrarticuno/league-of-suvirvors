@@ -42,14 +42,28 @@ class GameAudio {
     addEventListener('keydown', unlock, { once: true });
   }
 
+  private manifest?: Promise<Record<string, string[]>>;
+  private loaded = new Set<string>(); // prefixes already decoded (or decoding)
+
+  /** Reads the manifest (music streams from it) and decodes the HUD sounds; the rest load by prefix (loadPrefix). */
   async load() {
+    this.tracks = (await (this.manifest ??= this.readManifest())).music ?? [];
+    await this.loadPrefix('hud');
+  }
+
+  private async readManifest(): Promise<Record<string, string[]>> {
     const res = await fetch(BASE + 'sounds.json').catch(() => null);
-    if (!res?.ok) return; // sounds not extracted: play silently
+    if (!res?.ok) return {}; // sounds not extracted: play silently
     // the dev server answers a missing file with index.html (200), so a parse failure also means "not extracted"
-    const manifest: Record<string, string[]> | null = await res.json().catch(() => null);
-    if (!manifest) return;
-    this.tracks = manifest.music ?? [];
-    await Promise.all(Object.entries(manifest).filter(([k]) => k !== 'music').map(async ([key, files]) => {
+    return (await res.json().catch(() => null)) ?? {};
+  }
+
+  /** Decodes the sounds whose key starts with `${prefix}_` (a champion, an enemy, the HUD), once per prefix. */
+  async loadPrefix(prefix: string) {
+    if (this.loaded.has(prefix)) return;
+    this.loaded.add(prefix);
+    const manifest = await (this.manifest ??= this.readManifest());
+    await Promise.all(Object.entries(manifest).filter(([k]) => k !== 'music' && k.startsWith(`${prefix}_`)).map(async ([key, files]) => {
       const takes = await Promise.all(files.map(async (f) => {
         const data = await (await fetch(BASE + f)).arrayBuffer();
         return this.ctx.decodeAudioData(data).catch(() => null);
