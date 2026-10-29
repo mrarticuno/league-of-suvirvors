@@ -1,0 +1,205 @@
+<p align="center">
+  <img src="docs/media/banner.png" alt="League of Survivors" width="100%">
+</p>
+
+<p align="center">
+  <a href="README.md">English</a> · <a href="README.pt-BR.md">Português</a> · <b>简体中文</b>
+</p>
+
+<p align="center">
+  <b>浏览器中的 2.5D 幸存者类游戏，主角是英雄联盟的英雄。</b><br>
+  俯视视角，使用英雄联盟原版 3D 模型和动画。在怪潮中存活，进化装备，并在第 20 分钟击败纳什男爵。
+</p>
+
+<p align="center">
+  <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white">
+  <img alt="Three.js" src="https://img.shields.io/badge/Three.js-000000?logo=threedotjs&logoColor=white">
+  <img alt="Vite" src="https://img.shields.io/badge/Vite-646CFF?logo=vite&logoColor=white">
+  <img alt="Status" src="https://img.shields.io/badge/%E7%8A%B6%E6%80%81-%E5%8E%9F%E5%9E%8B-c8aa6e">
+</p>
+
+<p align="center">
+  <img src="docs/media/ezreal.gif" alt="伊泽瑞尔对抗怪潮" width="80%">
+</p>
+
+> 游戏内界面为巴西葡萄牙语。
+
+## 截图
+
+| 莎弥拉（`?champ=samira`） | 纳什男爵（20:00） |
+|---|---|
+| ![莎弥拉：风格评级升至 S，W 和 E](docs/media/samira.gif) | ![男爵竞技场与预警攻击](docs/media/baron.gif) |
+| ![莎弥拉与风格计量条，对战峡谷迅捷蟹](docs/media/samira.jpg) | ![男爵的锥形鞭击](docs/media/baron.jpg) |
+
+| 升级：装备进化 | 符文页 |
+|---|---|
+| ![带进化树的装备选择](docs/media/item-shop.jpg) | ![对局之间的符文页](docs/media/rune-page.jpg) |
+
+<sub>Logo 与横幅源文件：`docs/media/logo.html`（用 Chromium 打开并截取 `#logo` / `#banner`）。截图来自使用本地生成资源运行的原型。</sub>
+
+## 运行
+
+```bash
+pnpm install
+pnpm dev        # http://localhost:5173（伊泽瑞尔）；/?champ=samira 使用莎弥拉
+```
+
+模型**不在仓库中**（属于 Riot 的资源）。请先在本地生成（见下文）。
+
+## 资源管线（macOS，需已安装英雄联盟）
+
+1. 工具：Python 3 和 .NET 8 SDK。
+   ```bash
+   python3 -m venv .venv-tools && .venv-tools/bin/pip install xxhash zstandard pillow pygltflib
+   git clone https://github.com/Crauzer/lol2gltf && cd lol2gltf/src/lol2gltf
+   # csproj 固定为 win-x64：把 RuntimeIdentifier 改为 osx-arm64，关闭 PublishReadyToRun 和 RestorePackagesWithLockFile
+   dotnet publish -c Release -o ../../../l2g
+   ```
+2. 哈希列表（游戏的 `.bin` 通过 xxh64 哈希引用纹理和动画）：
+   ```bash
+   curl -s https://raw.communitydragon.org/data/hashes/lol/hashes.game.txt \
+     | grep -E "assets/characters/(ezreal|samira|sru_|turret|inhibitor|nexus)" > assets-raw/hashes.filtered.txt
+   ```
+3. 从 WAD 中提取（`tools/extract_lol.py`）并转换为 `.glb`（`tools/build_models.py`）：
+   ```bash
+   G="/Applications/League of Legends.app/Contents/LoL/Game/DATA/FINAL"
+   .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt ezreal assets-raw/ezreal "$G/Champions/Ezreal.wad.client"
+   .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt samira assets-raw/samira "$G/Champions/Samira.wad.client"
+   for c in sru_chaosminion{melee,ranged,siege,super} sru_orderminionmelee sru_krug sru_murkwolf sru_razorbeak sru_razorbeakmini sru_gromp sru_blue sru_red sru_riftherald sru_baron sru_crab sru_dragon sru_dragon_{air,fire,earth,water,hextech,chemtech}; do
+     .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt $c assets-raw/$c "$G/Maps/Shipping/Map11.wad.client" "$G/Maps/Shipping/Common.wad.client"
+   done
+   # 召唤师峡谷建筑（地图场景）：角色文件夹为 turret/inhibitor/nexus
+   for c in turret inhibitor nexus; do
+     .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt $c assets-raw/$c "$G/Maps/Shipping/Map11.wad.client" "$G/Maps/Shipping/Common.wad.client"
+   done
+   .venv-tools/bin/python tools/build_models.py l2g/lol2gltf
+   ```
+   输出：`public/assets/models/<id>.glb` + `<id>.png`。PNG 在运行时应用，因为 `lol2gltf` 只嵌入 `.tex/.dds`。
+   建筑在 `tools/build_models.py` 中有固定条目（`sruap_orderturret|orderinhibitor|ordernexus`，`own_anm=False`，因为它们是静态场景），输出为 `public/assets/models/sruap_*.glb|png`。
+4. 地图：地形和岩石纹理，从 `Map11.wad.client` 提取。先把 CommunityDragon 的完整哈希列表（`https://raw.communitydragon.org/data/hashes/lol/` 下的 `hashes.game.txt` 和 `hashes.bin{entries,fields,types,hashes}.txt`）下载到 `assets-raw/hashes/`：`textures` 用 `hashes.game.txt` 作为名称表，`pieces` 需要 `.bin*` 列表，`read_bin` 才能解析 `.mapgeo` 中的名称。
+   ```bash
+   G="/Applications/League of Legends.app/Contents/LoL/Game/DATA/FINAL"
+   .venv-tools/bin/python tools/build_map.py textures assets-raw/hashes/hashes.game.txt public/assets/map "$G/Maps/Shipping/Map11.wad.client"
+   .venv-tools/bin/python tools/build_map.py pieces assets-raw/hashes/hashes.game.txt public/assets/map "$G/Maps/Shipping/Map11.wad.client"
+   ```
+   输出：`public/assets/map/tex/{ground_river,ground_lane,ground_jungle,ground_base,water}.png`（从召唤师峡谷图集裁剪的约 400 px 纹理）和 `public/assets/map/pieces/rock_{a,b,c}.glb|png`（`base.mapgeo` 中最大的三块岩石/悬崖，归一化为 1 个单位，再缩放到覆盖障碍物的包围盒）。
+   `pieces` 是一个有限的 `.mapgeo` v14 解析器：如果跳过或失败（格式版本不同、缺少 WAD），运行时会根据布局障碍物绘制深色方块/圆柱。不会出错。
+5. 技能特效：从皮肤的 `.bin` 读取伊泽瑞尔的粒子系统，以及它们使用的所有纹理和网格。使用第 4 步下载的哈希列表：
+   ```bash
+   for c in ezreal samira; do (cd tools && ../.venv-tools/bin/python build_vfx.py ../assets-raw/hashes $c ../public/assets/vfx/$c "$G"); done
+   ```
+   生成 `systems.json`（按 `ResourceResolver` 键索引的特效，例如 `Ezreal_Q_mis`）、`spells.json`（飞弹速度/宽度/射程）以及资源的 PNG/JSON。`tools/read_bin.py` 可以单独把任意 `.bin` 转为 JSON。发射器运行时位于 `src/particles.ts`；`src/vfx.ts` 只负责选择播放哪个系统以及在哪里播放。
+
+6. 音效与音乐：伊泽瑞尔、野怪、HUD 的 Wwise 音频库（`.bnk`/`.wpk`）以及 Map11 的音乐。需要 `brew install vgmstream ffmpeg` 和 [wwiser](https://github.com/bnnm/wwiser)：
+   ```bash
+   git clone --depth 1 https://github.com/bnnm/wwiser assets-raw/wwiser
+   (cd tools && ../.venv-tools/bin/python build_audio.py ../assets-raw/wwiser/wwiser.py ../public/assets/sfx "$G")
+   ```
+   wwiser 为每个事件生成一个 `.txtp`，vgmstream 渲染，ffmpeg 转为 mp3。事件按 id 查找（名称的 FNV-1；名称来自角色的 `.bin`，表在脚本中的 `BANKS`）。随机容器最多生成 4 个变体（`<key>_<n>.mp3`），运行时随机播放。输出：`public/assets/sfx/*.mp3` + `sounds.json`。没有该文件夹时游戏静音运行。
+   未找到的事件（静音）：小兵死亡，以及海洋/海克斯科技/化学科技亚龙的攻击。音乐是召唤师峡谷中名称未知的主事件（id `3832820115`），每个 switch 状态成为一首曲目。
+
+## 程序化地图
+
+世界没有边界，也没有空气墙：`src/sessions.ts` 描述一个 6000×6000 的会话布局（`CHUNK`），`src/map.ts` 在玩家周围维护一个 3×3 的区块窗口（`WorldMap.ensureChunks`）。每次调用最多生成 2 个新区块，并丢弃离开窗口的所有内容；雾（`THREE.Fog`，5000–9500）遮住已加载的边缘。
+
+每个区块在生成时随机一个类型，允许重复且不持久化（离开再回来可能变成另一种类型）：
+
+- `river`：河流，两岸是可行走的浅水，并有草丛方块。
+- `lane`：四角各有一座防御塔。
+- `jungle`：2–7 面岩墙；约 40% 带有装饰岩石。
+- `base`：中心是水晶枢纽，周围是召唤水晶和 2–3 座防御塔。
+
+障碍物**只有物理碰撞**：防御塔、召唤水晶和水晶枢纽不会攻击，也不能被攻击（右键仍只会锁定真实单位），也不阻挡投射物——飞弹、E 的闪烁和水都能越过它们。只有实体（玩家和敌人）会碰撞，并沿障碍物滑动（`resolveCircle`）；没有寻路：敌人径直走向伊泽瑞尔，碰到障碍就绕开。
+
+资源来自管线第 4 步：每种区块类型一张纹理（水面还会滚动偏移）和由 `loadMapPieces()` 加载的模型。缺失或加载失败的模型会回退为障碍物的深色方块/圆柱。不会出错。
+
+## 操作
+
+| 动作 | 按键 |
+|---|---|
+| 移动 | 右键点击地面（按住跟随光标）或方向键 |
+| 锁定目标（自动攻击） | 右键点击敌人 |
+| 开关自动攻击 | `T` |
+| 手动攻击（关闭自动时） | 左键点击敌人 |
+| 技能 | `Q` `W` `E` `R`，朝光标方向释放 |
+| 选择升级 | 点击或 `1`–`9` |
+| 暂停 / 开关音乐和音效 | `Esc` |
+
+不使用 WASD，因为与 Q/W/E 冲突。
+
+## 已实现的规则
+
+- **伊泽瑞尔忠于原作**（Meraki Analytics 数据）：按英雄联盟成长公式计算各等级属性，攻击前摇 18.75%，弹道速度 2000 u/s，暴击 175%。
+  - **被动（Rising Spell Force）**：技能每次命中 +10% 攻击速度，最多 5 层，持续 6 秒。
+  - **Q**：命中时所有技能冷却 −1.5 秒。
+  - **W**：标记目标；用技能引爆时返还法力。
+  - **E**：475 距离闪烁 + 追踪弹，优先攻击被标记的目标。
+  - **R**：1 秒施法，穿透敌人，对非史诗单位造成 50% 伤害。
+- **莎弥拉**（`?champ=samira`，Meraki Analytics 数据）：射程 500，暴击 175%。
+  - **被动（Daredevil Impulse）**：与上一次类型不同的命中（射击、刀刃、Q、W、E、R）使风格评级提升一级（E→S，6 秒，每级 +2–3.5% 移动速度）。200 距离内的攻击使用刀刃：额外魔法伤害（2–19 + 3.5–10.5% 攻击力），根据目标已损失生命值最多翻倍；W、E 和 Q 的斩击也会触发。
+  - **Q**：射击第一个敌人；若前方 340 内有敌人，则改为锥形斩击。可暴击（125%）。
+  - **W**：两次范围斩击（325），开始时一次，0.75 秒后一次；摧毁范围内的敌方投射物。旋转期间不能普攻。
+  - **E**：朝光标方向冲刺 600，对路径上的敌人造成魔法伤害，5 秒内 +20–40% 攻击速度。
+  - **R**：仅在风格为 S 且 600 内有敌人时可用。2 秒内对周围所有敌人进行 10 轮射击（对小兵 25%），可暴击；−30% 移动速度，消耗风格。
+  - 与原作不同：任何敌人都计入风格；E 期间没有 Q 的爆炸；没有对被定身目标的攻击（敌人不受控制效果影响）。
+- **两步升级**：
+  1. 按英雄联盟规则提升一个技能等级：基础技能在 1/3/5/7/9 级，R 在 6/11/16 级。没有可升级的技能时跳过此步。
+  2. 从随机的 3 件装备中选 1 件（出装完成后改为药水）。
+- **装备**：Data Dragon 的真实数据（pt-BR、图标），由 `tools/build_items.py` 生成到 `src/items.json`。完整规则见 `docs/superpowers/specs/2026-10-28-item-evolution-design.md`。
+  - 只提供基础起始装备。新的一份可以成为新装备，或让同一路线的装备进化一步；玩家选择栏位和分支（`src/items.ts` 中的 `LINES`）。
+  - 成装需要 3 到 5 份基础装备，且唯一。若某分支的成装已拥有（或被其他栏位预留），该分支被锁定；没有可用分支的装备会被锁定。
+  - 背包最多 6 件装备；不能丢弃。每次提供装备时会显示该路线的进化树（已有的、被锁定的、各成装的花费）。
+  - 出装完成（6 件成装或已锁定）：升级时提供生命药水或法力药水（恢复 20% 最大值），每次击杀有 1% 概率掉落图纸（蓝色卷轴，每局 1 张），使随机一件成装变为传说（属性 +50%）。
+  - 成装：伊泽瑞尔当前的出装（三相之力、魔宗、朔极之矛、无穷饥渴、赛瑞尔达的怨恨、冰霜之心、守护天使）以及攻击特效/暴击出装（海妖杀手、破败王者之刃、无尽之刃、夺萃之镰、黑色切割者）。
+  - 已实现的被动：咒刃（耀光/三相之力/夺萃之镰）、敬畏（魔宗）、Bring It Down（海妖杀手）、Mist's Edge（破败王者之刃）、暴击伤害（无尽之刃）、Carve（黑色切割者）、重生（守护天使）、Winter's Caress（冰霜之心）、护甲穿透、生命偷取和全能吸血。
+  - 护甲：物理伤害（普攻、Q、攻击特效）会被敌人的护甲减免。魔法伤害（W、E、R）不会。
+- **远程敌人**：沿直线发射技能弹，瞄准伊泽瑞尔先前的位置，射程有限。可以躲避。
+- **难度曲线**：开局时，1 次普攻或 1 个技能就能击杀。
+  - 生命值：基础 × `(1 + 0.08 × (等级 − 1)) × (1 + 时间 / 900 s)`。
+  - 伤害：基础 × `(1 + 时间 / 600 s)`。
+  - 史诗野怪生命值固定。
+  - 在 `enemyHpScale` / `enemyDamageScale`（`src/data.ts`）中调整。
+- **经验**：击杀时自动吸收。
+- **浮动文字**：造成的伤害（白色 = 物理，蓝色 = 魔法，橙色 = 暴击）、受到的伤害（红色）和获得的经验（紫色）。
+- **刷怪导演**：每秒敌人数 = `0.45 + 0.04×(等级−1) + 时间/450`。
+  - 该值再乘以 0.6–1.3，取决于玩家击杀了最近 20 秒内出现敌人的比例。
+  - 存活敌人数量有上限：`12 + 2×等级 + 时间/8`。
+  - 在 `DIRECTOR`（`src/data.ts`）中调整。
+- **怪潮**：每 2 分钟，`15 + 2×等级` 个弱小敌人组成的圆环在玩家周围收拢，留有 90° 的缺口用于逃脱。提前 6 秒出现警告。
+- **进程（幸存者风格）**：
+  - 0–5 分钟：小兵。
+  - 3 分钟起：锋喙鸟、暗影狼、石甲虫、魔沼蛙。
+  - 首领：峡谷迅捷蟹（5:00）、亚龙（10:00，元素从山脉、云端、海洋、海克斯科技、炼狱和化学科技中随机；增益尚未实现）、峡谷先锋（15:00）、纳什男爵（20:00）。
+  - 首领之间的精英：蓝色哨兵（7:30）、红色树精（12:30）、两者同时出现（17:30）。
+  - 在 `EVENTS`（`src/data.ts`）中调整。
+- **纳什男爵（20:00）**：几乎不可能击杀（15 万生命值）。击杀它即赢得本局。
+  - 它出现时，其他所有敌人死亡，之后不再刷新任何敌人（包括怪潮）。
+  - 一个圆形竞技场（半径 1500）在伊泽瑞尔和男爵周围合拢。无法走出去。
+  - 如果伊泽瑞尔离开（例如用奥术跃迁越过墙），触手会把他拉回来。
+  - 有施法时间和地面标记的技能：
+    - 地面圆圈：1 秒后击飞并眩晕（最多约 500 伤害，不会致死）。
+    - 从伊泽瑞尔先前位置钻出的触手：致死。
+    - 直线酸液喷吐：致死。
+  - 靠近男爵时：33% 概率撕咬（吞噬，瞬发，无法躲避）。否则为锥形鞭击：75% 最大生命值，不会致死。
+  - 在 `BARON`（`src/data.ts`）中调整；行为在 `src/enemies/baron.ts`。
+
+## 架构（在哪里添加内容）
+
+- **英雄**（`src/champion.ts`、`src/champions/`）：一个英雄由 `ChampionDef`（基础属性、技能的等级/消耗/冷却/动画/图标、动画、普攻特效）加一个每局创建的 `kit` 组成，`kit` 负责处理技能及其特殊机制（层数、标记等）。`Game` 负责通用部分：移动、普攻、冷却、法力、装备和伤害管线。
+  - 新英雄：创建 `src/champions/<name>.ts`（模板：`ezreal.ts`），并在 `src/champions/index.ts` 中注册。音效命名遵循 `<id>_auto`、`<id>_Q`、`<id>_death`……
+  - kit 钩子：`cast`（必需）、`castStart`、`attackSpeedBonus`、`onDamage`（减免前的额外魔法伤害，例如引爆 W 的标记）、`update`、`dispose`、`hud`。
+  - 投射物：`game.spawnMissile(vfx, from, to, { hit, target | pierce, onHit, ... })`。没有 `onHit` 时，默认命中效果会应用特效、音效和伤害。
+- **装备被动**（`src/itemEffects.ts`）：每个条目包含描述，若已实现，还有一个钩子工厂（`onHit`、`onAttack`、`onCast`、`onPhysical`、`tick`、`onLethal`、`bonusAd`、`enemyAttackCooldown`）。`unique` + `rank` 复现英雄联盟的唯一被动（例如咒刃：只有最强的一个生效）。属性仍在 `items.json` 中。
+- **敌人**（`src/data.ts` + `src/enemies/`）：普通敌人只需要一个 `EnemyDef`。自定义行为在 `AI` 中注册；有特殊规则的时间线事件（随机亚龙、男爵竞技场）在 `SPAWNERS` 中注册生成器。`src/hazards.ts` 包含首领用的地面标记和喷发效果。
+- **性能**：敌人存放在空间网格中（`src/spatial.ts`），因此单位碰撞、目标选择、投射物和光环只查询邻近单位（以前的碰撞是 O(n²)）。每帧列表原地过滤（`compact`），刷怪/击杀窗口为均摊 O(1)，玩家停留在同一区块时地图不做任何重建，HUD 只在数值变化时写入 DOM。远离英雄的敌人每 3 帧更新一次动画。
+
+## 已知限制 / 下一步
+
+- 粒子：未实现 `VfxPrimitiveRay`、`VfxPrimitiveAttachedMesh`（附着在骨骼上的网格，例如 E 的化身）、力场（`fieldCollectionDefinition`）和 `FlexShapeDefinition`。附着在骨骼上的施法特效从手部的固定点发出。`blendMode` 缺失/4 = 加法混合，1 = alpha（根据纹理推断，无文档）。
+- `.glb` 文件很大（伊泽瑞尔 29 MB，男爵 45 MB，未压缩）。下一步：`gltf-transform resample/quantize`，并移除未使用的动画片段（回城、跳舞）。
+- 每个敌人都是带独立 mixer 的 SkinnedMesh，存活上限 220。要支持更大的怪潮：烘焙到纹理的动画 + 实例化。
+- 亚龙：动画共用 `sru_dragon`。炼狱亚龙和山脉亚龙使用云端亚龙的网格（`sru_dragon_air`）配自己的纹理，与原游戏一致（`EnemyDef.mesh`）。
+
+## 法律声明
+
+非商业的粉丝项目，遵循 Riot Games 的 "Legal Jibber Jabber" 政策。英雄联盟及其所有资源归 Riot Games, Inc. 所有。请勿分发提取出的模型。
