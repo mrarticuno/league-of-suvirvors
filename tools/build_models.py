@@ -22,6 +22,7 @@ MODELS = {
     # weapons texture of the samira mesh (ChampionDef.textures)
     "samira_weapons": ("samira", "../samira/samira_base_weapons_tx_cm.png", []),
     "aphelios": ("aphelios", "aphelios_base_tx_cm.png", []),
+    "aurelionsol": ("aurelionsol", "aurelionsol_body_tx_cm.png", []),
     "aphelios_guns": ("aphelios", "../aphelios/aphelios_base_guns_tx_cm.png", []),
     # Crescendum's sentry: own mesh and clips, wearing Aphelios' gun texture (OWN_MESH)
     "apheliosturret": ("apheliosturret", "../aphelios/aphelios_base_guns_tx_cm.png", []),
@@ -57,6 +58,7 @@ MODELS = {
 
 # clips left out of a model (by .anm stem): transitions, emotes and recall nobody plays, which would double the .glb
 SKIP_CLIPS = {
+    "aurelionsol": re.compile(r"_to|_2|in2?$|onw_|lft90|rgt90|_add$|run2|runspin|haste|variation|newtst|dance|joke|laugh|taunt|respawn|recall"),
     "aphelios": re.compile(r"_to_|_in$|homeguard|_fast$|nomove|_-?\d+$|dance|joke|laugh|taunt|respawn|recall|channel"),
 }
 

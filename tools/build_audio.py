@@ -28,6 +28,7 @@ SA = "Play_sfx_Samira_Samira"
 BR = "Play_sfx_Brand_Brand"
 BP = "Play_sfx_Brand_P_"
 AP = "Play_sfx_Aphelios_Aphelios"
+AS = "Play_sfx_AurelionSol_AurelionSol"
 
 # bank path (without _events/_audio) -> {sound key: event name candidates (first match wins) or an event id}
 BANKS: dict[str, dict[str, list[str] | int]] = {
@@ -146,6 +147,23 @@ BANKS: dict[str, dict[str, list[str] | int]] = {
         "aphelios_reload": [AP + "PAluneGun_cast", AP + "PAluneGunSelf_cast"],
         "aphelios_death": ["Play_sfx_Aphelios_Death3D_cast"],
     },
+    SFX + "characters/aurelionsol/skins/base/aurelionsol_base_sfx": {
+        "aurelionsol_auto": [AS + "Basicattack_cast"],
+        "aurelionsol_crit": [AS + "Basicattack_cast"],
+        "aurelionsol_auto_hit": [AS + "Basicattack_OnHitLocation"],
+        "aurelionsol_crit_hit": [AS + "CritAttack_OnHit"],
+        "aurelionsol_Q": [AS + "Q_OnCast"],
+        "aurelionsol_Q_launch": [AS + "Q_missilelaunch"],
+        "aurelionsol_Q_hit": [AS + "QDebuff_hit"],
+        "aurelionsol_W": [AS + "W_OnCast"],
+        "aurelionsol_W_off": [AS + "W_OnBuffDeactivate"],
+        "aurelionsol_E": [AS + "E_OnCast"],
+        "aurelionsol_E_end": [AS + "E_buffdeactivate"],
+        "aurelionsol_R": [AS + "R2_OnCast"],
+        "aurelionsol_R_launch": [AS + "R2Missile_missilelaunch_super"],
+        "aurelionsol_R_hit": [AS + "R2Missile_hit_super"],
+        "aurelionsol_death": ["Play_sfx_AurelionSol_Death3D_cast"],
+    },
     SHARED + "hud_global": {
         "hud_levelup": ["Play_sfx_hud_base_spell_levelup"],
         "hud_item": ["Play_sfx_hud_base_store_item_buy_basic"],
@@ -241,7 +259,7 @@ def render(txtp_path, mp3, music):
 
 def main(wwiser, out_dir, final_dir):
     final = Path(final_dir)
-    wads = [Wad(final / w) for w in ("Champions/Ezreal.wad.client", "Champions/Samira.wad.client", "Champions/Brand.wad.client", "Champions/Aphelios.wad.client", "Maps/Shipping/Map11.wad.client", "Maps/Shipping/Common.wad.client")]
+    wads = [Wad(final / w) for w in ("Champions/Ezreal.wad.client", "Champions/Samira.wad.client", "Champions/Brand.wad.client", "Champions/Aphelios.wad.client", "Champions/AurelionSol.wad.client", "Maps/Shipping/Map11.wad.client", "Maps/Shipping/Common.wad.client")]
     read = lambda p: next((d for d in (w.read(p) for w in wads) if d is not None), None)
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)

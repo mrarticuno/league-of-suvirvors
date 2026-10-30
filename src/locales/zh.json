@@ -548,5 +548,19 @@
  "float.boots": "新鞋子：{item}！",
  "boots.choose": "已击杀{monster}——选择你的鞋子",
  "boots.plating": "镀层：物理攻击造成的伤害降低10%",
- "boots.empty": "{time} 获得鞋子"
+ "boots.empty": "{time} 获得鞋子",
+ "champion.aurelionsol.name": "奥瑞利安·索尔",
+ "champion.aurelionsol.title": "铸星龙王",
+ "champion.aurelionsol.passive": "星原之准",
+ "champion.aurelionsol.Q": "星河急涌",
+ "champion.aurelionsol.W": "星穹暴涨",
+ "champion.aurelionsol.E": "星流横溢",
+ "champion.aurelionsol.R": "星天落瀑",
+ "champion.aurelionsol.hud.off": "星辰环绕中",
+ "champion.aurelionsol.hud.on": "星辰扩张：每秒消耗{n}点法力值",
+ "champion.aurelionsol.drain": "每秒法力值消耗",
+ "champion.aurelionsol.Q.desc": "发射一颗星星，奥瑞利安·索尔位于650码内时它会不断变大。当他远离、5秒后或达到最大尺寸时，星星爆炸，对区域内的敌人造成魔法伤害并眩晕0.55–1.1秒。星星越大，伤害越高（最多+50%）。",
+ "champion.aurelionsol.W.desc": "被动：星辰的每次命中造成更多伤害。开启：星辰向外扩张至650码，环绕速度翻倍，伤害提升40%，同时每秒消耗法力值。",
+ "champion.aurelionsol.E.desc": "起飞3秒，越过墙体和单位，获得60–100%额外移动速度。飞行期间无法攻击。",
+ "champion.aurelionsol.R.desc": "召唤一颗陨星坠落在目标区域。1秒后落地，对450码内的敌人造成魔法伤害并击飞1秒。"
 }

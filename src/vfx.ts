@@ -42,7 +42,10 @@ export class Vfx {
           if (l.killOnStop) { l.sys.dispose(); return false; }
           l.sys.kill(); // the followed object (missile) is gone: only lingering particles stay
         }
-        else l.sys.setFrame(l.follow.position, l.dir ? missileQuat(l.dir, l.sys.quat) : l.sys.quat);
+        else {
+          l.sys.setFrame(l.follow.position, l.dir ? missileQuat(l.dir, l.sys.quat) : l.sys.quat);
+          l.sys.scale = l.follow.scale.x; // scaling the followed object scales its effect (a growing area)
+        }
       }
       if (l.bone) l.sys.setFrame(l.bone.getWorldPosition(_p), l.sys.quat);
       if (l.until !== undefined && this.time >= l.until) l.sys.stop();
@@ -53,8 +56,8 @@ export class Vfx {
     });
   }
 
-  play(key: string, at: THREE.Vector3, quat: THREE.Quaternion, { owner, size, target, targetQuat, ...extra }: PlayOpts = {}) {
-    const sys = createSystem(key, this.scene, at, quat, { owner, size, target, targetQuat });
+  play(key: string, at: THREE.Vector3, quat: THREE.Quaternion, { owner, size, target, targetQuat, bind, ...extra }: PlayOpts = {}) {
+    const sys = createSystem(key, this.scene, at, quat, { owner, size, target, targetQuat, bind });
     // one-shot effects stop emitting after a while even if an emitter loops forever
     if (!sys) return sys;
     const live = { sys, until: extra.follow ? undefined : this.time + 3, ...extra };
@@ -76,10 +79,10 @@ export class Vfx {
     this.playAt(key, at.clone().setY(at.y || 100), facing, opts);
   }
 
-  /** A system that follows the returned object (e.g. a mark over an enemy) while it stays in the scene. */
-  attach(key: string) {
+  /** A system that follows the returned object (e.g. a mark over an enemy) while it stays in the scene; its scale.x scales the effect. */
+  attach(key: string, opts?: SystemOpts) {
     const g = new THREE.Group();
-    this.play(key, g.position, new THREE.Quaternion(), { follow: g, killOnStop: true });
+    this.play(key, g.position, new THREE.Quaternion(), { follow: g, killOnStop: true, ...opts });
     return g;
   }
 
