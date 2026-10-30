@@ -22,6 +22,7 @@ import { facingQuat, type ParticleSystem } from './particles';
 import { loadVfx, Vfx, type MissileFx } from './vfx';
 
 const SPAWN_RADIUS = 1800;
+const BASIC_LEVELS = [1, 3, 5, 7, 9], ULT_LEVELS = [6, 11, 16]; // LoL skill point rules (ChampionDef.rankLevels)
 const FLASH = { range: 400, cooldown: 120 };
 const BASE_MR = 30, BASE_MR_PER_LEVEL = 1.3; // LoL marksmen and mages: no champion file lists MR
 const DESPAWN_RADIUS = 3600;
@@ -64,6 +65,7 @@ export interface Enemy {
   slowPct: number; // movement slow while time < slowUntil
   slowUntil: number;
   stunUntil: number; // no moving nor attacking while time < stunUntil (generic loop only: EnemyAI bosses ignore it)
+  rootUntil: number; // no moving (still attacks) while time < rootUntil (generic loop only, like stunUntil)
   ai?: EnemyAI; // own behaviour (src/enemies), replaces the generic chase-and-attack loop
   animDt: number; // animation time not yet applied (animation LOD)
 }
@@ -288,10 +290,14 @@ export class Game {
     this.scene.add(this.player.root);
     this.kit = this.champ.kit(this);
     this.idleFx = (this.champ.idleVfx ?? []).flatMap((v) => this.boneVfx(v, true) ?? []);
+    this.autoRankUp();
     this.hp = this.maxHp;
     this.mana = this.maxMana;
-    this.player.play(this.champ.anims.idle);
+    this.player.play(this.moveAnims.idle);
   }
+
+  /** Idle and run clips right now (the kit's, e.g. per weapon, else the champion's). */
+  private get moveAnims() { return this.kit.moveAnims?.() ?? this.champ.anims; }
 
   /** Plays a champion system on one of its bones (`loop`: until stopped); null when the bone or system is missing. */
   private boneVfx([key, name]: BoneVfx, loop: boolean) {
@@ -304,7 +310,7 @@ export class Game {
   get baseHp() { const B = this.champ.base; return grow(B.hp, B.hpPerLevel, this.level); }
   /** Sum of a stat over item and rune effects (on top of item stats). */
   fxStat(k: FxStat) {
-    let v = 0;
+    let v = this.kit?.stat?.(k) ?? 0;
     for (const fx of this.itemFx) if (fx.stat) v += fx.stat(k);
     return v;
   }
@@ -336,20 +342,30 @@ export class Game {
   has(id: string) { return this.owned.has(id); }
   cooldownOf(key: SkillKey) {
     const haste = this.abilityHaste + this.fxStat(key === 'R' ? 'ultHaste' : 'basicHaste');
-    return this.champ.skills[key].cooldown[this.ranks[key] - 1] * (100 / (100 + haste));
+    const base = this.kit.cooldownBase?.(key) ?? this.champ.skills[key].cooldown[Math.max(0, this.ranks[key] - 1)];
+    return base * (100 / (100 + haste));
+  }
+  /** Whether a skill can be cast: it has a rank, or its unlock level came (SkillDef.unlockLevel, ranks then buy stats). */
+  learned(key: SkillKey) {
+    const unlock = this.champ.skills[key].unlockLevel;
+    return unlock === undefined ? this.ranks[key] > 0 : this.level >= unlock;
   }
   costOf(key: SkillKey) { return this.champ.skills[key].cost[Math.max(0, this.ranks[key] - 1)]; }
 
   // ---- level up ----
-  /** LoL skill point rules: basic ranks at levels 1/3/5/7/9, R at 6/11/16. */
+  /** Skill point rules: the level each rank unlocks (ChampionDef.rankLevels, LoL default basic 1/3/5/7/9, R 6/11/16). */
   canRankUp(key: SkillKey) {
     const r = this.ranks[key];
     if (r >= this.champ.skills[key].maxRank) return false;
-    if (key === 'R') return this.level >= (this.champ.ultimateLevels ?? [6, 11, 16])[r];
-    return r < Math.ceil(this.level / 2);
+    return this.level >= (this.champ.rankLevels?.[key] ?? (key === 'R' ? ULT_LEVELS : BASIC_LEVELS))[r];
   }
 
-  skillOptions() { return SKILL_KEYS.filter((k) => this.canRankUp(k)); }
+  skillOptions() { return SKILL_KEYS.filter((k) => this.canRankUp(k) && !this.champ.autoRank?.includes(k)); }
+
+  /** Ranks the skills that level up on their own (ChampionDef.autoRank). */
+  private autoRankUp() {
+    for (const k of this.champ.autoRank ?? []) while (this.canRankUp(k)) this.ranks[k]++;
+  }
 
   rankUp(key: SkillKey) { this.ranks[key]++; }
 
@@ -419,6 +435,8 @@ export class Game {
     e.slowUntil = Math.max(e.slowUntil, this.time + seconds);
   }
   isSlowed(e: Enemy) { return e.slowUntil > this.time; }
+  /** Root: the enemy cannot move for `seconds` but still attacks (generic loop only, like stunEnemy). */
+  rootEnemy(e: Enemy, seconds: number) { e.rootUntil = Math.max(e.rootUntil, this.time + seconds); }
   stunEnemy(e: Enemy, seconds: number) {
     e.stunUntil = Math.max(e.stunUntil, this.time + seconds);
     e.windup = -1;
@@ -452,6 +470,7 @@ export class Game {
       this.hp += this.maxHp - hpBefore;
       this.mana += this.maxMana - manaBefore;
       this.pendingLevelUps++;
+      this.autoRankUp();
       for (const fx of this.itemFx) fx.onLevel?.();
       audio.play('hud_levelup');
     }
@@ -469,7 +488,7 @@ export class Game {
   }
 
   cast(key: SkillKey, point: THREE.Vector3) {
-    if (!this.alive || this.stunned > 0 || this.ranks[key] === 0 || this.cooldowns[key] > 0 || this.castLock > 0) return;
+    if (!this.alive || this.stunned > 0 || !this.learned(key) || this.cooldowns[key] > 0 || this.castLock > 0) return;
     if (this.mana < this.costOf(key) || this.kit.canCast?.(key) === false) return;
     const skill = this.champ.skills[key];
     this.mana -= this.costOf(key);
@@ -477,13 +496,14 @@ export class Game {
     for (const fx of this.itemFx) fx.onCast?.();
     this.windup = -1; // casting cancels an attack windup
     this.faceTowards(point);
-    this.castLock = skill.castTime;
+    const castTime = this.kit.castTime?.(key) ?? skill.castTime;
+    this.castLock = castTime;
     this.pendingCast = { key, point: point.clone() };
     const anim = this.kit.castAnim?.(key, point) ?? skill.anim;
     this.player.play(anim, { loop: false, restart: true, fade: 0.05 });
     this.kit.castStart?.(key, point);
     audio.play(`${this.champ.id}_${key}`);
-    this.animLock = Math.min(this.player.duration(anim), skill.castTime + 0.6);
+    this.animLock = Math.min(this.player.duration(anim), castTime + 0.6);
   }
 
   /**
@@ -574,7 +594,7 @@ export class Game {
   }
 
   private updatePlayer(dt: number, move: THREE.Vector3) {
-    const B = this.champ.base, anims = this.champ.anims;
+    const B = this.champ.base, anims = this.moveAnims;
     if (this.stasis > 0) {
       this.stasis -= dt;
       if (this.stasis <= 0) {
@@ -621,7 +641,7 @@ export class Game {
       if (this.castLock <= 0 && this.pendingCast) {
         const { key, point } = this.pendingCast;
         this.pendingCast = null;
-        this.kit.cast(key, this.ranks[key] - 1, point);
+        this.kit.cast(key, Math.max(0, this.ranks[key] - 1), point);
         for (const fx of this.itemFx) fx.onCastResolved?.(key);
       }
       this.player.update(dt); // keep the spell animation playing while rooted
@@ -704,25 +724,30 @@ export class Game {
       if (this.focus && this.inAttackRange(this.focus)) target = this.focus;
       else target = this.nearestEnemy(this.pos, this.attackReach, (e) => this.inAttackRange(e));
     } else if (this.manualTarget && this.inAttackRange(this.manualTarget)) target = this.manualTarget;
+    if (this.kit.attackTarget) target = this.kit.attackTarget(target);
     if (!target) return;
     const { base: B, anims, id } = this.champ;
-    const delay = 1 / this.attackSpeed;
-    this.attackTimer = delay;
-    this.windup = delay * B.windupPercent;
-    this.windupTarget = target;
-    this.faceTowards(target.pos);
     const crit = Math.random() < this.critChance;
     this.pendingCrit = crit;
     const melee = this.champ.melee && this.kit.meleeAuto?.(target) ? this.champ.melee : null;
     this.pendingMelee = melee !== null;
+    const form = melee ? undefined : this.kit.attackStart?.(target, crit);
+    const delay = 1 / this.attackSpeed;
+    this.attackTimer = delay;
+    this.windup = delay * (form?.windupPercent ?? B.windupPercent);
+    this.windupTarget = target;
+    this.faceTowards(target.pos);
     const set = melee ?? anims;
-    const anim = crit ? set.crit : set.attacks[this.attackIndex++ % set.attacks.length];
+    const anim = form?.anim ?? (crit ? set.crit : set.attacks[this.attackIndex++ % set.attacks.length]);
     const length = Math.min(this.player.duration(anim), delay);
     this.player.play(anim, { loop: false, restart: true, duration: length, fade: 0.05 });
     const sound = melee ? `${id}_melee` : `${id}_auto`;
-    audio.play(crit ? (melee ? `${id}_melee_crit` : `${id}_crit`) : this.attackIndex % 2 ? sound : `${sound}2`);
+    audio.play(form?.sound ?? (crit ? (melee ? `${id}_melee_crit` : `${id}_crit`) : this.attackIndex % 2 ? sound : `${sound}2`));
     this.animLock = length;
   }
+
+  /** The next basic attack can start right away (an attack timer reset, e.g. a returning blade caught). */
+  resetAttack() { this.attackTimer = 0; }
 
   private fireAuto(target: Enemy) {
     const B = this.champ.base;
@@ -746,6 +771,7 @@ export class Game {
 
   /** Fires a basic attack missile; `bolt` marks secondary ones (Runaan's Hurricane). */
   basicAttack(target: Enemy, damage: number, crit: boolean, bolt = false) {
+    if (this.kit.basicAttack?.(target, damage, crit, bolt)) return;
     const { base: B, vfx, id } = this.champ;
     this.spawnMissile(crit ? vfx.crit : vfx.auto, this.pos, target.pos, {
       speed: B.missileSpeed, range: 3000, radius: 10, damage, target,
@@ -841,8 +867,8 @@ export class Game {
     const pure = hit.type === 'true' ? amount : 0;
     if (hit.onHit) {
       for (const fx of this.itemFx) {
-        if (fx.onHit) physical += fx.onHit(e, hit);
-        if (fx.onHitMagic) magic += fx.onHitMagic(e, hit);
+        if (fx.onHit) physical += fx.onHit(e, hit) * (hit.onHitMult ?? 1);
+        if (fx.onHitMagic) magic += fx.onHitMagic(e, hit) * (hit.onHitMult ?? 1);
       }
     }
     magic += this.kit.onDamage?.(e, hit) ?? 0;
@@ -860,6 +886,7 @@ export class Game {
     // kill before the procs: a proc that lands on the corpse returns at the deadFor check above instead of killing twice
     if (e.hp <= 0) this.killEnemy(e, hit);
     for (const fx of this.itemFx) fx.onDealt?.(e, hit, dealt);
+    this.kit.onDealt?.(e, hit, dealt);
   }
 
   /** `nonLethal` damage leaves the champion at 1 HP at worst (Baron's whip); `magic` is reduced by MR instead of armor. */
@@ -904,13 +931,13 @@ export class Game {
     this.windup = -1;
     this.castLock = 0;
     this.pendingCast = null;
-    this.player.play(this.champ.anims.idle, { fade: 0.1 });
+    this.player.play(this.moveAnims.idle, { fade: 0.1 });
   }
 
   win() {
     this.over = 'won';
     this.winAt.copy(this.epics.find((e) => e.deadFor >= 0)?.pos ?? this.pos);
-    this.player.play(this.champ.anims.idle);
+    this.player.play(this.moveAnims.idle);
   }
 
   private killEnemy(e: Enemy, hit: Hit) {
@@ -1044,7 +1071,7 @@ export class Game {
     const e: Enemy = {
       id: this.nextId++, def, actor, pos: at ?? new THREE.Vector3(this.pos.x + Math.cos(a) * r, 0, this.pos.z + Math.sin(a) * r),
       hp, maxHp: hp, attackTimer: 0, windup: -1, deadFor: -1, animDt: 0,
-      armor: (def.armor ?? ENEMY_ARMOR[def.tier]) * (epic ? 1 : enemyArmorScale(this.time)), shred: 0, shredUntil: 0, slowPct: 0, slowUntil: 0, stunUntil: 0,
+      armor: (def.armor ?? ENEMY_ARMOR[def.tier]) * (epic ? 1 : enemyArmorScale(this.time)), shred: 0, shredUntil: 0, slowPct: 0, slowUntil: 0, stunUntil: 0, rootUntil: 0,
       mr: ENEMY_MR[def.tier] * (epic ? 1 : enemyArmorScale(this.time)), mrShred: 0, mrShredUntil: 0,
     };
     e.ai = AI[def.model]?.(this, e);
@@ -1122,6 +1149,8 @@ export class Game {
         } else if (e.attackTimer < e.def.attackCooldown - e.actor.duration(e.actor.currentName)) {
           e.actor.play(e.def.anims.idle, { fade: 0.2 });
         }
+      } else if (e.rootUntil > this.time) {
+        e.actor.play(e.def.anims.idle, { fade: 0.2 });
       } else {
         e.pos.addScaledVector(toPlayer.normalize(), e.def.speed * (this.isSlowed(e) ? 1 - e.slowPct : 1) * dt);
         e.actor.play(e.def.anims.run, { fade: 0.2 });

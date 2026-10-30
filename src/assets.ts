@@ -105,6 +105,7 @@ export class Actor {
   private clips: Map<string, THREE.AnimationClip>;
   private current?: THREE.AnimationAction;
   private bones = new Map<string, THREE.Object3D>();
+  private submeshes = new Map<string, THREE.Object3D[]>();
   currentName = '';
 
   constructor(id: string, scale = 1) {
@@ -115,7 +116,16 @@ export class Actor {
     this.root.add(model);
     this.mixer = new THREE.AnimationMixer(model);
     this.clips = t.clips;
-    model.traverse((o) => { if (o.name) this.bones.set(o.name.toLowerCase(), o); });
+    model.traverse((o) => {
+      if (o.name) this.bones.set(o.name.toLowerCase(), o);
+      const sub = (o.userData.submesh as string | undefined)?.toLowerCase();
+      if (sub) this.submeshes.set(sub, [...(this.submeshes.get(sub) ?? []), o]);
+    });
+  }
+
+  /** Shows or hides a submesh (the skin's SubmeshVisibility events, e.g. the weapon in hand), case-insensitive. */
+  showSubmesh(name: string, visible: boolean) {
+    for (const o of this.submeshes.get(name.toLowerCase()) ?? []) o.visible = visible;
   }
 
   /** A node of the model by name, case-insensitive (League bins mix the case of bone names). */

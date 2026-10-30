@@ -70,7 +70,7 @@ pnpm dev        # http://localhost:5173（在第一个界面选择英雄）
 2. 哈希列表（游戏的 `.bin` 通过 xxh64 哈希引用纹理和动画）：
    ```bash
    curl -s https://raw.communitydragon.org/data/hashes/lol/hashes.game.txt \
-     | grep -E "assets/characters/(ezreal|samira|brand|sru_|turret|inhibitor|nexus)" > assets-raw/hashes.filtered.txt
+     | grep -E "assets/characters/(ezreal|samira|brand|aphelios|sru_|turret|inhibitor|nexus)" > assets-raw/hashes.filtered.txt
    ```
 3. 从 WAD 中提取（`tools/extract_lol.py`）并转换为 `.glb`（`tools/build_models.py`）：
    ```bash
@@ -78,6 +78,8 @@ pnpm dev        # http://localhost:5173（在第一个界面选择英雄）
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt ezreal assets-raw/ezreal "$G/Champions/Ezreal.wad.client"
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt samira assets-raw/samira "$G/Champions/Samira.wad.client"
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt brand assets-raw/brand "$G/Champions/Brand.wad.client"
+   # 厄斐琉斯和折镜的驻灵（同一 WAD 中的独立角色）
+   for c in aphelios apheliosturret; do .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt $c assets-raw/$c "$G/Champions/Aphelios.wad.client"; done
    for c in sru_chaosminion{melee,ranged,siege,super} sru_orderminionmelee sru_krug sru_murkwolf sru_razorbeak sru_razorbeakmini sru_gromp sru_blue sru_red sru_riftherald sru_baron sru_crab sru_dragon sru_dragon_{air,fire,earth,water,hextech,chemtech}; do
      .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt $c assets-raw/$c "$G/Maps/Shipping/Map11.wad.client" "$G/Maps/Shipping/Common.wad.client"
    done
@@ -99,7 +101,7 @@ pnpm dev        # http://localhost:5173（在第一个界面选择英雄）
    `pieces` 是一个有限的 `.mapgeo` v14 解析器：如果跳过或失败（格式版本不同、缺少 WAD），运行时会根据布局障碍物绘制深色方块/圆柱。不会出错。
 5. 技能特效：从皮肤的 `.bin` 读取伊泽瑞尔的粒子系统，以及它们使用的所有纹理和网格。使用第 4 步下载的哈希列表：
    ```bash
-   for c in ezreal samira brand; do (cd tools && ../.venv-tools/bin/python build_vfx.py ../assets-raw/hashes $c ../public/assets/vfx/$c "$G"); done
+   for c in ezreal samira brand aphelios; do (cd tools && ../.venv-tools/bin/python build_vfx.py ../assets-raw/hashes $c ../public/assets/vfx/$c "$G"); done
    ```
    生成 `systems.json`（按 `ResourceResolver` 键索引的特效，例如 `Ezreal_Q_mis`）、`spells.json`（飞弹速度/宽度/射程）以及资源的 PNG/JSON。`tools/read_bin.py` 可以单独把任意 `.bin` 转为 JSON。发射器运行时位于 `src/particles.ts`；`src/vfx.ts` 只负责选择播放哪个系统以及在哪里播放。
 
@@ -162,15 +164,22 @@ pnpm dev        # http://localhost:5173（在第一个界面选择英雄）
   - **E**：对目标造成伤害并蔓延至其 300 码内的敌人（目标灼烧时为 600）。
   - **R**：火球最多弹跳 4 次（600），优先灼烧中的敌人；使灼烧中的敌人减速 30–60%，持续 0.25 秒。
   - 与原作不同（为怪潮平衡法力）：消耗 Q 40、W/E 45–65、R 80；灼烧和引爆有固定伤害部分，引爆对任何敌人生效；灼烧每 0.5 秒结算一次；R 不会弹回布兰德。
+- **厄斐琉斯**（客户端 `aphelios.bin` 中的技能数据，基础属性来自 Meraki Analytics）：射程 550。五把武器和专属 HUD：技能旁是主手武器的图标和弹药，Q = 主手武器的技能（名称由副手决定，例如还魂月闪），W = 副手武器及其弹药，E = 下个武器，技能栏上方是储备队列。
+  - **被动（传知者与真知者）**：开局主手通碧、副手断魄，坠明、荧焰、折镜在储备中。每把武器 50 弹药：每次攻击 1，每次 Q 10（不足 10 时 Q 用掉剩余）。主手武器耗尽后回到队列末尾，组装下个武器（1 秒内不能月相轮转，其 Q 冷却至少 1.5 秒）。技能点用于购买属性而非技能等级（Q +4 额外攻击力，W +9% 攻击速度，E +4.5 穿甲，最早 9 级达到 6 级）；Q 在 2 级解锁，W 和 E 在 1 级，R 在 6/11/16 级自动升级。
+  - **武器**：通碧 +100 射程，技能命中施加 4.5 秒标记；对标记目标的下次攻击（最远 1800）使用副手武器并引爆所有标记，每个 15 + 15% 额外攻击力。断魄立即命中，回复伤害的 2–7.1%（技能为 2.5 倍）；溢出的治疗转为护盾（10–140 + 6% 最大生命值，30 秒）。坠明造成 30% 减速，衰减到 10%（2.5 秒）。荧焰造成 110% 攻击力，并在目标后方分裂为 4 发弹丸（暴击时 6 发且更宽），造成 75%/100%（9 级）的伤害，对小兵为其 30%。折镜被掷出后返回（接住前不能攻击，接住后重置攻击计时）；每次接住增加一个飞轮刃（最多 20 个，5 秒）：第一个 +15% 攻击力，之后逐个降到 +5%。
+  - **Q（取决于主手武器，60 法力，数值随 1–13 级成长）**：月闪（70–160 + 42–60% 额外攻击力 + 100% 法术强度，射程 1450，施加标记）；对影（1.75 秒，6 次攻击，每 100% 额外攻速 +2，副手与断魄交替，每次 20–41% 攻击力，攻击特效 25%，+25% 移动速度）；地霜暗蚀（需要坠明目标：对所有被减速的敌人造成 50–140 + 32–50% 额外攻击力 + 70% 法术强度的魔法伤害并禁锢 1 秒）；暝涌（40° 650 码锥形：20–110 + 15–21% 额外攻击力 + 70% 法术强度，随后副手武器攻击每个被命中的敌人）；驻灵（掷到 475 码内，0.35 秒后启动，持续 20 秒，敌人进入 500 码后变为 4 秒，以厄斐琉斯的攻击速度用副手武器攻击，造成 35–125 + 34–52% 额外攻击力 + 50% 法术强度）。
+  - **W（月相轮转）**：交换主手和副手；每把武器保留自己的 Q 冷却。
+  - **R（清辉夜凝）**：一道光束（1300）在第一个敌人处停下，对周围 300 码造成 125/175/225 + 20% 额外攻击力 + 100% 法术强度的伤害，随后主手武器的攻击落在每个目标上：通碧施加 50/80/110 的标记，断魄回复 250/350/450，坠明造成 99% 减速（地霜暗蚀禁锢 1.35 秒），荧焰 +50/100/150 + 25% 额外攻击力和一圈弹丸，折镜 +5 个飞轮刃并每个目标再加一个。
+  - 非英雄联盟原版：针对英雄的效果对任何敌人生效（R 的光束在第一个敌人处停下、断魄 R 的治疗、飞轮刃的刷新）；敌人不会攻击驻灵（持续到时间结束）。
 - **两步升级**：
-  1. 按英雄联盟规则提升一个技能等级：基础技能在 1/3/5/7/9 级，R 在 6/11/16 级。没有可升级的技能时跳过此步。
+  1. 按英雄联盟规则提升一个技能等级：基础技能在 1/3/5/7/9 级，R 在 6/11/16 级（厄斐琉斯：属性点，见上文）。没有可升级的技能时跳过此步。
   2. 从随机的 3 件装备中选 1 件（出装完成后改为药水）。
 - **装备**：Data Dragon 的真实数据（属性、名称、图标），由 `tools/build_items.py` 生成到 `src/items.json`；被动在 `src/itemPassives/`。
   - 没有合成：升级时提供一件传说成装，或为已有装备提升一级，就像幸存者类游戏的武器。背包最多 6 件装备；不能丢弃。
   - 每件装备有 5 级。属性从 40%（1 级）成长到 100%（5 级）；被动在 3 级解锁，强度 60%，4 级 80%，5 级 100%。魔宗、大天使之杖和凛冬之临在 5 级获得转化后的被动（魔切、炽天使之拥、末日寒冬）。
   - 装备池：召唤师峡谷的全部传说装备，除了带主动效果的装备（中娅沙漏、幽梦之灵、九头蛇系列……）、辅助装备、重伤装备（凡性的提醒、炼金朋克链锯剑、莫雷洛秘典；荆棘之甲只保留反伤）以及需要视野或英雄护盾的被动（暗行者之爪、毒蛇之牙）。物理英雄获得攻击装备，法术英雄获得法强装备，坦克和混合装备两者都有。
   - 被动针对怪潮调整："英雄"触发改为击杀精英 / 史诗野怪；法术护盾格挡下一次受到的伤害。
-  - 每个英雄的推荐出装（OP.GG，16.21 版本）：出现概率为三倍，并标记为“推荐”。伊泽瑞尔：三相之力、魔宗、朔极之矛、赛瑞尔达的怨恨、无穷饥渴、守护天使。莎弥拉：收集者、无尽之刃、多米尼克领主的致意、不朽盾弓、饮血剑、守护天使。布兰德：黑焰火炬、瑞莱的冰晶节杖、兰德里的折磨、影焰、灭世者的死亡之帽、虚空之杖。
+  - 每个英雄的推荐出装（OP.GG，16.21 版本）：出现概率为三倍，并标记为“推荐”。伊泽瑞尔：三相之力、魔宗、朔极之矛、赛瑞尔达的怨恨、无穷饥渴、守护天使。莎弥拉：收集者、无尽之刃、多米尼克领主的致意、不朽盾弓、饮血剑、守护天使。布兰德：黑焰火炬、瑞莱的冰晶节杖、兰德里的折磨、影焰、灭世者的死亡之帽、虚空之杖。厄斐琉斯：收集者、无尽之刃、多米尼克领主的致意、卢安娜的飓风、守护天使、饮血剑。
   - 出装完成（6 件装备均为 5 级）：升级时提供生命药水或法力药水（恢复 20% 最大值），每次击杀有 1% 概率掉落图纸（蓝色卷轴，每局 1 张），使随机一件装备变为传说（属性 +50%）。
   - 抗性：物理伤害被敌人的护甲减免（护甲穿透、穿甲），魔法伤害被魔法抗性减免（法术穿透；野怪的魔抗为护甲的一半，小兵没有）。远程敌人的弹道造成魔法伤害（被你的魔抗减免），近战攻击造成物理伤害。
 - **远程敌人**：沿直线发射技能弹，瞄准伊泽瑞尔先前的位置，射程有限。可以躲避。
@@ -207,9 +216,9 @@ pnpm dev        # http://localhost:5173（在第一个界面选择英雄）
 
 - **英雄**（`src/champion.ts`、`src/champions/`）：一个英雄由 `ChampionDef`（基础属性、技能的等级/消耗/冷却/动画/图标、动画、普攻特效）加一个每局创建的 `kit` 组成，`kit` 负责处理技能及其特殊机制（层数、标记等）。`Game` 负责通用部分：移动、普攻、冷却、法力、装备和伤害管线。
   - 新英雄：创建 `src/champions/<name>.ts`（模板：`ezreal.ts`；法术强度法师、持续伤害和逐敌标记参考 `brand.ts`），并在 `src/champions/index.ts` 中注册。音效命名遵循 `<id>_auto`、`<id>_Q`、`<id>_death`……分步指南：`.claude/skills/creating-champions/SKILL.md`。
-  - kit 钩子：`cast`（必需）、`castStart`、`castAnim`、`canCast`、`attackSpeedBonus`/`moveSpeedBonus`、`disarmed`、`meleeAuto`、`onDamage`（减免前的额外魔法伤害，例如引爆 W 的标记）、`onKill`（例如炽热之焰的击杀回蓝）、`update`、`dispose`、`hud`、`gauge`。
-  - `ChampionDef` 扩展：`idleVfx`（整局附着在骨骼上的系统，例如布兰德的火焰）、`vfx.death`、`scale`（模型大小）、法师使用 `itemPool: 'ap'`（技能用 `apRatio` 缩放）、`build`（出装网站推荐的 6 件传说装备，升级时出现概率更高并带标记）。
-  - 对敌人的控制：`game.slow(e, pct, s)` 和 `game.stunEnemy(e, s)`（仅通用循环；首领 AI 忽略眩晕）。
+  - kit 钩子：`cast`（必需）、`castStart`、`castAnim`、`canCast`、`attackSpeedBonus`/`moveSpeedBonus`、`disarmed`、`meleeAuto`、`onDamage`（减免前的额外魔法伤害，例如引爆 W 的标记）、`onKill`（例如炽热之焰的击杀回蓝）、`onDealt`（减免后的伤害，例如断魄的治疗）、`update`、`dispose`、`hud`、`gauge`。有多种形态的英雄（厄斐琉斯的武器）：`stat`（自身属性，例如购买的属性点）、`attackTarget`/`attackStart`/`basicAttack`（普攻的目标、动画、音效、前摇以及发射）、`moveAnims`、`cooldownBase`/`castTime`（按形态）、`skillView`（技能栏图标、名称和角标）和 `tray`（技能栏上方的小图标）。
+  - `ChampionDef` 扩展：`idleVfx`（整局附着在骨骼上的系统，例如布兰德的火焰）、`vfx.death`、`scale`（模型大小）、法师使用 `itemPool: 'ap'`（技能用 `apRatio` 缩放）、`build`（出装网站推荐的 6 件传说装备，升级时出现概率更高并带标记）、`rankLevels`（每个技能等级的解锁等级）、`autoRank`（无需技能点自动升级的技能）和 `SkillDef.unlockLevel`（从某个等级起可施放，与技能等级无关）。
+  - 对敌人的控制：`game.slow(e, pct, s)`、`game.stunEnemy(e, s)` 和 `game.rootEnemy(e, s)`（不能移动，仍可攻击）（仅通用循环；首领 AI 忽略后两者）。
   - 投射物：`game.spawnMissile(vfx, from, to, { hit, target | pierce, onHit, ... })`。没有 `onHit` 时，默认命中效果会应用特效、音效和伤害。
 - **装备被动**（钩子在 `src/itemEffects.ts`，条目在 `src/itemPassives/ad.ts`、`ap.ts`、`tank.ts`）：每个条目包含描述（最高等级的数值）和钩子工厂 `effect(g, power)`（`onHit`、`onHitMagic`、`onAttack`、`onCast`、`onDealt`、`onKill`、`onHurt`、`onStruck`、`onOverheal`、`tick`、`onLethal`、`stat`、`damageMult`……）。`power()` 是被动在装备当前等级的强度（0.6/0.8/1）：效果的数值乘以它，全有或全无的效果（复活、法术护盾）则延长冷却。通用机制在 `src/itemPassives/shared.ts`：咒刃、救主灵刃、法术护盾、灼烧、充能。`unique` + `rank` 复现英雄联盟的唯一被动（只有最强的一个生效）。属性仍在 `items.json` 中。
 - **敌人**（`src/data.ts` + `src/enemies/`）：普通敌人只需要一个 `EnemyDef`。自定义行为在 `AI` 中注册；有特殊规则的时间线事件（随机亚龙、男爵竞技场）在 `SPAWNERS` 中注册生成器。`src/hazards.ts` 包含首领用的地面标记和喷发效果。

@@ -43,7 +43,7 @@ const BUFF_GLYPH: Record<'blue' | 'red', string> = {
   red: '<path d="M12 3c3 4 6 7 6 10.5a6 6 0 0 1-12 0c0-2 1-3.6 2.6-5 0 2.4 1.6 3.4 2.6 3.4-1-3.4 0-6 .8-8.9z" fill="#ff6b4e"/>',
 };
 
-type SkillEls = { root: HTMLElement; sweep: HTMLElement; cdText: HTMLElement; pips: HTMLElement; cost: HTMLElement; cooling: boolean };
+type SkillEls = { root: HTMLElement; img: HTMLImageElement; sweep: HTMLElement; cdText: HTMLElement; pips: HTMLElement; cost: HTMLElement; badge: HTMLElement; cooling: boolean };
 
 export class Hud {
   /** Number-key handlers for the open level-up step (index 0 = key 1). */
@@ -71,13 +71,14 @@ export class Hud {
     $('skills').innerHTML = SKILL_KEYS.map((k) => `
       <div class="skill" id="skill-${k}" title="${champ.skills[k].name}">
         <div class="sf"><img src="${champ.skills[k].icon}" alt=""><div class="sweep"></div></div>
-        <div class="cd-text"></div><span class="key">${k}</span><span class="cost"></span><div class="pips"></div>
+        <div class="cd-text"></div><span class="key">${k}</span><span class="cost"></span><span class="badge"></span><div class="pips"></div>
       </div>`).join('');
     // not $(): its id cache would still hold the previous HUD's (now detached) skill slots
     const root = (k: SkillKey) => document.getElementById(`skill-${k}`)!;
     const part = (k: SkillKey, sel: string) => root(k).querySelector<HTMLElement>(sel)!;
     this.skillEls = Object.fromEntries(SKILL_KEYS.map((k) => [k, {
-      root: root(k), sweep: part(k, '.sweep'), cdText: part(k, '.cd-text'), pips: part(k, '.pips'), cost: part(k, '.cost'), cooling: false,
+      root: root(k), img: part(k, 'img') as HTMLImageElement, sweep: part(k, '.sweep'), cdText: part(k, '.cd-text'), pips: part(k, '.pips'),
+      cost: part(k, '.cost'), badge: part(k, '.badge'), cooling: false,
     }])) as Hud['skillEls'];
     $('gauge').querySelector('img')!.src = champ.passive.icon;
     $('gauge').title = champ.passive.name;
@@ -133,20 +134,35 @@ export class Hud {
       if (changed(`${id}.t`, fmt(left))) $(id).querySelector('b')!.textContent = fmt(left);
     }
     const gauge = g.kit.gauge?.();
+    if (changed('gauge-icon', gauge?.icon ?? '')) $('gauge').querySelector('img')!.src = gauge?.icon ?? g.champ.passive.icon;
+    const tray = g.kit.tray?.() ?? [];
+    if (changed('tray', tray.map((x) => `${x.icon}|${x.label}`).join(','))) {
+      $('tray').innerHTML = tray.map((x) => `<b title="${x.title}"><img src="${x.icon}" alt="">${x.label ? `<span>${x.label}</span>` : ''}</b>`).join('');
+      // outside the dock (its frame clips), just above the skill slots
+      const r = $('skills').getBoundingClientRect(), dock = $('bottom').getBoundingClientRect();
+      Object.assign($('tray').style, { left: `${r.left}px`, bottom: `${innerHeight - dock.top + 6}px` });
+    }
     text('gauge-label', gauge?.label ?? '');
     style('gauge-fill', 'height', gauge ? pct(gauge.fill) : '0');
     if (changed('gauge-ready', String(!!gauge?.ready))) $('gauge').classList.toggle('ready', !!gauge?.ready);
     for (const k of SKILL_KEYS) {
       const el = this.skillEls[k];
       const rank = g.ranks[k];
-      const cd = rank > 0 ? g.cooldowns[k] : 0;
+      const cd = g.learned(k) ? g.cooldowns[k] : 0;
       const cls = el.root.classList;
-      cls.toggle('locked', rank === 0);
-      cls.toggle('nomana', rank > 0 && g.mana < g.costOf(k));
-      cls.toggle('blocked', rank > 0 && g.kit.canCast?.(k) === false);
-      cls.toggle('empowered', rank > 0 && !!gauge?.ready && gauge.skill === k);
+      const on = g.learned(k);
+      cls.toggle('locked', !on);
+      cls.toggle('nomana', on && g.mana < g.costOf(k));
+      cls.toggle('blocked', on && g.kit.canCast?.(k) === false);
+      cls.toggle('empowered', on && !!gauge?.ready && gauge.skill === k);
       cls.toggle('cooling', cd > 0);
-      cls.toggle('ready', rank > 0 && cd <= 0);
+      cls.toggle('ready', on && cd <= 0);
+      const view = g.kit.skillView?.(k);
+      if (changed(`view-${k}`, `${view?.icon}|${view?.name}|${view?.badge}`)) {
+        el.img.src = view?.icon ?? g.champ.skills[k].icon;
+        el.root.title = view?.name ?? g.champ.skills[k].name;
+        el.badge.textContent = view?.badge ?? '';
+      }
       if (el.cooling && cd <= 0) { // back off cooldown: a short pop
         cls.remove('pop');
         void el.root.offsetWidth;
@@ -158,7 +174,7 @@ export class Hud {
       if (changed(`cd-text-${k}`, cdText)) el.cdText.textContent = cdText;
       const sweep = cd > 0 ? ((1 - cd / g.cooldownOf(k)) * 360).toFixed(1) : '360';
       if (changed(`cd-${k}`, sweep)) el.sweep.style.setProperty('--p', sweep);
-      const cost = rank > 0 && g.costOf(k) > 0 ? String(g.costOf(k)) : '';
+      const cost = g.learned(k) && g.costOf(k) > 0 ? String(g.costOf(k)) : '';
       if (changed(`cost-${k}`, cost)) el.cost.textContent = cost;
       if (changed(`pips-${k}`, String(rank))) {
         el.pips.innerHTML = Array.from({ length: g.champ.skills[k].maxRank }, (_, i) => `<i class="${i < rank ? 'on' : ''}"></i>`).join('');
@@ -553,7 +569,7 @@ function skillCard(g: Game, k: SkillKey, n: number, best: boolean, st: SkillStat
   const row = (label: string, a: string | null, b: string | null, better: boolean) =>
     `<div class="sk-row"><span>${label}</span><b>${a ?? '—'}</b>${b !== null ? `${ARROW}<b class="${better ? 'up' : ''}">${b}</b>` : ''}</div>`;
   const rows = [
-    row(t(`skillsel.${s.damageType}` as Key), now && num(Math.round(now.damage)), nx && num(Math.round(nx.damage)), true),
+    s.damage.some((d) => d > 0) ? row(t(`skillsel.${s.damageType}` as Key), now && num(Math.round(now.damage)), nx && num(Math.round(nx.damage)), true) : '',
     s.hits ? `<div class="sk-row sub"><span></span><em>${t('skillsel.hits', { n: s.hits, dmg: num(Math.round((nx ?? now)!.perHit)) })}</em></div>` : '',
     s.cooldown.some((c) => c > 0) ? row(t('skillsel.cooldown'), now && sec(now.cooldown), nx && sec(nx.cooldown), !!now && !!nx && nx.cooldown < now.cooldown) : '',
     s.cost.some((c) => c > 0) ? row(t('skillsel.cost'), now && num(now.cost), nx && num(nx.cost), false) : '',
@@ -567,8 +583,7 @@ function skillCard(g: Game, k: SkillKey, n: number, best: boolean, st: SkillStat
   ].filter(Boolean).join(' · ');
   const why = k === 'R' ? t('skillsel.whyUlt') : rank === 0 ? t('skillsel.whyNew') : t('skillsel.whyDps', { n: num(Math.max(0, Math.round(dpsGain(s, rank, st)))) });
   const lock = max ? t('skillsel.max')
-    : k === 'R' ? t('skillsel.unlocksAt', { level: (g.champ.ultimateLevels ?? [6, 11, 16])[rank] })
-      : t('skillsel.unlocksAt', { level: rank * 2 + 1 });
+    : t('skillsel.unlocksAt', { level: (g.champ.rankLevels?.[k] ?? (k === 'R' ? [6, 11, 16] : [1, 3, 5, 7, 9]))[rank] });
   const pips = Array.from({ length: s.maxRank }, (_, i) => `<i class="pip ${i < rank ? 'on' : i === rank && n >= 0 ? 'next' : ''}"></i>`).join('');
   const action = n >= 0
     ? `<button class="iact ${best ? 'rec' : ''}" data-a="${n}"><kbd>${n + 1}</kbd>
@@ -586,4 +601,4 @@ function skillCard(g: Game, k: SkillKey, n: number, best: boolean, st: SkillStat
   </article>`;
 }
 
-const fmtExtra = (e: NonNullable<SkillDef['extra']>, r: number) => (e.percent ? `${Math.round(e.values[r] * 100)}%` : num(e.values[r]));
+const fmtExtra = (e: NonNullable<SkillDef['extra']>, r: number) => (e.percent ? `${Math.round(e.values[r] * 100)}%` : num(e.values[r], e.values[r] % 1 ? 1 : 0));

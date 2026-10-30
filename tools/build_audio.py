@@ -27,6 +27,7 @@ EZ = "Play_sfx_Ezreal_Ezreal"
 SA = "Play_sfx_Samira_Samira"
 BR = "Play_sfx_Brand_Brand"
 BP = "Play_sfx_Brand_P_"
+AP = "Play_sfx_Aphelios_Aphelios"
 
 # bank path (without _events/_audio) -> {sound key: event name candidates (first match wins) or an event id}
 BANKS: dict[str, dict[str, list[str] | int]] = {
@@ -95,6 +96,55 @@ BANKS: dict[str, dict[str, list[str] | int]] = {
         "brand_R_hit": [BR + "R_hit"],
         "brand_detonate": [BP + "detonate1", BP + "detonate2"],
         "brand_death": ["Play_sfx_Brand_Death3D_cast"],
+    },
+    SFX + "characters/aphelios/skins/base/aphelios_base_sfx": {
+        "aphelios_calibrum_auto": [AP + "CalibrumAttack_OnCast"],
+        "aphelios_calibrum_line": [AP + "CalibrumLineAttack_OnCast", AP + "CalibrumLineAttack_cast"],
+        "aphelios_W_calibrum": [AP + "WCalibrum_swap"],
+        "aphelios_severum_auto": [AP + "SeverumAttack_OnCast"],
+        "aphelios_severum_line": [AP + "SeverumLineAttack_OnCast", AP + "SeverumLineAttack_cast"],
+        "aphelios_W_severum": [AP + "WSeverum_swap"],
+        "aphelios_gravitum_auto": [AP + "GravitumAttack_OnCast"],
+        "aphelios_gravitum_line": [AP + "GravitumLineAttack_OnCast", AP + "GravitumLineAttack_cast"],
+        "aphelios_W_gravitum": [AP + "WGravitum_swap"],
+        "aphelios_infernum_auto": [AP + "InfernumAttack_OnCast"],
+        "aphelios_infernum_line": [AP + "InfernumLineAttack_OnCast", AP + "InfernumLineAttack_cast"],
+        "aphelios_W_infernum": [AP + "WInfernum_swap"],
+        "aphelios_crescendum_auto": [AP + "CrescendumAttack_OnCast"],
+        "aphelios_crescendum_line": [AP + "CrescendumLineAttack_OnCast", AP + "CrescendumLineAttack_cast"],
+        "aphelios_W_crescendum": [AP + "WCrescendum_swap"],
+        "aphelios_calibrum_hit": [AP + "CalibrumAttack_hit"],
+        "aphelios_severum_hit": [AP + "SeverumAttack_hit"],
+        "aphelios_gravitum_hit": [AP + "GravitumAttack_hit"],
+        "aphelios_infernum_hit": [AP + "InfernumAttack_hit"],
+        "aphelios_crit_hit": [AP + "CritAttack_hit"],
+        "aphelios_crescendum_hit": [AP + "CrescendumAttackMisOut_OnHit"],
+        "aphelios_crescendum_catch": [AP + "CrescendumAttackMisIn_OnHit"],
+        "aphelios_chakram_out": [AP + "CrescendumAttackMisOutMini_launch"],
+        "aphelios_chakram_catch": [AP + "CrescendumAttackMisInMini_OnHit"],
+        "aphelios_mark_attack": [AP + "CalibrumAttackOverride_OnCast"],
+        "aphelios_mark_hit": [AP + "CalibrumAttackMisChain_OnHit"],
+        "aphelios_calibrum_Q": [AP + "CalibrumQ_cast"],
+        "aphelios_calibrum_Q_hit": [AP + "CalibrumQ_OnHit"],
+        "aphelios_severum_Q": [AP + "SeverumQ_OnCast"],
+        "aphelios_gravitum_Q": [AP + "GravitumQ_cast"],
+        "aphelios_gravitum_Q_beam": [AP + "GravitumQBeam_missilelaunch"],
+        "aphelios_gravitum_root": [AP + "GravitumRoot_buffactivate"],
+        "aphelios_infernum_Q": [AP + "InfernumQ_OnCast"],
+        "aphelios_infernum_Q_burst": [AP + "InfernumQCastBurst_cast"],
+        "aphelios_crescendum_Q": [AP + "CrescendumQ_OnCast"],
+        "aphelios_crescendum_Q_land": [AP + "CrescendumQ_OnHitLocation"],
+        "aphelios_sentry_calibrum": [AP + "CrescendumQCalibrum_buffactivate"],
+        "aphelios_sentry_severum": [AP + "CrescendumQSeverum_buffactivate"],
+        "aphelios_sentry_gravitum": [AP + "CrescendumQGravitum_buffactivate"],
+        "aphelios_sentry_infernum": [AP + "CrescendumQInfernum_buffactivate"],
+        "aphelios_sentry_end": [AP + "CrescendumQ_OnBuffDeactivate"],
+        "aphelios_R": [AP + "R_OnCast"],
+        "aphelios_R_launch": [AP + "RMis_OnMissileLaunch"],
+        "aphelios_R_hit": [AP + "RMis_OnHit"],
+        "aphelios_ammo": [AP + "PAmmoWarning_cast"],
+        "aphelios_reload": [AP + "PAluneGun_cast", AP + "PAluneGunSelf_cast"],
+        "aphelios_death": ["Play_sfx_Aphelios_Death3D_cast"],
     },
     SHARED + "hud_global": {
         "hud_levelup": ["Play_sfx_hud_base_spell_levelup"],
@@ -191,7 +241,7 @@ def render(txtp_path, mp3, music):
 
 def main(wwiser, out_dir, final_dir):
     final = Path(final_dir)
-    wads = [Wad(final / w) for w in ("Champions/Ezreal.wad.client", "Champions/Samira.wad.client", "Champions/Brand.wad.client", "Maps/Shipping/Map11.wad.client", "Maps/Shipping/Common.wad.client")]
+    wads = [Wad(final / w) for w in ("Champions/Ezreal.wad.client", "Champions/Samira.wad.client", "Champions/Brand.wad.client", "Champions/Aphelios.wad.client", "Maps/Shipping/Map11.wad.client", "Maps/Shipping/Common.wad.client")]
     read = lambda p: next((d for d in (w.read(p) for w in wads) if d is not None), None)
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)

@@ -5,6 +5,7 @@
 // Sound keys follow `${id}_<event>`: _auto, _auto2, _crit, _auto_hit, _crit_hit, _<Q|W|E|R>, _death.
 import type * as THREE from 'three';
 import type { Enemy, Game } from './game';
+import type { FxStat } from './itemEffects';
 import type { ItemPool } from './items';
 
 export type SkillKey = 'Q' | 'W' | 'E' | 'R';
@@ -21,6 +22,7 @@ export interface Hit {
   onHit?: boolean; // applies on-hit item effects (autos do; some abilities too, e.g. Mystic Shot)
   crit?: boolean;
   bolt?: boolean; // secondary auto (Runaan's Hurricane): on-hit applies, "on attack" effects don't
+  onHitMult?: number; // on-hit item damage effectiveness (default 1; Onslaught: 0.25)
 }
 
 /** LoL base stats; `*PerLevel` values use the LoL growth formula. */
@@ -54,6 +56,8 @@ export interface SkillDef {
    * 'move' casts along the movement direction (free dashes and blinks); 'none' ignores the point (self casts).
    */
   aim: number | 'move' | 'none';
+  /** Castable from this champion level regardless of its ranks (champions whose skill points buy stats, e.g. Aphelios). */
+  unlockLevel?: number;
   /** Level-up card (src/ui.ts): what the skill does, t('champion.<id>.<K>.desc'), and the numbers it shows per rank. */
   desc: string;
   damageType: DamageType;
@@ -118,8 +122,10 @@ export interface ChampionDef {
   textures?: Readonly<Record<string, string>>;
   base: BaseStats;
   skills: Readonly<Record<SkillKey, SkillDef>>;
-  /** Levels that unlock each R rank (default LoL 6/11/16); basic skills follow the LoL rule. */
-  ultimateLevels?: readonly number[];
+  /** Champion level that unlocks each rank of a skill (default LoL: basic 1/3/5/7/9, R 6/11/16). */
+  rankLevels?: Partial<Record<SkillKey, readonly number[]>>;
+  /** Skills ranked automatically when their rank level comes, without a skill point (Aphelios' R). */
+  autoRank?: readonly SkillKey[];
   passive: { name: string; icon: string };
   anims: { idle: string; run: string; death: string; attacks: readonly string[]; crit: string };
   /** Particle systems of the basic attack (missile and impact, normal and crit) and of the death animation. */
@@ -146,6 +152,8 @@ export interface ChampionKit {
   castAnim?(key: SkillKey, point: THREE.Vector3): string | undefined;
   /** When the cast starts (cast VFX). */
   castStart?(key: SkillKey, point: THREE.Vector3): void;
+  /** Stats from the champion's own mechanics, on top of items and runes (e.g. points spent on attack damage). */
+  stat?(k: FxStat): number;
   /** Bonus attack speed (fraction) from the champion's own mechanics. */
   attackSpeedBonus?(): number;
   /** Bonus (or, negative, reduced) movement speed (fraction) from the champion's own mechanics. */
@@ -156,14 +164,32 @@ export interface ChampionKit {
   disarmed?(): boolean;
   /** True when the basic attack about to start on `target` is the champion's melee one (`ChampionDef.melee`). */
   meleeAuto?(target: Enemy): boolean;
+  /** Target for the next basic attack given the default pick (null: none in range); may be out of range (long-range marks). */
+  attackTarget?(target: Enemy | null): Enemy | null;
+  /** The basic attack starting on `target`: animation, cast sound and windup share when it changes (e.g. per weapon). */
+  attackStart?(target: Enemy, crit: boolean): { anim?: string; sound?: string; windupPercent?: number } | undefined;
+  /** Fires the ranged basic attack (also secondary `bolt`s) instead of the default missile; false keeps the default. */
+  basicAttack?(target: Enemy, damage: number, crit: boolean, bolt: boolean): boolean;
+  /** Idle and run animations right now, when they change (e.g. per weapon); default `ChampionDef.anims`. */
+  moveAnims?(): { idle: string; run: string } | undefined;
+  /** Base cooldown of the next cast (before ability haste) when it is not `SkillDef.cooldown` (e.g. per weapon). */
+  cooldownBase?(key: SkillKey): number | undefined;
+  /** Cast time of the next cast when it is not `SkillDef.castTime` (e.g. per weapon). */
+  castTime?(key: SkillKey): number | undefined;
   /** Extra magic damage added to a hit on `e` before mitigation (e.g. a mark detonating). */
   onDamage?(e: Enemy, hit: Hit): number;
   /** `hit` killed `e` (e.g. a passive that restores mana on kills). */
   onKill?(e: Enemy, hit: Hit): void;
+  /** `hit` dealt `dealt` to `e` after mitigation (e.g. healing for a share of it). */
+  onDealt?(e: Enemy, hit: Hit, dealt: number): void;
   update?(dt: number): void;
   dispose?(): void;
   /** Passive status line on the HUD. */
   hud?(): string;
-  /** Passive gauge next to the skills (e.g. a stack grade): big label, fill 0..1, `ready` glows it and `skill`'s slot. */
-  gauge?(): { label: string; fill: number; ready: boolean; skill?: SkillKey };
+  /** Passive gauge next to the skills (e.g. a stack grade): big label, fill 0..1, `ready` glows it and `skill`'s slot; `icon` replaces the passive's. */
+  gauge?(): { label: string; fill: number; ready: boolean; skill?: SkillKey; icon?: string };
+  /** A skill slot's look right now when it changes (e.g. per weapon): icon, name (tooltip) and a small badge (ammo). */
+  skillView?(key: SkillKey): { icon?: string; name?: string; badge?: string } | undefined;
+  /** Small icons shown above the skills (e.g. a weapon queue). */
+  tray?(): readonly { icon: string; title: string; label?: string }[];
 }

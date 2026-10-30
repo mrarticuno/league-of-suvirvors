@@ -11,7 +11,7 @@ Campeão = **dados** (`ChampionDef`) + **kit** (objeto criado a cada run com as 
 O `Game` (`src/game.ts`) já faz tudo que é genérico: movimento, ataque básico, crítico, recargas, mana, ranks, itens, pipeline de dano, HUD e level-up.
 Regra central: **nada específico de um campeão entra em `game.ts`, `ui.ts` ou `vfx.ts`**. Se o kit precisa de algo que o `Game` não expõe, adicione um hook genérico em `src/champion.ts` (que outro campeão também usaria), nunca um `if (champ.id === ...)`.
 
-Contrato completo e comentado: `src/champion.ts`. Exemplos de referência: `src/champions/ezreal.ts` (atirador simples), `samira.ts` (corpo a corpo, medidor, canalização), `brand.ts` (mago AP: dano contínuo, marcas por inimigo, detonação em cadeia, mana em abates, `idleVfx`).
+Contrato completo e comentado: `src/champion.ts`. Exemplos de referência: `src/champions/ezreal.ts` (atirador simples), `samira.ts` (corpo a corpo, medidor, canalização), `brand.ts` (mago AP: dano contínuo, marcas por inimigo, detonação em cadeia, mana em abates, `idleVfx`), `aphelios.ts` (várias formas: armas com ataque, Q, animações e ícones próprios, pontos que compram atributos, pet/torreta, HUD com munição e fila).
 
 ## Arquivos
 
@@ -38,7 +38,7 @@ Assets (`assets-raw/`, `public/assets/`) não vão para o git.
 - `base`: stats do LoL (fonte: Meraki Analytics / `spells.json`), regen **por 5 s**, `*PerLevel` usa a fórmula de crescimento do LoL. `windupPercent = attackCastTime / attackTotalTime`.
 - `skills`: as 4 chaves `Q W E R`, cada uma com `name, maxRank, cooldown[], cost[], castTime, anim, icon, aim`. Arrays com `maxRank` itens. Números próprios do kit (dano, ratios, alcance) ficam no mesmo objeto: declare com `as const satisfies Record<SkillKey, SkillDef & Record<string, unknown>>` e leia do objeto local no kit.
 - `aim` (obrigatório): mira ao se mover com as setinhas, quando o cursor não é usado. Número = alcance da mira automática (alvo marcado, senão o inimigo mais próximo): todo skillshot e todo dash/skill que precisa de alvo. `'move'` = na direção do movimento (dash/blink livre, ex.: E do Ezreal). `'none'` = skill que ignora o `point` (em volta de si, alvo escolhido pelo kit).
-- `ultimateLevels`: só se o R não segue 6/11/16.
+- `rankLevels`: nível de cada rank por skill, só se não segue o LoL (básicas 1/3/5/7/9, R 6/11/16). `autoRank`: skills que sobem sozinhas (sem ponto; R do Aphelios). `SkillDef.unlockLevel`: conjurável a partir do nível, independente do rank (os ranks então compram atributos via `stat`).
 - `anims` / `skills[k].anim`: nomes exatos dos clips no `.glb`. Clip inexistente = sem animação, sem erro: confira os nomes.
 - `vfx`: chaves de sistemas de partícula do ataque básico (`auto`, `crit`, `autoHit`, `critHit`), como no `ResourceResolver` da skin; `death`: pares `[sistema, osso]` tocados na morte (eventos da animação de morte no `animations/skin0.bin`).
 - `idleVfx`: pares `[sistema, osso]` que ficam ligados a run toda (o `idleParticlesEffects` do `skin0.bin`, ex.: as chamas do Brand); param na morte. O bin às vezes omite o prefixo do osso (`BUFFBONE_GLB_CENTER_LOC` vs `C_BUFFBONE_GLB_CENTER_LOC`): confira no `.glb`.
@@ -60,6 +60,9 @@ function luxKit(g: Game): ChampionKit { /* estado da run aqui, em closures */ re
 - `castStart`: VFX de conjuração. `attackSpeedBonus`/`moveSpeedBonus`: fração. `canCast(key)`: condição extra antes de gastar mana/recarga (ex.: R que exige acúmulos). `disarmed()`: bloqueia ataque básico (canalização, giro). `hud`: texto curto da passiva. `gauge()`: medidor da passiva ao lado das skills (`label` grande, `fill` 0..1, `ready` brilha; ex.: grau de Estilo da Samira). `castAnim(key, point)`: anim da skill com mais de uma forma (ex.: Q da Samira, arma ou lâmina). `gauge().skill`: slot que brilha quando `ready`. `meleeAuto(target)`: true troca o ataque básico pelo corpo a corpo de `ChampionDef.melee` (anims, VFX, sons `<id>_melee*`, sem míssil).
 - `castTime` precisa ser > 0 (o cast resolve quando a trava zera); skill instantânea usa `0.05`.
 - `onKill(e, hit)`: o `hit` matou `e` (ex.: passiva que restaura mana em abates).
+- `onDealt(e, hit, dealt)`: dano já mitigado (cura por % do dano, ex. Severum).
+- Campeão com várias formas (armas, posturas): `stat(k)` (atributos próprios, somados aos de itens), `attackTarget(alvo)` (troca o alvo do ataque, pode estar fora do alcance), `attackStart(alvo, crit)` (clip, som e windup do ataque), `basicAttack(alvo, dano, crit, bolt)` (dispara o ataque no lugar do míssil padrão; `bolt` = Furacão de Runaan), `moveAnims()` (idle/run), `cooldownBase(k)`/`castTime(k)`, `skillView(k)` (ícone, nome e selo do slot) e `tray()` (ícones acima dos slots), `gauge().icon`. Mostrar/esconder submesh: `g.player.showSubmesh(nome, visível)`. `g.resetAttack()` zera o tempo do próximo ataque. `Hit.onHitMult`: efetividade dos efeitos ao atacar (Chacina: 0,25).
+- Pet/torreta com modelo próprio: `loadModel(id, hide, id)` no início do kit e `new Actor(id, escala)` (dentro de `try`: o download pode não ter terminado); o modelo entra em `MODELS` (`OWN_MESH` se a textura é de outra pasta) e é extraído com o WAD do campeão.
 - `onDamage(e, hit)`: roda em **todo** dano do campeão, antes da mitigação; retorna dano **mágico** extra. Ignore `hit.source === 'item'` se a passiva não deve reagir a queimaduras de item.
 - `dispose`: remova da cena tudo que o kit criou (meshes de marca etc.). `update` roda todo frame depois dos inimigos.
 - Cada hit declara um `Hit` (`type`, `source`, `skill`, `onHit`). Defina como constantes. `onHit: true` só se a skill aplica efeitos ao acertar no LoL. Sempre preencha `skill` em `source: 'ability'` (o tipo não obriga, mas reembolsos usam `g.costOf(hit.skill)`).
@@ -67,7 +70,7 @@ function luxKit(g: Game): ChampionKit { /* estado da run aqui, em closures */ re
 - Bloquear projéteis inimigos: `g.blockMissiles(p, r)` (retorna quantos).
 - Objetos de chão do campeão (armadilhas, zonas): meshes do kit em `g.scene`, checados no `update` com `g.enemiesNear`, removidos em `dispose`. `g.hazards` só fere o campeão (é dos chefes).
 
-API pública do `Game` para o kit: `pos`, `facing`, `time`, `level`, `ranks`, `cooldowns`, `hp`/`maxHp`, `mana`/`maxMana`, `ad`/`baseAd`/`bonusAd`, `ap`, `attackSpeed`, `critChance`, `items`, `slots` (`{ id, level }` dos itens), `costOf`, `spawnMissile`, `basicAttack`, `impact`, `hurtEnemy`, `float`, `enemyAt`, `nearestEnemy`, `enemiesNear`, `inAttackRange`, `collidePlayer`, `dash`/`dashing`, `blockMissiles`, `slow(e, pct, s)`/`isSlowed`, `stunEnemy(e, s)`, `player.bone(nome)`, `vfx` (`play`, `playAt`, `playOn`, `hit`, `attach`), `scene`.
+API pública do `Game` para o kit: `pos`, `facing`, `time`, `level`, `ranks`, `cooldowns`, `hp`/`maxHp`, `mana`/`maxMana`, `ad`/`baseAd`/`bonusAd`, `ap`, `attackSpeed`, `critChance`, `items`, `slots` (`{ id, level }` dos itens), `costOf`, `spawnMissile`, `basicAttack`, `impact`, `hurtEnemy`, `float`, `enemyAt`, `nearestEnemy`, `enemiesNear`, `inAttackRange`, `collidePlayer`, `dash`/`dashing`, `blockMissiles`, `slow(e, pct, s)`/`isSlowed`, `stunEnemy(e, s)`, `rootEnemy(e, s)`, `resetAttack`, `learned(k)`, `player.bone(nome)`, `vfx` (`play`, `playAt`, `playOn`, `hit`, `attach`), `scene`.
 
 - Dano contínuo (queimadura, veneno) e explosões de passiva: `Hit` com `source: 'item'`, para não disparar runas/itens de "acerto de habilidade" a cada tick. Aplique os acúmulos do próprio kit à mão.
 - Itens reagem ao `Hit`: `source: 'ability'` + `skill` dispara Liandry, Rylai, Shojin, Luden, Serylda, Voltaic etc.; `onHit: true` aplica on-hit (Kraken, BotRK, Guinsoo, Nashor). Dano mágico é reduzido pela RM do inimigo e físico pela armadura; `type: 'true'` ignora os dois (procs de item).
@@ -80,8 +83,7 @@ Precisa de uma destas? Primeiro estenda o contrato de forma genérica (`src/cham
 
 | Mecânica | O que falta | Forma genérica sugerida |
 |---|---|---|
-| Contar/alterar ataques básicos ao disparar (Headshot, "a cada N ataques") | Kit não tem `onAttack`; `onDamage` só soma dano **mágico** | Hook do kit `onAttack(target, damage, crit)` e/ou `onDamage` retornando `{ physical, magic }` |
-| Root em inimigos (sem andar, mas ataca) | Só existem `g.slow(e, pct, s)` e `g.stunEnemy(e, s)` (`EnemyAI` dos chefes ignora o stun) | `rootUntil` genérico em `Enemy` + `g.rootEnemy(e, s)` no loop genérico |
+| Dano **físico** extra num acerto (Headshot) | `onDamage` só soma dano **mágico** (contar ataques já dá: `attackStart`/`basicAttack`) | `onDamage` retornando `{ physical, magic }` |
 
 CC em `Enemy` é estado **genérico** (qualquer campeão usa); a regra "estado no kit" vale para mecânicas exclusivas do campeão.
 

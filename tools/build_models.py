@@ -4,6 +4,7 @@ Usage: python tools/build_models.py <lol2gltf binary>
 
 Reads assets-raw/<character>/ and writes public/assets/models/<id>.glb + <id>.png (texture).
 """
+import re
 import shutil
 import subprocess
 import sys
@@ -20,6 +21,10 @@ MODELS = {
     "brand": ("brand", "brand_base_tx_cm.png", []),
     # weapons texture of the samira mesh (ChampionDef.textures)
     "samira_weapons": ("samira", "../samira/samira_base_weapons_tx_cm.png", []),
+    "aphelios": ("aphelios", "aphelios_base_tx_cm.png", []),
+    "aphelios_guns": ("aphelios", "../aphelios/aphelios_base_guns_tx_cm.png", []),
+    # Crescendum's sentry: own mesh and clips, wearing Aphelios' gun texture (OWN_MESH)
+    "apheliosturret": ("apheliosturret", "../aphelios/aphelios_base_guns_tx_cm.png", []),
     "minion_melee": ("sru_chaosminionmelee", "chaosminion_melee_tx_cm.png", ["sru_orderminionmelee"]),
     "minion_caster": ("sru_chaosminionranged", "red_caster_tx_cm.png", []),
     "minion_siege": ("sru_chaosminionsiege", "chaos_minion_siege_tx_cm.png", []),
@@ -50,10 +55,18 @@ MODELS = {
     "sruap_ordernexus": ("nexus", "nexus_tx_cm.png", [], False),
 }
 
+# clips left out of a model (by .anm stem): transitions, emotes and recall nobody plays, which would double the .glb
+SKIP_CLIPS = {
+    "aphelios": re.compile(r"_to_|_in$|homeguard|_fast$|nomove|_-?\d+$|dance|joke|laugh|taunt|respawn|recall|channel"),
+}
+
+# entries whose "../" texture belongs to another folder but that still have a mesh of their own
+OWN_MESH = {"apheliosturret"}
+
 
 def build(lol2gltf, model_id, folder, texture, borrow, own_anm=True):
     src = RAW / folder
-    if texture.startswith("../"):
+    if texture.startswith("../") and model_id not in OWN_MESH:
         # texture-only skin of another model's mesh: the game loads that mesh's .glb (EnemyDef.mesh)
         shutil.copy(src / texture, OUT / f"{model_id}.png")
         print(f"{model_id} -> {OUT / model_id}.png (mesh {folder})")
@@ -63,8 +76,10 @@ def build(lol2gltf, model_id, folder, texture, borrow, own_anm=True):
     with tempfile.TemporaryDirectory() as tmp:
         anm = Path(tmp) / "anm"
         anm.mkdir()
+        skip = SKIP_CLIPS.get(model_id)
         for f in (src / "anm").glob("*.anm") if own_anm else []:
-            shutil.copy(f, anm)
+            if not (skip and skip.search(f.stem)):
+                shutil.copy(f, anm)
         # borrowed clips are matched by name suffix (e.g. order melee "run" fills chaos melee's missing "run")
         have = {f.stem.rsplit("_", 1)[-1] for f in anm.glob("*.anm")}
         for b in borrow:
