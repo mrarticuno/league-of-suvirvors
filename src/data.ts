@@ -94,7 +94,7 @@ export const ENEMIES: Record<string, EnemyDef> = {
   },
   baron: {
     // Baron never moves (as in LoL); its abilities are driven by src/enemies/baron.ts, not the generic attack loop
-    model: 'baron', name: t('enemy.baron'), hp: 150000, speed: 0, damage: 0, attackRange: 0, attackCooldown: 0, windup: 0,
+    model: 'baron', name: t('enemy.baron'), hp: 70000, speed: 0, damage: 0, attackRange: 0, attackCooldown: 0, windup: 0,
     xp: 500, radius: 250, tier: 'epic', immovable: true, hide: ['Horn', 'Eye'], // LoL hides these submeshes (initialSubmeshToHide)
     anims: { run: 'sru_baron_idle1_aggro', idle: 'sru_baron_idle1_aggro', death: 'sru_baron_death', attacks: ['sru_baron_attack1', 'sru_baron_attack2'] },
   },

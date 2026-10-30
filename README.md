@@ -205,7 +205,7 @@ WASD is not used because it clashes with Q/W/E.
   - Bosses: Rift Scuttler (5:00), Dragon (10:00, element rolled among Mountain, Cloud, Ocean, Hextech, Infernal and Chemtech; buffs not implemented yet), Rift Herald (15:00), Baron Nashor (20:00).
   - Elites between bosses: Blue Sentinel (7:30), Red Brambleback (12:30), both together (17:30).
   - Tune in `EVENTS` (`src/data.ts`).
-- **Baron Nashor (20:00)**: nearly impossible to kill (150k health). Killing him wins the run.
+- **Baron Nashor (20:00)**: 70k health. Killing him wins the run.
   - When he spawns, every other enemy dies and nothing else spawns (not even hordes).
   - A circular arena (radius 1500) closes around Ezreal and the Baron. You cannot walk out.
   - If Ezreal leaves (e.g. Arcane Shift over the wall), a tentacle pulls him back.
