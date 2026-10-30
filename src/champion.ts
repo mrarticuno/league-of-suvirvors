@@ -162,6 +162,8 @@ export interface ChampionKit {
   moveSpeedBonus?(): number;
   /** Extra cast condition checked before mana and cooldown are spent (e.g. an ultimate that needs stacks). */
   canCast?(key: SkillKey): boolean;
+  /** True while the champion flies over scenery and units: no wall nor unit collision (e.g. Comet of Legend). */
+  ghost?(): boolean;
   /** True while the champion's own mechanics forbid basic attacks (e.g. a channel that replaces them). */
   disarmed?(): boolean;
   /** True when the basic attack about to start on `target` is the champion's melee one (`ChampionDef.melee`). */

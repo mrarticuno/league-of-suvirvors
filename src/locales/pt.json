@@ -548,5 +548,19 @@
  "float.boots": "Novas botas: {item}!",
  "boots.choose": "{monster} abatido — escolha suas botas",
  "boots.plating": "Blindagem: golpes físicos causam 10% menos dano",
- "boots.empty": "Botas aos {time}"
+ "boots.empty": "Botas aos {time}",
+ "champion.aurelionsol.name": "Aurelion Sol",
+ "champion.aurelionsol.title": "o Forjador de Estrelas",
+ "champion.aurelionsol.passive": "Centro do Universo",
+ "champion.aurelionsol.Q": "Oscilação Estelar",
+ "champion.aurelionsol.W": "Expansão Celestial",
+ "champion.aurelionsol.E": "Cometa Lendário",
+ "champion.aurelionsol.R": "Estrela Cadente",
+ "champion.aurelionsol.hud.off": "Estrelas em órbita",
+ "champion.aurelionsol.hud.on": "Estrelas expandidas: −{n} de mana/s",
+ "champion.aurelionsol.drain": "Mana por segundo",
+ "champion.aurelionsol.Q.desc": "Lança uma estrela que cresce enquanto Aurelion Sol fica a até 650 unidades. Ela explode quando ele se afasta, após 5s ou no tamanho máximo, causando dano mágico e Atordoamento de 0,55–1,1s nos inimigos da área. Quanto maior ficou, mais dano causa (até +50%).",
+ "champion.aurelionsol.W.desc": "Passiva: cada acerto das estrelas causa mais dano. Ativa: as estrelas se afastam até 650 unidades, giram duas vezes mais rápido e causam 40% a mais de dano, gastando mana a cada segundo.",
+ "champion.aurelionsol.E.desc": "Levanta voo por 3s, passando por cima de paredes e unidades com 60–100% de Velocidade de Movimento adicional. Não pode atacar enquanto voa.",
+ "champion.aurelionsol.R.desc": "Faz um meteoro cair na área alvo. Após 1s ele atinge o chão, causando dano mágico aos inimigos em até 450 unidades e arremessando-os ao ar por 1s."
 }

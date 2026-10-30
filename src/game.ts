@@ -31,6 +31,7 @@ const PACE = { ramp: 300, max: 2 }; // the whole simulation speeds up from x1 at
 const CAMPING = { ramp: 5, max: 5 }; // standing still: damage taken grows to x5 (after armor) over 5 s
 const BASE_MR = 30, BASE_MR_PER_LEVEL = 1.3; // LoL marksmen and mages: no champion file lists MR
 const DESPAWN_RADIUS = 3600;
+const AIR_HEIGHT = 220; // peak of an enemy knock-up arc (Game.knockUp)
 const AIM_FAR = 5000; // 'move' aim: farther than any dash or blink
 const GRID_CELL = 150;
 const GRID_SLACK = 60; // enemies keep moving after the grid is built; queries widen by this much
@@ -71,6 +72,8 @@ export interface Enemy {
   slowUntil: number;
   stunUntil: number; // no moving nor attacking while time < stunUntil (generic loop only: EnemyAI bosses ignore it)
   rootUntil: number; // no moving (still attacks) while time < rootUntil (generic loop only, like stunUntil)
+  airUntil: number; // knocked up: the model arcs into the air while time < airUntil (Game.knockUp)
+  airFor: number; // length of that knock-up
   ai?: EnemyAI; // own behaviour (src/enemies), replaces the generic chase-and-attack loop
   animDt: number; // animation time not yet applied (animation LOD)
 }
@@ -454,6 +457,13 @@ export class Game {
     e.stunUntil = Math.max(e.stunUntil, this.time + seconds);
     e.windup = -1;
   }
+  /** Knock-up: a stun that throws the enemy's model into the air and lands it when it ends. */
+  knockUp(e: Enemy, seconds: number) {
+    this.stunEnemy(e, seconds);
+    if (e.airUntil > this.time) return; // already airborne: keep its arc
+    e.airUntil = this.time + seconds;
+    e.airFor = seconds;
+  }
   inWater() { return this.map.inWater(this.pos.x, this.pos.z); }
 
   get hasFlash() { return [...this.page.primaryRunes, ...this.page.secondaryRunes].includes('hextech-flashtraption'); }
@@ -666,7 +676,7 @@ export class Game {
       const step = Math.min(d.left, d.speed * dt);
       this.pos.addScaledVector(d.dir, step);
       this.clampToArena();
-      this.collidePlayer();
+      if (!this.kit.ghost?.()) this.collidePlayer();
       this.facing = Math.atan2(d.dir.x, d.dir.z);
       this.stillFor = 0;
       if ((d.left -= step) <= 0) this.dashMove = null;
@@ -705,7 +715,7 @@ export class Game {
       }
     }
     // resolve even when stationary: a blink, the Baron's push or the tentacle drag can embed the player in scenery
-    this.collidePlayer();
+    if (!this.kit.ghost?.()) this.collidePlayer();
 
     if (this.animLock <= 0) {
       if (moving) {
@@ -1126,7 +1136,7 @@ export class Game {
     const e: Enemy = {
       id: this.nextId++, def, actor, pos: at ?? new THREE.Vector3(this.pos.x + Math.cos(a) * r, 0, this.pos.z + Math.sin(a) * r),
       hp, maxHp: hp, attackTimer: 0, windup: -1, deadFor: -1, animDt: 0,
-      armor: (def.armor ?? ENEMY_ARMOR[def.tier]) * (epic ? 1 : enemyArmorScale(this.time)), shred: 0, shredUntil: 0, slowPct: 0, slowUntil: 0, stunUntil: 0, rootUntil: 0,
+      armor: (def.armor ?? ENEMY_ARMOR[def.tier]) * (epic ? 1 : enemyArmorScale(this.time)), shred: 0, shredUntil: 0, slowPct: 0, slowUntil: 0, stunUntil: 0, rootUntil: 0, airUntil: 0, airFor: 0,
       mr: ENEMY_MR[def.tier] * (epic ? 1 : enemyArmorScale(this.time)), mrShred: 0, mrShredUntil: 0,
     };
     e.ai = AI[def.model]?.(this, e);
@@ -1218,6 +1228,7 @@ export class Game {
     for (const e of this.enemies) {
       if (e.deadFor < 0) this.map.collideCircle(e.pos, e.def.radius);
       e.actor.root.position.copy(e.pos);
+      if (e.airUntil > this.time) e.actor.root.position.y = Math.sin((1 - (e.airUntil - this.time) / e.airFor) * Math.PI) * AIR_HEIGHT;
     }
     compact(this.enemies, (e) => {
       if (e.deadFor < 2) return true;
@@ -1243,6 +1254,7 @@ export class Game {
   /** Push overlapping units apart (and out of the champion), like LoL unit collision. Grid neighbours only. */
   private separate() {
     const B = this.champ.base;
+    const ghost = this.kit.ghost?.() ?? false;
     for (const a of this.enemies) {
       if (a.deadFor >= 0) continue;
       for (const b of this.grid.query(a.pos.x, a.pos.z, (a.def.radius + this.maxEnemyRadius) * 0.8 + GRID_SLACK, this.nearSep)) {
@@ -1259,7 +1271,7 @@ export class Game {
       }
       const dx = a.pos.x - this.pos.x, dz = a.pos.z - this.pos.z;
       const min = a.def.radius + B.radius, d = Math.hypot(dx, dz);
-      if (d >= min || d === 0) continue;
+      if (d >= min || d === 0 || ghost) continue;
       if (a.def.immovable) { this.pos.x = a.pos.x - (dx / d) * min; this.pos.z = a.pos.z - (dz / d) * min; }
       else { a.pos.x = this.pos.x + (dx / d) * min; a.pos.z = this.pos.z + (dz / d) * min; }
     }

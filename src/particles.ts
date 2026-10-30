@@ -245,7 +245,7 @@ class Emitter {
       : p === 'VfxPrimitiveArbitraryTrail' ? 'trail' : p === 'VfxPrimitiveCameraTrail' ? 'camtrail'
         : p === 'VfxPrimitiveRay' ? 'ray' : p === 'VfxPrimitiveAttachedMesh' ? 'attached' : p === 'VfxPrimitiveBeam' ? 'beam' : 'billboard';
     if (this.kind === 'mesh' || this.kind === 'beam') this.meshData = meshes.get(meshName(e)!);
-    this.bound = (val(e.bindWeight, 0) ?? 0) >= 0.5;
+    this.bound = sys.bind || (val(e.bindWeight, 0) ?? 0) >= 0.5;
     this.buf.reserve(4, 6); // allocate attributes up front so an empty emitter still has a valid geometry
     this.mesh = new THREE.Mesh(this.buf.geo, material(e));
     this.mesh.frustumCulled = false;
@@ -332,7 +332,7 @@ class Emitter {
     const e = this.e;
     const sc = vec3(val(e.scale0, pt), 1);
     if (e.isUniformScale) sc.set(sc.x, sc.x, sc.x);
-    s.copy(sc.multiply(p.scale));
+    s.copy(sc.multiply(p.scale)).multiplyScalar(this.sys.scale);
     const r = _v.copy(p.rot).addScaledVector(p.rotVel, p.age).add(vec3(val(e.rotation0, pt)));
     return q.copy(p.quat).multiply(_q2.setFromEuler(_e.set(r.x * DEG, r.y * DEG, r.z * DEG)));
   }
@@ -393,7 +393,7 @@ class Emitter {
     const shape = e.SpawnShape;
     // FlexShape: offsets and sizes authored per unit of the bound object's size (a bigger target gets a bigger effect)
     const flex = sys.size ? e.FlexShapeDefinition : undefined;
-    const kOffset = flex?.scaleEmitOffsetByBoundObjectSize ? flex.scaleEmitOffsetByBoundObjectSize * sys.size! : 1;
+    const kOffset = (flex?.scaleEmitOffsetByBoundObjectSize ? flex.scaleEmitOffsetByBoundObjectSize * sys.size! : 1) * sys.scale;
     let rot: THREE.Quaternion | null = null;
     if (shape) {
       const r = Math.random;
@@ -496,7 +496,7 @@ class Emitter {
       const c = [p.color[0] * cc[0], p.color[1] * cc[1], p.color[2] * cc[2], p.color[3] * cc[3]];
       const sc = vec3(val(e.scale0, pt), 1);
       if (e.isUniformScale) sc.set(sc.x, sc.x, sc.x);
-      const s = sc.multiply(p.scale);
+      const s = sc.multiply(p.scale).multiplyScalar(this.sys.scale);
       const erode = val(e.alphaErosionDefinition?.erosionDriveCurve, pt) ?? 0;
       if (trail) { points.push({ p, c, w: s.x, pt, erode }); continue; }
       if (p.overlay) { p.overlay.uniforms.color.value.set(c[0], c[1], c[2], c[3]); continue; }
@@ -678,8 +678,9 @@ class Emitter {
 /**
  * `owner`: the model attached-mesh emitters redraw; `size`: the bound object's size, for FlexShape emitters;
  * `target`: where beams end (kept live: move the vector), `targetQuat` the frame of their target offset.
+ * `bind`: every particle follows the system's frame (effects authored static that a kit moves).
  */
-export interface SystemOpts { owner?: THREE.Object3D; size?: number; target?: THREE.Vector3; targetQuat?: THREE.Quaternion; depth?: number }
+export interface SystemOpts { owner?: THREE.Object3D; size?: number; target?: THREE.Vector3; targetQuat?: THREE.Quaternion; depth?: number; bind?: boolean }
 
 export class ParticleSystem {
   readonly matrix = new THREE.Matrix4();
@@ -692,17 +693,20 @@ export class ParticleSystem {
 
   readonly owner?: THREE.Object3D;
   readonly size?: number;
+  readonly bind: boolean; // every particle rides the system (an effect authored static, moved by a kit)
   readonly afterimage: boolean;
   readonly scene?: THREE.Scene;
   readonly depth: number; // child systems nest: a bound on runaway sets
   readonly name: string; // League's particleName, for debugging
   target?: THREE.Vector3;
   targetQuat?: THREE.Quaternion;
+  scale = 1; // live size multiplier: particle sizes and new birth offsets (an area that grows, e.g. Starsurge)
   persistent = false; // kept until stopped (marks, glows, missiles): -1-lifetime particles live that long
 
   constructor(def: Bin, scene: THREE.Scene, pos: THREE.Vector3, quat: THREE.Quaternion, opts: SystemOpts = {}) {
     this.owner = opts.owner;
     this.size = opts.size;
+    this.bind = !!opts.bind;
     this.scene = scene;
     this.depth = opts.depth ?? 0;
     this.name = def.particleName ?? '';
