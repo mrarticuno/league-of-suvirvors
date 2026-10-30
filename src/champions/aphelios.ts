@@ -40,6 +40,7 @@ const PASSIVE = {
   gravitumSlow: 0.3, gravitumDecayTo: 0.1, gravitumDecayAt: 0.7, gravitumDuration: 2.5, gravitumArc: 90,
   infernumMult: 1.1, infernumBolts: 4, infernumCritBolts: 6, infernumCone: Math.PI / 6, infernumRange: 400, infernumSecondary: [0.75, 1], infernumMinion: 0.3,
   chakramMax: 20, chakramDuration: 5, chakramFirst: 0.15, chakramStep: 0.015, chakramMin: 0.05,
+  orbitRadius: 110, orbitHeight: 110, orbitSpin: 2.5, // the chakrams circling Aphelios (radians/s)
   crescendumSpeed: 2600, returnSpeed: 600, returnPerAs: 750, linger: 0.2, windup: 0.1067, critWindup: 0.0667,
 };
 
@@ -147,7 +148,10 @@ const qName = (main: Weapon, off: Weapon) => t((main === 'gravitum' ? 'champion.
 
 interface Mark { until: number; bonus: number; fx: THREE.Object3D | null }
 interface Gravity { until: number; decayAt: number; enhanced: boolean; fx: THREE.Object3D | null }
-interface Blade { fx: THREE.Object3D; wait: number; mini: boolean } // Crescendum (or a spectral chakram) flying back
+/** A Crescendum blade on its way: the weapon itself, a chakram from the orbit (a basic attack) or a spectral one (an ability). */
+type BladeKind = 'main' | 'orbit' | 'spectral';
+interface Blade { fx: THREE.Object3D; wait: number; kind: BladeKind } // flying back to Aphelios
+interface Flight { target: Enemy; kind: BladeKind; landed: boolean } // thrown by a basic attack, not landed yet
 interface Sentry {
   actor: Actor; pos: THREE.Vector3; weapon: Weapon; armAt: number; until: number; active: boolean; next: number;
   fx: THREE.Object3D[]; dying: number; level: number;
@@ -156,7 +160,7 @@ interface Toss { fx: THREE.Object3D; from: THREE.Vector3; to: THREE.Vector3; t: 
 /** One attack from a weapon: who fires it and what it counts as. */
 interface Shot {
   from: THREE.Vector3; hits: HitPair; sevHits: HitPair;
-  thrown?: boolean; // Crescendum's own blade (a basic attack): Aphelios waits for it to come back
+  flight?: Flight; // a basic attack of Crescendum: the weapon or an orbiting chakram, back in hand once caught
   mark?: boolean; // a long-range attack on a Calibrum mark: consumes every mark
   markBonus?: number; // a Calibrum ability shot marks with this bonus per mark (default the passive's)
   enhanced?: boolean; // Gravitum's Moonlight Vigil slow
@@ -183,8 +187,10 @@ function apheliosKit(g: Game): ChampionKit {
   const marks = new Map<Enemy, Mark>();
   const gravity = new Map<Enemy, Gravity>();
   let chakrams = 0, chakramUntil = 0;
-  let thrown = false; // Crescendum's blade away: no attacks with it until caught
-  let throwTarget: Enemy | null = null; // where the thrown blade is headed, until it lands
+  // Crescendum's basic attacks throw the weapon, then each orbiting chakram: no attacks only while all of them are out
+  let mainOut = false, orbitOut = 0;
+  const flights: Flight[] = [];
+  const orbitFx: THREE.Object3D[] = []; // one per chakram in hand
   const timed: { o: THREE.Object3D; until: number }[] = []; // ground effects with a duration (roots)
   const blades: Blade[] = [];
   const tosses: Toss[] = [];
@@ -195,7 +201,6 @@ function apheliosKit(g: Game): ChampionKit {
   let spotlight: { fx: ParticleSystem | null; orb: MissileFx; pos: THREE.Vector3; dir: THREE.Vector3; left: number; weapon: Weapon; rank: number } | null = null;
   let glows: ParticleSystem[] = [];
   let rangeRing: THREE.Object3D | null = null;
-  let chakramFx: THREE.Object3D | null = null;
   const MAX_MARK_FX = 30, MAX_TRACERS = 12; // particle budget: past these, the mechanics run without their own visuals
   let markFx = 0, gravityFx = 0;
 
@@ -255,8 +260,7 @@ function apheliosKit(g: Game): ChampionKit {
   };
   const loseChakrams = () => {
     chakrams = 0;
-    drop(chakramFx);
-    chakramFx = null;
+    orbitOut = 0;
   };
   /** The main weapon ran dry: it goes to the end of the queue and Alune assembles the next one. */
   const exhaust = () => {
@@ -328,7 +332,6 @@ function apheliosKit(g: Game): ChampionKit {
   const addChakrams = (n: number) => {
     chakrams = Math.min(PASSIVE.chakramMax, chakrams + n);
     chakramUntil = g.time + PASSIVE.chakramDuration;
-    if (!chakramFx && chakrams > 0) chakramFx = attach('Aphelios_BA_crescendum_mis_mini_self', g.pos);
   };
 
   // ---- one attack of a weapon ----
@@ -368,15 +371,16 @@ function apheliosKit(g: Game): ChampionKit {
         splitBolts(from, facing, primary, crit, e, s);
         break;
       }
-      case 'crescendum':
-        if (s.thrown) throwTarget = null;
-        g.vfx.hit(s.thrown ? 'Aphelios_BA_crescendum_hit_tar' : 'Aphelios_BA_crescendum_hit_tar_mini', e.pos, facing, size);
+      case 'crescendum': {
+        const kind: BladeKind = s.flight?.kind ?? 'spectral', big = kind === 'main';
+        if (s.flight) s.flight.landed = true;
+        g.vfx.hit(big ? 'Aphelios_BA_crescendum_hit_tar' : 'Aphelios_BA_crescendum_hit_tar_mini', e.pos, facing, size);
         audio.play(crit ? 'aphelios_crit_hit' : 'aphelios_crescendum_hit');
         g.hurtEnemy(e, damage * (1 + chakramBonus()), h);
         if (chakrams > 0) chakramUntil = g.time + PASSIVE.chakramDuration; // attacks refresh the chakrams
-        g.vfx.playAt(s.thrown ? 'Aphelios_BA_crescendum_mis_linger' : 'Aphelios_BA_crescendum_mis_linger_mini', e.pos.clone().setY(100));
-        blades.push({ fx: attach(s.thrown ? 'Aphelios_BA_crescendum_mis_return' : 'Aphelios_BA_crescendum_mis_mini_return', e.pos.clone().setY(100)), wait: PASSIVE.linger, mini: !s.thrown });
+        returnBlade(kind, e.pos, PASSIVE.linger); // the returning blade itself waits on the target (no separate linger effect)
         break;
+      }
     }
   };
 
@@ -413,8 +417,8 @@ function apheliosKit(g: Game): ChampionKit {
         land(w, e, damage, crit, s, s.from);
         return;
       case 'crescendum':
-        if (!s.thrown) audio.play('aphelios_chakram_out'); // the throw's own sound plays with the attack
-        g.spawnMissile(s.thrown ? 'Aphelios_BA_crescendum_mis' : 'Aphelios_BA_crescendum_mis_mini', s.from, e.pos, {
+        if (s.flight?.kind !== 'main') audio.play('aphelios_chakram_out'); // the weapon's throw sound plays with the attack
+        g.spawnMissile(s.flight?.kind === 'main' ? 'Aphelios_BA_crescendum_mis' : 'Aphelios_BA_crescendum_mis_mini', s.from, e.pos, {
           speed: PASSIVE.crescendumSpeed, range: 4000, radius: 10, damage, target: e, hit: s.hits[0],
           onHit: (x, m) => land(w, x, damage, crit, s, m.pos),
         });
@@ -606,6 +610,22 @@ function apheliosKit(g: Game): ChampionKit {
     vigils.push({ at: g.time + r.lockDelay, targets, weapon: w, rank, fx });
   };
 
+  const inHand = () => (mainOut ? 0 : 1) + Math.max(0, chakrams - orbitOut);
+  const returnBlade = (kind: BladeKind, from: THREE.Vector3, wait: number) => {
+    const key = kind === 'main' ? 'Aphelios_BA_crescendum_mis_return' : 'Aphelios_BA_crescendum_mis_mini_return';
+    blades.push({ fx: attach(key, from.clone().setY(100)), wait, kind });
+  };
+  /** The chakrams in hand circle Aphelios, one each. */
+  const updateOrbit = () => {
+    const n = main === 'crescendum' || chakrams > 0 ? Math.max(0, chakrams - orbitOut) : 0;
+    while (orbitFx.length > n) drop(orbitFx.pop());
+    while (orbitFx.length < n) orbitFx.push(attach('Aphelios_BA_crescendum_mis_mini_self', g.pos));
+    for (let i = 0; i < n; i++) {
+      const a = g.time * PASSIVE.orbitSpin + (i / n) * Math.PI * 2;
+      orbitFx[i].position.set(g.pos.x + Math.sin(a) * PASSIVE.orbitRadius, PASSIVE.orbitHeight, g.pos.z + Math.cos(a) * PASSIVE.orbitRadius);
+    }
+  };
+
   // ---- HUD ----
   const view = {
     Q: () => ({ icon: `${HUD}/q_${main}.png`, name: qName(main, off), badge: String(ammo[main]) }),
@@ -624,7 +644,7 @@ function apheliosKit(g: Game): ChampionKit {
       return 0;
     },
     moveSpeedBonus: () => (onslaught ? Q.severum.ms + Q.severum.msPerAp * g.ap : 0),
-    disarmed: () => onslaught !== null || (thrown && main === 'crescendum') || volleys.length > 0,
+    disarmed: () => onslaught !== null || (main === 'crescendum' && inHand() <= 0) || volleys.length > 0,
     canCast(key) {
       if (onslaught) return false; // no Phase nor Moonlight Vigil (nor another Q) during Onslaught
       if (key === 'W') return assembling <= 0;
@@ -663,9 +683,17 @@ function apheliosKit(g: Game): ChampionKit {
         return true;
       }
       const w = attack.weapon;
-      if (w === 'crescendum') { thrown = true; throwTarget = target; }
-      fire(w, target, damage, crit, shotFrom(g.pos.clone(), HITS.auto, SEV.auto, { mark: attack.mark, thrown: w === 'crescendum' }));
+      let flight: Flight | undefined;
+      if (w === 'crescendum') {
+        const kind: BladeKind = mainOut ? 'orbit' : 'main';
+        if (kind === 'main') mainOut = true;
+        else orbitOut++;
+        flights.push(flight = { target, kind, landed: false });
+      }
+      fire(w, target, damage, crit, shotFrom(g.pos.clone(), HITS.auto, SEV.auto, { mark: attack.mark, flight }));
       spend(1);
+      // like a machine gun: while a chakram still circles him, the next one goes at once (only its windup), no attack timer
+      if (flight && main === 'crescendum' && inHand() > 0) g.resetAttack();
       return true;
     },
     onDealt(_e, h, dealt) {
@@ -747,8 +775,8 @@ function apheliosKit(g: Game): ChampionKit {
       assembling -= dt;
       for (const w of WEAPONS) if (w !== main) qCooldown[w] = Math.max(0, qCooldown[w] - dt);
       rangeRing?.position.copy(g.pos).setY(0);
-      chakramFx?.position.copy(g.pos).setY(100);
       if (chakrams > 0 && g.time >= chakramUntil) loseChakrams();
+      updateOrbit();
 
       for (const [e, m] of marks) {
         if (!alive(e) || g.time >= m.until) endMark(e, m);
@@ -772,18 +800,23 @@ function apheliosKit(g: Game): ChampionKit {
         if (d > move + 40) { b.fx.position.addScaledVector(to.normalize(), move); continue; }
         drop(b.fx);
         blades.splice(i, 1);
-        if (b.mini) addChakrams(1); // only the spectral chakrams of abilities stack; catching Crescendum refreshes them
+        const waiting = main === 'crescendum' && inHand() <= 0;
+        if (b.kind === 'main') mainOut = false;
+        else if (b.kind === 'orbit') orbitOut = Math.max(0, orbitOut - 1);
+        // only the spectral chakrams of abilities stack; the others come back into the orbit and refresh it
+        if (b.kind === 'spectral') addChakrams(1);
         else if (chakrams > 0) chakramUntil = g.time + PASSIVE.chakramDuration;
-        if (b.mini) audio.play('aphelios_chakram_catch');
-        else {
-          audio.play('aphelios_crescendum_catch');
-          if (thrown) { thrown = false; g.resetAttack(); }
-        }
+        audio.play(b.kind === 'main' ? 'aphelios_crescendum_catch' : 'aphelios_chakram_catch');
+        if (waiting) g.resetAttack(); // every blade was out: the attack timer resets on the catch
       }
-      if (thrown && throwTarget && !alive(throwTarget)) {
-        // the target died with the blade on its way (the missile is gone): it comes back from there
-        blades.push({ fx: attach('Aphelios_BA_crescendum_mis_return', throwTarget.pos.clone().setY(100)), wait: 0, mini: false });
-        throwTarget = null;
+      for (let i = flights.length - 1; i >= 0; i--) {
+        const f = flights[i];
+        if (f.landed) flights.splice(i, 1);
+        else if (!alive(f.target)) {
+          // the target died with the blade on its way (the missile is gone): it comes back from there
+          returnBlade(f.kind, f.target.pos, 0);
+          flights.splice(i, 1);
+        }
       }
       for (let i = timed.length - 1; i >= 0; i--) if (g.time >= timed[i].until) { drop(timed[i].o); timed.splice(i, 1); }
 
@@ -873,6 +906,7 @@ function apheliosKit(g: Game): ChampionKit {
       for (const v of vigils) for (const o of v.fx) drop(o);
       endOnslaught();
       loseChakrams();
+      for (const o of orbitFx) drop(o);
       spotlight?.fx?.kill();
       spotlight?.orb.root.removeFromParent();
       drop(rangeRing);
@@ -880,7 +914,7 @@ function apheliosKit(g: Game): ChampionKit {
     },
 
     hud: () => (chakrams > 0
-      ? t('champion.aphelios.hud.chakrams', { n: chakrams })
+      ? t('champion.aphelios.hud.chakrams', { n: Math.max(0, chakrams - orbitOut) }) // in orbit: thrown ones count again when caught
       : marks.size > 0 ? t('champion.aphelios.hud.marks', { n: marks.size }) : ''),
     gauge: () => ({ label: String(ammo[main]), fill: ammo[main] / PASSIVE.ammo, ready: false, icon: `${HUD}/${main}_m.png` }),
     skillView: (key) => (key === 'R' ? undefined : view[key]()),

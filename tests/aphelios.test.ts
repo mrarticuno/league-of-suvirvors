@@ -15,7 +15,7 @@ function rig() {
     hp: 500, maxHp: 1000, shield: 0, pos: new THREE.Vector3(), facing: 0, scene: new THREE.Scene(), alive: true, dashing: false,
     ranks: { Q: 0, W: 0, E: 0, R: 0 }, cooldowns: { Q: 0, W: 0, E: 0, R: 0 },
     player: { showSubmesh: vi.fn(), bone: () => undefined, root: new THREE.Group() },
-    vfx: { attach: () => new THREE.Group(), play: () => null, playAt: vi.fn(), playOn: vi.fn(), hit: vi.fn() },
+    vfx: { attach: () => new THREE.Group(), play: () => null, missile: () => ({ root: new THREE.Object3D(), update: () => {} }), playAt: vi.fn(), playOn: vi.fn(), hit: vi.fn() },
     hurtEnemy: vi.fn(), heal: vi.fn(function (this: { hp: number }, n: number) { this.hp += n; }), addShield: vi.fn(), slow: vi.fn(), rootEnemy: vi.fn(),
     float: vi.fn(), resetAttack: vi.fn(), enemiesNear: () => [], nearestEnemy: () => null, inAttackRange: () => true,
     spawnMissile: (_fx: string, _from: THREE.Vector3, to: THREE.Vector3, o: MissileOpts) => missiles.push({ to, o }),
@@ -109,4 +109,26 @@ it('Crescendum: no attacks until the blade is caught, then the timer resets; onl
   expect(r.kit.disarmed!()).toBe(false);
   expect(r.g.resetAttack).toHaveBeenCalled();
   expect(r.kit.hud!()).toBe(''); // catching Crescendum itself adds no chakram
+});
+
+it('Crescendum with chakrams: one throw per blade in hand, waiting only when all are out', () => {
+  const r = rig();
+  const e = enemy(300);
+  while (!icon(r.kit).includes('q_crescendum')) { attack(r, e); r.land(); r.kit.update!(0.5); }
+  r.kit.update!(5);
+  (r.g as { enemiesNear: unknown }).enemiesNear = () => [e];
+  r.kit.castStart!('R', e.pos);
+  r.kit.cast('R', 0, e.pos); // Moonlight Vigil with Crescendum: 5 chakrams on the first hit
+  r.kit.update!(0.1);
+  r.missiles.splice(0);
+  expect(r.kit.hud!()).toMatch(/5/);
+  r.g.resetAttack.mockClear();
+  for (let i = 0; i < 6; i++) { expect(r.kit.disarmed!()).toBe(false); attack(r, e); } // the weapon + 5 chakrams
+  expect(r.g.resetAttack).toHaveBeenCalledTimes(5); // no attack timer while a chakram is in orbit
+  expect(r.kit.hud!()).toMatch(/\b0\b/); // all thrown: none left in orbit
+  expect(r.kit.disarmed!()).toBe(true);
+  r.land();
+  for (let i = 0; i < 40 && r.kit.disarmed!(); i++) r.kit.update!(0.05);
+  expect(r.kit.disarmed!()).toBe(false);
+  expect(r.kit.hud!()).toMatch(/5/); // thrown chakrams come back into the orbit, no new stacks
 });

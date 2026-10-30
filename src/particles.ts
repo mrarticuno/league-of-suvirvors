@@ -302,6 +302,8 @@ class Emitter {
     const fields = e.fieldCollectionDefinition;
     if (fields) this.fieldAcc(fields, et, worldAcc);
     if (this.age >= this.killAt) { for (const p of this.particles) this.drop(p); this.particles.length = 0; }
+    // -1 lifetime: ends with its system; a one-shot effect's, with its emitter
+    if (this.sys.stopped || (!this.sys.persistent && !this.active)) compact(this.particles, (p) => p.life !== Infinity || (this.drop(p), false));
     compact(this.particles, (p) => {
       p.age += dt;
       if (p.age >= p.life) { this.drop(p); return false; }
@@ -354,6 +356,7 @@ class Emitter {
       const def = systems[id.effectKey];
       if (!def) return;
       const sys = new ParticleSystem(def, this.sys.scene!, p.pos, p.quat, { owner: this.sys.owner, size: this.sys.size, depth: this.sys.depth + 1 });
+      sys.persistent = this.sys.persistent;
       p.children!.push({ sys, at: vec3(bones?.[set.boneToSpawnAt?.[i]]) });
     });
   }
@@ -419,7 +422,7 @@ class Emitter {
     const frames = e.numFrames ?? texDiv[0] * texDiv[1];
     const life = birth(e.particleLifetime, et);
     this.particles.push({
-      age: 0, life: life > 0 ? life : 1,
+      age: 0, life: life > 0 ? life : Infinity, // -1: lives as long as the system
       pos: local.applyMatrix4(sys.matrix),
       vel: vel.applyQuaternion(sys.quat),
       acc: vec3(birth(e.birthAcceleration, et)).applyQuaternion(sys.quat),
@@ -695,6 +698,7 @@ export class ParticleSystem {
   readonly name: string; // League's particleName, for debugging
   target?: THREE.Vector3;
   targetQuat?: THREE.Quaternion;
+  persistent = false; // kept until stopped (marks, glows, missiles): -1-lifetime particles live that long
 
   constructor(def: Bin, scene: THREE.Scene, pos: THREE.Vector3, quat: THREE.Quaternion, opts: SystemOpts = {}) {
     this.owner = opts.owner;
