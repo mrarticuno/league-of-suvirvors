@@ -28,6 +28,7 @@ Glossário (abreviações do HUD entre parênteses):
 | en | pt | es | zh |
 |---|---|---|---|
 | Attack Damage (AD) | Dano de Ataque (DdA) | Daño de Ataque (DA) | 攻击力 |
+| Ability Power (AP) | Poder de Habilidade (PdH) | Poder de Habilidad (PH) | 法术强度 (法强) |
 | Attack Speed (AS) | Velocidade de Ataque (VA) | Velocidad de Ataque (VA) | 攻击速度 (攻速) |
 | Ability Haste (AH) | Aceleração de Habilidade (AH) | Aceleración de Habilidad (AH) | 技能急速 |
 | Move Speed (MS) | Velocidade de Movimento (VM) | Velocidad de Movimiento (VM) | 移动速度 (移速) |

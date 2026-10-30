@@ -12,13 +12,14 @@ const tentacleGeo = new THREE.CylinderGeometry(22, 22, 1, 8).rotateX(Math.PI / 2
 export function startBaronFight(g: Game) {
   g.despawnAll(); // no XP: the Baron's arrival clears the map
   g.nextHordeAt = Infinity;
-  const center = g.pos.clone();
+  const a = Math.random() * Math.PI * 2;
+  const dir = new THREE.Vector3(Math.cos(a), 0, Math.sin(a));
+  const center = g.pos.clone().addScaledVector(dir, BARON.spawnOffset / 2);
   const mesh = makeArena(BARON.arenaRadius);
   mesh.position.copy(center);
   g.scene.add(mesh);
   g.arena = { center, radius: BARON.arenaRadius, mesh };
-  const a = Math.random() * Math.PI * 2;
-  const baron = g.spawnEnemy('baron', center.clone().add(new THREE.Vector3(Math.cos(a), 0, Math.sin(a)).multiplyScalar(BARON.spawnOffset)));
+  const baron = g.spawnEnemy('baron', g.pos.clone().addScaledVector(dir, BARON.spawnOffset));
   baron.attackTimer = 2; // grace period before the first ability
   baron.actor.play(baron.def.anims.idle);
 }
@@ -116,6 +117,16 @@ export function baronAI(g: Game, e: Enemy): EnemyAI {
     return w.cast;
   };
 
+  const bite = () => {
+    const b = BARON.bite;
+    audio.play('baron_bite');
+    // a 1-unit marker hidden under the Baron: the hazard queue is the timer, so stasis and death still disarm it
+    g.hazards.telegraph(e.pos, circleGeo, 1, 0, b.cast, 0, () => {
+      if (e.deadFor < 0 && e.pos.distanceTo(g.pos) - e.def.radius - radius() <= b.radius) g.hurtPlayer(BARON.lethal);
+    });
+    return b.cast;
+  };
+
   return {
     update(dt) {
       updatePull(dt);
@@ -128,11 +139,9 @@ export function baronAI(g: Game, e: Enemy): EnemyAI {
       let anim: string;
       if (edge <= BARON.melee.range) {
         if (Math.random() < BARON.melee.biteChance) {
-          // bite: instant, cannot be dodged
+          // bite: no ground marker, but it lands with the clip and misses if the champion got away
           anim = BARON.anims.bite;
-          cast = 0.5;
-          audio.play('baron_bite');
-          g.hurtPlayer(BARON.lethal);
+          cast = bite();
         } else {
           anim = BARON.anims.whip;
           cast = whip();

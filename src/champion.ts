@@ -15,7 +15,7 @@ export type DamageType = 'physical' | 'magic';
 /** What a hit is: decides mitigation, which item effects apply and what the champion's passives react to. */
 export interface Hit {
   type: DamageType;
-  source: 'auto' | 'ability' | 'item';
+  source: 'auto' | 'ability' | 'item'; // 'item': procs and damage over time (item burns, Brand's Blaze) that trigger nothing
   skill?: SkillKey;
   onHit?: boolean; // applies on-hit item effects (autos do; some abilities too, e.g. Mystic Shot)
   crit?: boolean;
@@ -59,17 +59,18 @@ export interface SkillDef {
   damage: readonly number[]; // base damage per rank (per hit)
   adRatio?: number | readonly number[]; // total AD ratio (per rank when a list)
   bonusAdRatio?: number;
+  apRatio?: number; // ability power ratio
   hits?: number; // damage instances per cast (Blade Whirl: 2, Inferno Trigger: 10 volleys)
   extra?: { label: string; values: readonly number[]; percent?: boolean }; // one more per-rank number (a buff)
 }
 
 /** The champion stats a skill's numbers depend on. */
-export interface SkillStats { ad: number; bonusAd: number; haste: number }
+export interface SkillStats { ad: number; bonusAd: number; ap: number; haste: number }
 
 /** One cast at rank index `r` (0-based): damage per hit and per cast, cooldown after ability haste, damage per second. */
 export function skillNumbers(s: SkillDef, r: number, st: SkillStats) {
   const ratio = typeof s.adRatio === 'number' ? s.adRatio : (s.adRatio?.[r] ?? 0);
-  const perHit = s.damage[r] + ratio * st.ad + (s.bonusAdRatio ?? 0) * st.bonusAd;
+  const perHit = s.damage[r] + ratio * st.ad + (s.bonusAdRatio ?? 0) * st.bonusAd + (s.apRatio ?? 0) * st.ap;
   const damage = perHit * (s.hits ?? 1);
   const cooldown = s.cooldown[r] * (100 / (100 + st.haste));
   return { perHit, damage, cooldown, cost: s.cost[r], dps: cooldown > 0 ? damage / cooldown : 0 };
@@ -96,6 +97,9 @@ export const ROLES = ['marksman', 'assassin', 'fighter', 'mage', 'tank', 'suppor
 /** Champion class (role.<id> in src/locales). */
 export type Role = (typeof ROLES)[number];
 
+/** A particle system key and the bone it rides. */
+export type BoneVfx = readonly [key: string, bone: string];
+
 export interface ChampionDef {
   id: string; // prefix of the sound keys
   name: string; // player-facing: t('champion.<id>.name')
@@ -105,6 +109,8 @@ export interface ChampionDef {
   roles: readonly Role[]; // champion select filters: the Data Dragon tags
   difficulty: number; // Data Dragon info.difficulty, 1-10
   model: string;
+  /** Model size multiplier, for exports smaller than the other champions (default 1). */
+  scale?: number;
   /** Submeshes hidden at load (the skin bin's initialSubmeshToHide). */
   hide?: readonly string[];
   /** Submeshes with their own texture (the skin bin's materialOverride): submesh name -> texture file stem. */
@@ -115,8 +121,12 @@ export interface ChampionDef {
   ultimateLevels?: readonly number[];
   passive: { name: string; icon: string };
   anims: { idle: string; run: string; death: string; attacks: readonly string[]; crit: string };
-  /** Particle systems of the basic attack (missile and impact, normal and crit). */
-  vfx: { auto: string; crit: string; autoHit: string; critHit: string };
+  /** Particle systems of the basic attack (missile and impact, normal and crit) and of the death animation. */
+  vfx: { auto: string; crit: string; autoHit: string; critHit: string; death?: readonly BoneVfx[] };
+  /** Systems riding bones for the whole run (the skin's idleParticlesEffects, e.g. a body of flames); stop on death. */
+  idleVfx?: readonly BoneVfx[];
+  /** Item bases offered on level up (src/items.ts); default AD_BASES. */
+  itemBases?: readonly string[];
   /**
    * Close-range basic attack (e.g. a blade) used instead of the missile when the kit's `meleeAuto` says so:
    * no missile, the hit lands at the end of the windup. Sounds: `<id>_melee`, `_melee2`, `_melee_crit`, `_melee_hit`, `_melee_crit_hit`.
@@ -145,6 +155,8 @@ export interface ChampionKit {
   meleeAuto?(target: Enemy): boolean;
   /** Extra magic damage added to a hit on `e` before mitigation (e.g. a mark detonating). */
   onDamage?(e: Enemy, hit: Hit): number;
+  /** `hit` killed `e` (e.g. a passive that restores mana on kills). */
+  onKill?(e: Enemy, hit: Hit): void;
   update?(dt: number): void;
   dispose?(): void;
   /** Passive status line on the HUD. */

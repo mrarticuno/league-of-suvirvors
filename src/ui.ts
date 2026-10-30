@@ -35,7 +35,7 @@ export const num = (v: number, digits = 0) => {
 const pct = (v: number) => `${(Math.max(0, Math.min(1, v)) * 100).toFixed(1)}%`;
 const XP_RING = 289; // circumference of the portrait's XP ring (r = 46)
 const STATS = [
-  ['ad', '#ff8a4e'], ['as', '#ffd257'], ['armor', '#d9b56a'], ['ms', '#7fe0c2'], ['ah', '#9cc8ff'], ['crit', '#ff5a4e'],
+  ['ad', '#ff8a4e'], ['ap', '#c08cff'], ['as', '#ffd257'], ['armor', '#d9b56a'], ['ms', '#7fe0c2'], ['ah', '#9cc8ff'], ['crit', '#ff5a4e'],
 ] as const;
 const BUFF_GLYPH: Record<'blue' | 'red', string> = {
   blue: '<path d="M12 4l6 8-6 8-6-8z" fill="#4a95f5"/>',
@@ -110,6 +110,7 @@ export class Hud {
       $('auto').setAttribute('aria-pressed', String(g.autoAttack));
     }
     text('st-ad', num(Math.round(g.ad)));
+    text('st-ap', num(Math.round(g.ap)));
     text('st-as', num(g.attackSpeed, 2));
     text('st-armor', num(Math.round(g.armor)));
     text('st-ms', num(g.moveSpeed));
@@ -261,7 +262,7 @@ export class Hud {
     $('inv-edit').innerHTML = '';
     $('choices').innerHTML = '';
     $('continue').style.display = 'none';
-    const st = { ad: g.ad, bonusAd: g.bonusAd, haste: g.abilityHaste };
+    const st = { ad: g.ad, bonusAd: g.bonusAd, ap: g.ap, haste: g.abilityHaste };
     const best = skills.reduce((a, k) => (skillScore(k, g.champ.skills[k], g.ranks[k], st) > skillScore(a, g.champ.skills[a], g.ranks[a], st) ? k : a), skills[0]);
     $('offers').innerHTML = SKILL_KEYS.map((k, i) => skillCard(g, k, skills.indexOf(k), k === best, st, i)).join('');
     this.keyActions = skills.map((k, i) => () => this.pickSkill(g, k, i, next));
@@ -301,7 +302,7 @@ export class Hud {
     this.invStrip(g);
     if (buildComplete(g.slots)) return this.potionStep(g, done);
     $('continue').textContent = t('levelup.declineItems');
-    const offers = rollOffers(g.slots);
+    const offers = rollOffers(g.slots, g.champ.itemBases);
     const byOffer = offers.map((base) => planOffer(g.slots, base));
     const plans = byOffer.flat(); // number keys follow this order
     const best = plans.filter((p) => !p.dead).reduce<Plan | null>((a, p) => (!a || planScore(p, g.slots.length) > planScore(a, g.slots.length) ? p : a), null);
@@ -593,6 +594,7 @@ function skillCard(g: Game, k: SkillKey, n: number, best: boolean, st: SkillStat
   const ratios = [
     s.adRatio !== undefined && t('skillsel.ratioAd', { n: Math.round((typeof s.adRatio === 'number' ? s.adRatio : s.adRatio[Math.min(rank, s.maxRank - 1)]) * 100) }),
     s.bonusAdRatio && t('skillsel.ratioBonusAd', { n: Math.round(s.bonusAdRatio * 100) }),
+    s.apRatio && t('skillsel.ratioAp', { n: Math.round(s.apRatio * 100) }),
   ].filter(Boolean).join(' · ');
   const why = k === 'R' ? t('skillsel.whyUlt') : rank === 0 ? t('skillsel.whyNew') : t('skillsel.whyDps', { n: num(Math.max(0, Math.round(dpsGain(s, rank, st)))) });
   const lock = max ? t('skillsel.max')

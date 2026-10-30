@@ -1,13 +1,18 @@
 // Ability VFX: League particle systems (src/particles.ts, data from tools/build_vfx.py) played by key, as named by the
 // champion's skin ResourceResolver; champions pass their own keys. Enemy skillshots keep a small hand-made look.
 import * as THREE from 'three';
-import { createSystem, facingQuat, loadParticles, missileQuat, type ParticleSystem } from './particles';
+import { createSystem, facingQuat, loadParticles, missileQuat, type ParticleSystem, type SystemOpts } from './particles';
 import { compact } from './util';
 
 export const loadVfx = loadParticles;
 
-/** A running system, optionally following an object (missile root, W mark) until that object leaves the scene. */
-interface Live { sys: ParticleSystem; follow?: THREE.Object3D; dir?: THREE.Vector3; until?: number; killOnStop?: boolean }
+/**
+ * A running system, optionally following an object (missile root, W mark) until that object leaves the scene,
+ * or a bone of an animated model (cast effects at the hand or weapon), keeping its facing.
+ */
+interface Live { sys: ParticleSystem; follow?: THREE.Object3D; bone?: THREE.Object3D; dir?: THREE.Vector3; until?: number; killOnStop?: boolean }
+type PlayOpts = Partial<Omit<Live, 'sys'>> & SystemOpts;
+const _p = new THREE.Vector3();
 
 export class Vfx {
   private live: Live[] = [];
@@ -39,6 +44,7 @@ export class Vfx {
         }
         else l.sys.setFrame(l.follow.position, l.dir ? missileQuat(l.dir, l.sys.quat) : l.sys.quat);
       }
+      if (l.bone) l.sys.setFrame(l.bone.getWorldPosition(_p), l.sys.quat);
       if (l.until !== undefined && this.time >= l.until) l.sys.stop();
       l.sys.update(dt);
       if (!l.sys.done) return true;
@@ -47,19 +53,24 @@ export class Vfx {
     });
   }
 
-  play(key: string, at: THREE.Vector3, quat: THREE.Quaternion, extra: Partial<Live> = {}) {
-    const sys = createSystem(key, this.scene, at, quat);
+  play(key: string, at: THREE.Vector3, quat: THREE.Quaternion, { owner, size, ...extra }: PlayOpts = {}) {
+    const sys = createSystem(key, this.scene, at, quat, { owner, size });
     // one-shot effects stop emitting after a while even if an emitter loops forever
     if (sys) this.live.push({ sys, until: extra.follow ? undefined : this.time + 3, ...extra });
     return sys;
   }
 
   /** One-shot system at `at`, turned to `facing` (radians around Y). */
-  playAt(key: string, at: THREE.Vector3, facing = 0) { this.play(key, at, facingQuat(facing)); }
+  playAt(key: string, at: THREE.Vector3, facing = 0, opts?: SystemOpts) { this.play(key, at, facingQuat(facing), opts); }
 
-  /** Impact effect; a zero height means the default hit height. */
-  hit(key: string, at: THREE.Vector3, facing = 0) {
-    this.playAt(key, at.clone().setY(at.y || 100), facing);
+  /** One-shot system riding a bone (`Actor.bone`), turned to `facing`; `owner` is the model it belongs to. */
+  playOn(key: string, bone: THREE.Object3D, facing: number, owner?: THREE.Object3D) {
+    this.play(key, bone.getWorldPosition(new THREE.Vector3()), facingQuat(facing), { bone, owner });
+  }
+
+  /** Impact effect; a zero height means the default hit height. `opts.size` scales FlexShape emitters to the target. */
+  hit(key: string, at: THREE.Vector3, facing = 0, opts?: SystemOpts) {
+    this.playAt(key, at.clone().setY(at.y || 100), facing, opts);
   }
 
   /** A system that follows the returned object (e.g. a mark over an enemy) while it stays in the scene. */

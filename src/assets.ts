@@ -51,6 +51,7 @@ async function fetchModel(id: string, hide: readonly string[], mesh: string, tex
     const mesh = o as THREE.SkinnedMesh;
     if (!mesh.isMesh) return;
     const name = (mesh.material as THREE.Material).name;
+    mesh.userData.submesh = name; // the replacement material loses it; particle overlays (VfxPrimitiveAttachedMesh) filter by it
     mesh.visible = !hide.includes(name);
     mesh.material = name in textures ? overrides[stems.indexOf(textures[name])] : material;
     mesh.frustumCulled = false; // skinned bounds don't follow animation
@@ -103,6 +104,7 @@ export class Actor {
   private mixer: THREE.AnimationMixer;
   private clips: Map<string, THREE.AnimationClip>;
   private current?: THREE.AnimationAction;
+  private bones = new Map<string, THREE.Object3D>();
   currentName = '';
 
   constructor(id: string, scale = 1) {
@@ -113,6 +115,12 @@ export class Actor {
     this.root.add(model);
     this.mixer = new THREE.AnimationMixer(model);
     this.clips = t.clips;
+    model.traverse((o) => { if (o.name) this.bones.set(o.name.toLowerCase(), o); });
+  }
+
+  /** A node of the model by name, case-insensitive (League bins mix the case of bone names). */
+  bone(name: string) {
+    return this.bones.get(name.toLowerCase());
   }
 
   duration(name: string) {

@@ -70,13 +70,14 @@ Os modelos **não estão no repositório** (são assets da Riot). Gere-os localm
 2. Lista de hashes (os `.bin` do jogo referenciam texturas/animações por hash xxh64):
    ```bash
    curl -s https://raw.communitydragon.org/data/hashes/lol/hashes.game.txt \
-     | grep -E "assets/characters/(ezreal|samira|sru_|turret|inhibitor|nexus)" > assets-raw/hashes.filtered.txt
+     | grep -E "assets/characters/(ezreal|samira|brand|sru_|turret|inhibitor|nexus)" > assets-raw/hashes.filtered.txt
    ```
 3. Extrair dos WADs (`tools/extract_lol.py`) e converter para `.glb` (`tools/build_models.py`):
    ```bash
    G="/Applications/League of Legends.app/Contents/LoL/Game/DATA/FINAL"
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt ezreal assets-raw/ezreal "$G/Champions/Ezreal.wad.client"
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt samira assets-raw/samira "$G/Champions/Samira.wad.client"
+   .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt brand assets-raw/brand "$G/Champions/Brand.wad.client"
    for c in sru_chaosminion{melee,ranged,siege,super} sru_orderminionmelee sru_krug sru_murkwolf sru_razorbeak sru_razorbeakmini sru_gromp sru_blue sru_red sru_riftherald sru_baron sru_crab sru_dragon sru_dragon_{air,fire,earth,water,hextech,chemtech}; do
      .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt $c assets-raw/$c "$G/Maps/Shipping/Map11.wad.client" "$G/Maps/Shipping/Common.wad.client"
    done
@@ -98,14 +99,14 @@ Os modelos **não estão no repositório** (são assets da Riot). Gere-os localm
    O `pieces` é um parser limitado do `.mapgeo` v14: se for pulado ou falhar (versão diferente do formato, WAD ausente), o runtime desenha caixas/cilindros escuros a partir dos obstáculos do layout — nada quebra.
 5. VFX das habilidades: sistemas de partículas do Ezreal lidos do `.bin` da skin, com todas as texturas e malhas que eles usam. Usa as listas de hashes baixadas no passo 4:
    ```bash
-   for c in ezreal samira; do (cd tools && ../.venv-tools/bin/python build_vfx.py ../assets-raw/hashes $c ../public/assets/vfx/$c "$G"); done
+   for c in ezreal samira brand; do (cd tools && ../.venv-tools/bin/python build_vfx.py ../assets-raw/hashes $c ../public/assets/vfx/$c "$G"); done
    ```
    Gera `systems.json` (efeitos indexados pelas chaves do `ResourceResolver`, ex. `Ezreal_Q_mis`), `spells.json` (velocidade/largura/alcance dos mísseis) e os PNG/JSON dos assets. `tools/read_bin.py` sozinho converte qualquer `.bin` em JSON. O runtime dos emissores fica em `src/particles.ts`; `src/vfx.ts` só escolhe qual sistema tocar e onde.
 
 6. Sons e música: bancos Wwise (`.bnk`/`.wpk`) do Ezreal, dos monstros, do HUD e a música do Map11. Precisa de `brew install vgmstream ffmpeg` e do [wwiser](https://github.com/bnnm/wwiser):
    ```bash
    git clone --depth 1 https://github.com/bnnm/wwiser assets-raw/wwiser
-   (cd tools && ../.venv-tools/bin/python build_audio.py ../assets-raw/wwiser/wwiser.py ../public/assets/sfx "$G")
+   (cd tools && ../.venv-tools/bin/python build_audio.py "$PWD/../assets-raw/wwiser/wwiser.py" ../public/assets/sfx "$G")
    ```
    O wwiser gera um `.txtp` por evento, o vgmstream renderiza e o ffmpeg converte para mp3. Os eventos são achados pelo id (FNV-1 do nome; os nomes vêm dos `.bin` dos personagens, a tabela fica em `BANKS` no script). Containers aleatórios viram até 4 variações (`<chave>_<n>.mp3`), sorteadas em runtime. Saída: `public/assets/sfx/*.mp3` + `sounds.json`. Sem a pasta, o jogo roda mudo.
    Eventos não encontrados (ficam mudos): morte dos minions e ataque dos dragões Oceano/Hextech/Quimtech. A música é o evento principal do SR sem nome conhecido (id `3832820115`), cada estado do switch vira uma faixa.
@@ -154,6 +155,13 @@ WASD não é usado porque colide com Q/W/E.
   - **E**: dash de 600 na direção do cursor, dano mágico em quem atravessa, +20–40% de velocidade de ataque por 5 s.
   - **R**: só com Estilo S e inimigo a até 600. 10 rajadas em 2 s contra todos em volta (25% em tropas), pode critar; −30% de velocidade de movimento, consome o Estilo.
   - Fora do LoL: Estilo conta qualquer inimigo; sem explosivos do Q durante o E; sem o ataque em alvo imobilizado (inimigos não sofrem CC).
+- **Brand** (dados da Meraki Analytics e dos bins da skin): primeiro campeão AP; alcance 550. Usa todos os sistemas de partícula do kit (chamas do corpo, marcas de Em Chamas, anel e explosão da detonação, todo cast/míssil/impacto).
+  - **Passiva (Labareda)**: habilidades aplicam Em Chamas (até 3 acúmulos, 4 s): queimadura de 2% da vida máxima + 8–48 (nível) + 5% PdH por acúmulo. O 3º acúmulo arma um anel que explode após 2 s (raio 475): 8–12% da vida máxima (+2% a cada 100 PdH, limite 270–525) + 30–150 + 20% PdH, e põe em chamas todos os atingidos. Um inimigo detonado segura no máximo 1 acúmulo por 4 s. Um abate por habilidade ou de inimigo em chamas restaura 20–40 de mana (uma vez por segundo vindo de tropas e monstros pequenos; sempre de elites e épicos).
+  - **Q**: bola de fogo no primeiro inimigo atingido; atordoa um alvo em chamas por 1,5 s.
+  - **W**: após 0,627 s, dano em área (260) no ponto alvo; +25% contra inimigos em chamas.
+  - **E**: explosão no alvo que espalha o dano para inimigos a até 300 dele (600 se ele estava em chamas).
+  - **R**: bola de fogo que ricocheteia até 4 vezes (600), priorizando inimigos em chamas; aplica 30–60% de Lentidão por 0,25 s em inimigos em chamas.
+  - Fora do LoL (balanço de mana para hordas): custos Q 40, W/E 45–65, R 80; queimadura e detonação têm parte fixa e a detonação vale para qualquer inimigo; a queimadura acerta a cada 0,5 s; o R nunca volta para o Brand.
 - **Level-up em duas etapas**:
   1. Um rank de habilidade, pela regra do LoL: básicas nos níveis 1/3/5/7/9, R nos níveis 6/11/16. A etapa é pulada quando não há rank disponível.
   2. Um item entre 3 sorteados (ou uma poção, com a build completa).
@@ -207,9 +215,9 @@ WASD não é usado porque colide com Q/W/E.
 
 ## Limitações conhecidas / próximos passos
 
-- Partículas: não implementados `VfxPrimitiveRay`, `VfxPrimitiveAttachedMesh` (malhas presas ao esqueleto, ex. avatar do E), campos de força (`fieldCollectionDefinition`) e `FlexShapeDefinition`. Efeitos de cast presos a ossos saem de um ponto fixo na mão. `blendMode` ausente/4 = aditivo, 1 = alpha (inferido das texturas, não documentado).
-- Os `.glb` são pesados (Ezreal 29 MB, Barão 45 MB, sem compressão). Próximo passo: `gltf-transform resample/quantize` e remover clips não usados (recall, dance).
-- Cada inimigo é um SkinnedMesh com o próprio mixer, com limite de 220 vivos. Para hordas maiores: animação baked em textura + instancing.
+- Partículas: `VfxPrimitiveRay`, `VfxPrimitiveAttachedMesh` (a malha do dono redesenhada como brilho ou pós-imagem com pose congelada), campos de força (aceleração, arrasto, atração) e `FlexShapeDefinition` (escala pelo tamanho do alvo) são suportados. Não implementados: campos orbitais/ruído, `VfxPrimitiveBeam`, distorção; malhas anexadas ignoram escala de nascimento, rolagem de UV e erosão. Efeitos de cast seguem o osso indicado pelos eventos de animação da skin (`Actor.bone`, `Vfx.playOn`). `blendMode` ausente/4 = aditivo, 1 = alpha (inferido das texturas, não documentado).
+- Os `.glb` de origem são pesados (Ezreal 29 MB, Barão 45 MB); `pnpm build:prod` (`tools/optimize.mjs`) remove os clips que o código não usa, faz resample e comprime com meshopt (Ezreal 1,9 MB, Barão 1,9 MB).
+- Cada inimigo é um SkinnedMesh com o próprio mixer, com limite de 260 vivos (`MAX_ENEMIES`). Para hordas maiores: animação baked em textura + instancing.
 - Dragões: animações compartilhadas do `sru_dragon`. Infernal e Montanha usam a malha do Nuvens (`sru_dragon_air`) com a própria textura, como no jogo (`EnemyDef.mesh`).
 
 ## Aviso legal

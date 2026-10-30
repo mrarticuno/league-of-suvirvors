@@ -9,10 +9,12 @@ export interface EnemyDef {
   hp: number;
   speed: number;
   damage: number;
+  damageMax?: number; // fixed hit damage rolled in [damage, damageMax], not scaled by enemyDamageScale (epic monsters)
   attackRange: number; // edge-to-edge distance
   attackCooldown: number;
   windup: number;
   ranged?: number; // projectile speed for ranged attackers (fixed-direction skillshot)
+  missileRadius?: number; // projectile hit radius (default 25)
   xp: number;
   radius: number;
   scale?: number;
@@ -81,12 +83,12 @@ export const ENEMIES: Record<string, EnemyDef> = {
   },
   scuttle: {
     // Rift Scuttler never fights in LoL; here it charges in and rams with its dash clip
-    model: 'scuttle', name: t('enemy.scuttle'), hp: 5000, speed: 330, damage: 80, attackRange: 90, attackCooldown: 1.4, windup: 0.45,
+    model: 'scuttle', name: t('enemy.scuttle'), hp: 5000, speed: 330, damage: 150, damageMax: 250, attackRange: 90, attackCooldown: 1.4, windup: 0.45,
     xp: 100, radius: 120, tier: 'epic',
     anims: { run: 'sru_crab_run2', idle: 'sru_crab_idle1', death: 'sru_crab_burrow', attacks: ['sru_crab_dash'] },
   },
   riftherald: {
-    model: 'riftherald', name: t('enemy.riftherald'), hp: 12000, speed: 280, damage: 90, attackRange: 120, attackCooldown: 1.5, windup: 0.5,
+    model: 'riftherald', name: t('enemy.riftherald'), hp: 12000, speed: 280, damage: 1000, damageMax: 1500, attackRange: 120, attackCooldown: 1.5, windup: 0.5,
     xp: 150, radius: 150, tier: 'epic',
     anims: { run: 'sru_riftherald_run', idle: 'sru_riftherald_angry_idle', death: 'sru_riftherald_death', attacks: ['sru_riftherald_attack1', 'sru_riftherald_attack2'] },
   },
@@ -111,7 +113,7 @@ export const DRAGONS: { model: string; name: string; mesh?: string }[] = [
 ];
 for (const d of DRAGONS) {
   ENEMIES[d.model] = {
-    ...d, hp: 9000, speed: 260, damage: 110, attackRange: 600, attackCooldown: 2, windup: 0.6, ranged: 900,
+    ...d, hp: 9000, speed: 260, damage: 300, damageMax: 500, attackRange: 600, attackCooldown: 1.2, windup: 0.4, ranged: 1600, missileRadius: 90,
     xp: 150, radius: 250, scale: DRAGON_SCALE, tier: 'epic',
     // flying_spell1 is left out: it converts with a 90° twist
     anims: { run: 'sru_dragon_flying_run', idle: 'sru_dragon_idle_aggro1', death: 'sru_dragon_death', attacks: ['sru_dragon_flying_attack1'] },
@@ -148,10 +150,9 @@ export const HORDE = {
   size: (level: number) => 15 + 2 * level,
   radius: 1500,
   gap: 0.25, // fraction of the ring left open as an escape route
-  buffs: ['blue', 'red'], // jungle buff monsters that join every horde (src/buffs.ts)
 };
 
-// Bosses at 5/10/15/20 min; blue and red come with every horde (HORDE.buffs)
+// Bosses at 5/10/15/20 min; blue and red respawn on their own timer (BUFF in src/buffs.ts)
 export const EVENTS: { at: number; enemy: string }[] = [
   { at: 300, enemy: 'scuttle' },
   { at: 600, enemy: 'dragon' },
@@ -162,7 +163,7 @@ export const EVENTS: { at: number; enemy: string }[] = [
 // Baron Nashor final fight: a closed arena, nearly every hit is lethal and every ability except the bite is telegraphed.
 export const BARON = {
   arenaRadius: 1500,
-  spawnOffset: 700, // Baron spawns this far from Ezreal, both inside the arena
+  spawnOffset: 1100, // Baron spawns this far from the champion (well outside bite range); the arena is centred between them
   gap: 1.4, // seconds between abilities
   lethal: 1e6,
   pullSpeed: 2500, // tentacle drags Ezreal back in when he gets out (e.g. Arcane Shift over the wall)
@@ -170,6 +171,7 @@ export const BARON = {
   tentacle: { cast: 1.1, radius: 160 },
   spit: { cast: 0.9, speed: 1500, radius: 70, range: 2800 },
   melee: { range: 260, biteChance: 0.33 }, // edge distance that triggers bite (33%) or whip
+  bite: { cast: 0.5, radius: 420 }, // lands with the clip; lethal if the champion is still within `radius` (edge)
   whip: { cast: 0.7, radius: 650, arc: Math.PI * 0.6, damage: 0.75 }, // 75% max HP, never lethal
   anims: { knockup: 'sru_baron_spell6', tentacle: 'sru_baron_spell3', spit: 'sru_baron_attack1', whip: 'sru_baron_attack2', bite: 'sru_baron_attack1_melee' },
 };
@@ -178,10 +180,17 @@ export const ENEMY_ARMOR = { minion: 0, monster: 10, elite: 30, epic: 120 }; // 
 export const enemyArmorScale = (time: number) => 1 + time / 450;
 
 export const RUN_LENGTH = 1200; // baron spawns at 20:00; killing it wins the run
+/** An enemy's bound object size for FlexShape VFX (League scales hit effects to the target): about its visual diameter. */
+export const boundSize = (e: { def: EnemyDef }) => e.def.radius * 4;
 export const MAX_ENEMIES = 260;
 // Survivors curve: base HP is one basic attack early on; enemies toughen as Ezreal levels and the clock runs.
 // Epic monsters keep fixed HP (they are tuned as boss fights).
 export const enemyHpScale = (time: number, level: number) => (1 + 0.08 * (level - 1)) * (1 + time / 900);
-export const enemyDamageScale = (time: number) => 1 + time / 600;
+// Flat for the first 2 minutes, then +1x every 4 minutes. `crowd` (enemies in contact with the champion) adds
+// +10% per enemy past the third, up to +150%, so getting surrounded is what kills.
+export const enemyDamageScale = (time: number, crowd = 0) =>
+  (1 + Math.max(0, time - 120) / 240) * (1 + Math.min(1.5, 0.1 * Math.max(0, crowd - 3)));
+export const CROWD_RANGE = 120; // edge distance at which an enemy counts as in contact for enemyDamageScale
+export const HP_REGEN_MULT = 0.5; // champions regenerate half their LoL base Health regen
 export const ENEMY_MISSILE_EXTRA_RANGE = 400; // skillshots fly this far past the attack range
 export const xpToNext = (level: number) => 5 + (level - 1) * 5;

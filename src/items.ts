@@ -4,7 +4,7 @@ import { t, type Key } from './i18n';
 import data from './items.json';
 
 export interface ItemStats {
-  ad?: number; as?: number; hp?: number; mana?: number; crit?: number; armor?: number; msPct?: number;
+  ad?: number; ap?: number; as?: number; hp?: number; mana?: number; crit?: number; armor?: number; msPct?: number;
   lifesteal?: number; omnivamp?: number; ah?: number; armorPen?: number; critDamage?: number;
 }
 export interface Item {
@@ -14,8 +14,13 @@ export interface Item {
 }
 
 // names live in src/locales (`item.<id>`, written by tools/build_items.py)
-export const ITEMS: Record<string, Item> = Object.fromEntries(Object.entries(data.items).map(([id, it]) =>
-  [id, { ...it, name: t(`item.${id}` as Key) } as Item]));
+const VAMP_MULT = 0.01; // item Life Steal / Omnivamp sustain too much against hordes: 10% in LoL gives 0.1% here
+export const ITEMS: Record<string, Item> = Object.fromEntries(Object.entries(data.items).map(([id, it]) => {
+  const stats: ItemStats = { ...it.stats };
+  if (stats.lifesteal) stats.lifesteal *= VAMP_MULT;
+  if (stats.omnivamp) stats.omnivamp *= VAMP_MULT;
+  return [id, { ...it, stats, name: t(`item.${id}` as Key) } as Item];
+}));
 export const MAX_ITEMS = 6;
 export const itemIcon = (id: string) => `https://ddragon.leagueoflegends.com/cdn/${data.version}/img/item/${id}.png`;
 
@@ -45,8 +50,15 @@ export const LINES: Record<string, string[][]> = {
   '1029': [['3082', '3110'], ['2019', '1038', '3026'], ['1031', '6660', '3068']], // Couraça de Pano
   '3070': [['1027', '3004'], ['3024', '3110']], // Lágrima da Deusa
   '1018': [['3057', '3133', '3508'], ['6670', '1038', '1037', '3031'], ['3086', '3144', '3085']], // Capa da Agilidade
+  '1052': [ // Tomo Amplificador
+    ['3802', '6655'], ['3802', '3118'], ['3802', '2503'], ['3802', '3003'],
+    ['3145', '4645'], ['3147', '6653'], ['3113', '4646'],
+  ],
+  '1026': [['1058', '3089'], ['2420', '3157'], ['3116'], ['3145', '4645']], // Bastão Explosivo
 };
-export const BASES = Object.keys(LINES);
+/** Bases offered on level up: AD champions by default, AP ones list AP_BASES (ChampionDef.itemBases). */
+export const AD_BASES = ['1036', '1042', '2022', '1028', '1029', '3070', '1018'];
+export const AP_BASES = ['1052', '1026', '3070', '1028', '1029'];
 
 /** An inventory slot: its line and the steps taken so far (empty = still the base item). */
 export interface Slot { base: string; path: string[] }
@@ -83,9 +95,9 @@ export const buildComplete = (slots: Slot[]) =>
   slots.length === MAX_ITEMS && slots.every((s, i) => isFinal(s) || isLocked(slots, i));
 
 /** Random distinct bases; with a full inventory only bases that can evolve an owned item. */
-export function rollOffers(slots: Slot[], count = 3): string[] {
-  const pool = slots.length < MAX_ITEMS ? [...BASES]
-    : BASES.filter((b) => slots.some((s, i) => s.base === b && nextSteps(slots, i).length));
+export function rollOffers(slots: Slot[], bases: readonly string[] = AD_BASES, count = 3): string[] {
+  const pool = slots.length < MAX_ITEMS ? [...bases]
+    : bases.filter((b) => slots.some((s, i) => s.base === b && nextSteps(slots, i).length));
   const out: string[] = [];
   while (out.length < count && pool.length) out.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
   return out;
@@ -111,7 +123,7 @@ export const BLUEPRINT_CHANCE = 0.01; // per kill, once the build is complete
 /** Stats of the current items; `legendary` is the slot upgraded by the blueprint (-1 for none). */
 export function sumStats(inventory: string[], legendary = -1): Required<ItemStats> {
   const s: Required<ItemStats> = {
-    ad: 0, as: 0, hp: 0, mana: 0, crit: 0, armor: 0, msPct: 0, lifesteal: 0, omnivamp: 0, ah: 0, armorPen: 0, critDamage: 0,
+    ad: 0, ap: 0, as: 0, hp: 0, mana: 0, crit: 0, armor: 0, msPct: 0, lifesteal: 0, omnivamp: 0, ah: 0, armorPen: 0, critDamage: 0,
   };
   inventory.forEach((id, slot) => {
     const mult = slot === legendary ? 1 + LEGENDARY_BONUS : 1;
@@ -127,8 +139,9 @@ export function sumStats(inventory: string[], legendary = -1): Required<ItemStat
 
 const PERCENT = new Set<keyof ItemStats>(['as', 'crit', 'msPct', 'lifesteal', 'omnivamp', 'armorPen', 'critDamage']);
 const sign = (v: number) => (v < 0 ? '−' : '+');
+const pctFormat = new Intl.NumberFormat(t('meta.tag'), { maximumFractionDigits: 2 }); // 0,07% in pt/es
 const statLabel = (k: keyof ItemStats, v: number) =>
-  (PERCENT.has(k) ? `${sign(v)}${Math.abs(Math.round(v * 100))}% ${t(`stat.${k}`)}` : `${sign(v)}${Math.abs(Math.round(v))} ${t(`stat.${k}`)}`);
+  (PERCENT.has(k) ? `${sign(v)}${pctFormat.format(Math.abs(v * 100))}% ${t(`stat.${k}`)}` : `${sign(v)}${Math.abs(Math.round(v))} ${t(`stat.${k}`)}`);
 export const describeStats = (s: ItemStats, mult = 1) =>
   Object.entries(s).map(([k, v]) => statLabel(k as keyof ItemStats, v * mult)).join(' · ');
 

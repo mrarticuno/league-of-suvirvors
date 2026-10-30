@@ -2,11 +2,11 @@ import * as THREE from 'three';
 import { Actor, loadModel, modelLoaded } from './assets';
 import { audio } from './audio';
 import { BUFF, buffEffects, isBuffMonster, type BuffKey } from './buffs';
-import { MAX_CHAMPION_LEVEL, SKILL_KEYS, type ChampionDef, type ChampionKit, type Hit, type SkillKey } from './champion';
+import { MAX_CHAMPION_LEVEL, SKILL_KEYS, type BoneVfx, type ChampionDef, type ChampionKit, type Hit, type SkillKey } from './champion';
 import { DEFAULT_CHAMPION } from './champions';
 import {
   DIRECTOR, DRAGONS, ENEMIES, ENEMY_ARMOR, ENEMY_MISSILE_EXTRA_RANGE, EVENTS, enemyArmorScale, enemyDamageScale, enemyHpScale, HORDE,
-  MAX_ENEMIES, POOL, RUN_LENGTH, xpToNext, type EnemyDef,
+  boundSize, CROWD_RANGE, HP_REGEN_MULT, MAX_ENEMIES, POOL, RUN_LENGTH, xpToNext, type EnemyDef,
 } from './data';
 import { AI, SPAWNERS, type EnemyAI } from './enemies';
 import { Hazards } from './hazards';
@@ -18,6 +18,7 @@ import { runeEffects } from './runes';
 import { SpatialGrid } from './spatial';
 import { t } from './i18n';
 import { compact, TimeWindow } from './util';
+import { facingQuat, type ParticleSystem } from './particles';
 import { loadVfx, Vfx, type MissileFx } from './vfx';
 
 const SPAWN_RADIUS = 1800;
@@ -58,6 +59,7 @@ export interface Enemy {
   shredUntil: number;
   slowPct: number; // movement slow while time < slowUntil
   slowUntil: number;
+  stunUntil: number; // no moving nor attacking while time < stunUntil (generic loop only: EnemyAI bosses ignore it)
   ai?: EnemyAI; // own behaviour (src/enemies), replaces the generic chase-and-attack loop
   animDt: number; // animation time not yet applied (animation LOD)
 }
@@ -127,6 +129,9 @@ export class Game {
   private runeFx: ItemEffect[] = [];
   private buffFx: ItemEffect[] = [];
   buffs: Record<BuffKey, number> = { blue: 0, red: 0 }; // run time each jungle buff ends
+  private buffSpawnAt: Record<BuffKey, number> = { blue: BUFF.firstSpawn, red: BUFF.firstSpawn }; // Infinity while alive
+  lastHurtAt = -Infinity; // run time of the last damage taken (red buff regen)
+  private crowd = 0; // enemies in contact with the champion last frame (enemyDamageScale)
   private buffDrops: { key: BuffKey; mesh: THREE.Object3D; until: number }[] = []; // dropped buffs waiting to be picked up
   shield = 0;
   private shieldUntil = 0;
@@ -147,6 +152,7 @@ export class Game {
   private pendingMelee = false;
   private attackIndex = 0;
   private castLock = 0;
+  private idleFx: ParticleSystem[] = []; // ChampionDef.idleVfx, stopped on death
   private animLock = 0;
   private pendingCast: { key: SkillKey; point: THREE.Vector3 } | null = null;
   private dashMove: { dir: THREE.Vector3; left: number; speed: number } | null = null; // forced movement (dash)
@@ -201,7 +207,7 @@ export class Game {
    * PREFETCH seconds before they can appear (prefetch). Call setChampion and reset before the first update.
    */
   async load(onProgress: (done: number, total: number) => void) {
-    const starters = [...new Set([...POOL.filter((p) => p.from === 0).map((p) => p.enemy), ...HORDE.buffs])];
+    const starters = [...new Set([...POOL.filter((p) => p.from === 0).map((p) => p.enemy), ...BUFF.keys])];
     let done = 0;
     await Promise.all([
       audio.load(),
@@ -260,7 +266,8 @@ export class Game {
       nextHordeAt: HORDE.every, legendary: -1, blueprintDropped: false,
       stasis: 0, stasisEnd: null, stunned: 0, stunLength: 0, airborne: true, arena: null,
       page, shield: 0, shieldUntil: 0, choices: [], bonusRunePoints: 0, flashReady: 0,
-      buffs: { blue: 0, red: 0 }, buffDrops: [],
+      buffs: { blue: 0, red: 0 }, buffDrops: [], crowd: 0, lastHurtAt: -Infinity,
+      buffSpawnAt: { blue: BUFF.firstSpawn, red: BUFF.firstSpawn },
       dragon: DRAGONS[Math.floor(Math.random() * DRAGONS.length)].model,
     });
     this.runeFx = runeEffects(this, page); // fresh every run: rune stacks never carry over
@@ -273,12 +280,20 @@ export class Game {
     this.ranks = { Q: 0, W: 0, E: 0, R: 0 };
     this.cooldowns = { Q: 0, W: 0, E: 0, R: 0 };
     this.pos.set(0, 0, 0);
-    this.player = new Actor(this.champ.model);
+    this.player = new Actor(this.champ.model, this.champ.scale);
     this.scene.add(this.player.root);
     this.kit = this.champ.kit(this);
+    this.idleFx = (this.champ.idleVfx ?? []).flatMap((v) => this.boneVfx(v, true) ?? []);
     this.hp = this.maxHp;
     this.mana = this.maxMana;
     this.player.play(this.champ.anims.idle);
+  }
+
+  /** Plays a champion system on one of its bones (`loop`: until stopped); null when the bone or system is missing. */
+  private boneVfx([key, name]: BoneVfx, loop: boolean) {
+    const bone = this.player.bone(name);
+    if (!bone) return null;
+    return this.vfx.play(key, bone.getWorldPosition(this.tmp), facingQuat(this.facing), { bone, owner: this.player.root, ...(loop && { until: undefined }) });
   }
 
   // ---- derived stats ----
@@ -299,6 +314,7 @@ export class Game {
     return ad;
   }
   get ad() { return this.baseAd + this.bonusAd; }
+  get ap() { return this.items.ap + this.fxStat('ap'); }
   get attackSpeed() {
     const B = this.champ.base;
     const bonus = grow(0, B.attackSpeedPerLevel, this.level) + this.items.as + this.fxStat('as') + (this.kit.attackSpeedBonus?.() ?? 0);
@@ -387,6 +403,10 @@ export class Game {
     e.slowUntil = Math.max(e.slowUntil, this.time + seconds);
   }
   isSlowed(e: Enemy) { return e.slowUntil > this.time; }
+  stunEnemy(e: Enemy, seconds: number) {
+    e.stunUntil = Math.max(e.stunUntil, this.time + seconds);
+    e.windup = -1;
+  }
   inWater() { return this.map.inWater(this.pos.x, this.pos.z); }
 
   get hasFlash() { return [...this.page.primaryRunes, ...this.page.secondaryRunes].includes('hextech-flashtraption'); }
@@ -486,6 +506,7 @@ export class Game {
     this.time += dt;
     this.spawn(dt);
     this.horde();
+    this.respawnBuffMonsters();
     this.updatePlayer(dt, move);
     this.updateEnemies(dt);
     this.updateMissiles(dt);
@@ -549,7 +570,7 @@ export class Game {
     }
     if (!this.alive) return;
     if (this.time >= this.shieldUntil) this.shield = 0;
-    this.hp = Math.min(this.maxHp, this.hp + (grow(B.hpRegen5, B.hpRegen5PerLevel, this.level) / 5) * dt);
+    this.hp = Math.min(this.maxHp, this.hp + ((grow(B.hpRegen5, B.hpRegen5PerLevel, this.level) * HP_REGEN_MULT) / 5) * dt);
     this.mana = Math.min(this.maxMana, this.mana + (grow(B.manaRegen5, B.manaRegen5PerLevel, this.level) / 5) * dt);
     for (const fx of this.itemFx) fx.tick?.(dt);
     for (const k of SKILL_KEYS) this.cooldowns[k] = Math.max(0, this.cooldowns[k] - dt);
@@ -702,7 +723,7 @@ export class Game {
     const i = this.attackIndex % fx.swing.length;
     // swing meshes carry a 180° birth rotation (authored from the target back): half turn so the arc opens toward it
     this.vfx.playAt(crit ? fx.crit : fx.swing[i], this.pos.clone().setY(0), this.facing + Math.PI);
-    this.vfx.hit(crit ? fx.critHit : fx.hit[i], target.pos, this.facing);
+    this.vfx.hit(crit ? fx.critHit : fx.hit[i], target.pos, this.facing, { size: boundSize(target) });
     audio.play(`${id}_melee${crit ? '_crit' : ''}_hit`);
     this.hurtEnemy(target, damage, { type: 'physical', source: 'auto', onHit: true, crit });
   }
@@ -775,7 +796,7 @@ export class Game {
 
   /** Default missile impact: hit VFX and sound, then the missile's damage. */
   impact(e: Enemy, m: Missile) {
-    if (m.hitFx) this.vfx.hit(m.hitFx, m.pos, Math.atan2(m.dir.x, m.dir.z));
+    if (m.hitFx) this.vfx.hit(m.hitFx, m.pos, Math.atan2(m.dir.x, m.dir.z), { size: boundSize(e) });
     if (m.hitSound) audio.play(m.hitSound);
     this.hurtEnemy(e, m.damage, m.hit!);
   }
@@ -809,7 +830,7 @@ export class Game {
     e.hp -= total;
     this.float(e.pos, String(Math.round(total)), hit.crit ? 'crit' : magic > physical ? 'magic' : 'physical');
     // kill before the procs: a proc that lands on the corpse returns at the deadFor check above instead of killing twice
-    if (e.hp <= 0) this.killEnemy(e);
+    if (e.hp <= 0) this.killEnemy(e, hit);
     for (const fx of this.itemFx) fx.onDealt?.(e, hit, dealt);
   }
 
@@ -823,12 +844,15 @@ export class Game {
     taken -= absorbed;
     if (nonLethal) taken = Math.min(taken, this.hp - 1);
     this.hp -= taken;
+    if (taken > 0) this.lastHurtAt = this.time;
     this.float(this.pos, `-${Math.round(taken)}`, 'taken');
     if (this.hp > 0 || this.itemFx.some((fx) => fx.onLethal?.())) return;
     this.hp = 0;
     this.over = 'lost';
     this.player.play(this.champ.anims.death, { loop: false, fade: 0.1 });
     audio.play(`${this.champ.id}_death`);
+    for (const fx of this.idleFx) fx.stop();
+    for (const v of this.champ.vfx.death ?? []) this.boneVfx(v, false);
   }
 
   /** Frozen and untargetable at 1 HP for `seconds`, then `onEnd` (revive). */
@@ -861,13 +885,14 @@ export class Game {
     this.player.play(this.champ.anims.idle);
   }
 
-  private killEnemy(e: Enemy) {
+  private killEnemy(e: Enemy, hit: Hit) {
     this.markDead(e);
     this.kills++;
     this.killLog.push(this.time);
     audio.playAt(`${voice(e.def)}_death`, e.pos, this.pos);
     this.gainXp(e.def.xp); // XP is absorbed on kill (no gems to collect)
     for (const fx of this.itemFx) fx.onKill?.(e);
+    this.kit.onKill?.(e, hit);
     if (!this.blueprintDropped && buildComplete(this.slots) && this.slots.some(isFinal) && Math.random() < BLUEPRINT_CHANCE) {
       this.blueprintDropped = true;
       this.blueprint = makeBlueprint();
@@ -875,6 +900,7 @@ export class Game {
       this.scene.add(this.blueprint);
     }
     if (isBuffMonster(e.def.model)) {
+      this.buffSpawnAt[e.def.model] = this.time + BUFF.respawn;
       const mesh = makeBuffDrop(BUFF.colors[e.def.model]);
       mesh.position.set(e.pos.x, 0, e.pos.z);
       this.scene.add(mesh);
@@ -968,8 +994,16 @@ export class Game {
       const a = start + (i / (n - 1)) * arc;
       this.spawnEnemy(key, new THREE.Vector3(this.pos.x + Math.cos(a) * HORDE.radius, 0, this.pos.z + Math.sin(a) * HORDE.radius));
     }
-    for (const k of HORDE.buffs) this.spawnEnemy(k);
     for (const fx of this.itemFx) fx.onHorde?.();
+  }
+
+  private respawnBuffMonsters() {
+    if (this.arena) return;
+    for (const k of BUFF.keys) {
+      if (this.time < this.buffSpawnAt[k]) continue;
+      this.buffSpawnAt[k] = Infinity;
+      this.spawnEnemy(k);
+    }
   }
 
   spawnEnemy(key: string, at?: THREE.Vector3): Enemy {
@@ -982,7 +1016,7 @@ export class Game {
     const e: Enemy = {
       id: this.nextId++, def, actor, pos: at ?? new THREE.Vector3(this.pos.x + Math.cos(a) * r, 0, this.pos.z + Math.sin(a) * r),
       hp, maxHp: hp, attackTimer: 0, windup: -1, deadFor: -1, animDt: 0,
-      armor: (def.armor ?? ENEMY_ARMOR[def.tier]) * (epic ? 1 : enemyArmorScale(this.time)), shred: 0, shredUntil: 0, slowPct: 0, slowUntil: 0,
+      armor: (def.armor ?? ENEMY_ARMOR[def.tier]) * (epic ? 1 : enemyArmorScale(this.time)), shred: 0, shredUntil: 0, slowPct: 0, slowUntil: 0, stunUntil: 0,
     };
     e.ai = AI[def.model]?.(this, e);
     actor.play(def.anims.run);
@@ -998,10 +1032,16 @@ export class Game {
     return e;
   }
 
+  private enemyHitDamage(def: EnemyDef) {
+    if (def.damageMax) return def.damage + Math.random() * (def.damageMax - def.damage);
+    return def.damage * enemyDamageScale(this.time, this.crowd);
+  }
+
   private updateEnemies(dt: number) {
     const B = this.champ.base;
     const toPlayer = this.tmp;
     const frame = ++this.frame;
+    let crowd = 0;
     for (const e of this.enemies) {
       e.animDt += dt;
       const far = Math.abs(e.pos.x - this.pos.x) + Math.abs(e.pos.z - this.pos.z) > ANIM_LOD_DIST;
@@ -1014,8 +1054,13 @@ export class Game {
       toPlayer.copy(this.pos).sub(e.pos).setY(0);
       const dist = toPlayer.length();
       const edge = dist - e.def.radius - B.radius;
+      if (edge <= CROWD_RANGE) crowd++;
       e.attackTimer -= dt;
 
+      if (e.stunUntil > this.time) {
+        e.actor.play(e.def.anims.idle, { fade: 0.1 });
+        continue;
+      }
       if (dist > DESPAWN_RADIUS && e.def.tier !== 'epic') {
         // survivors convention: stragglers reappear ahead of the player instead of despawning
         e.pos.copy(this.pos).addScaledVector(toPlayer.normalize(), SPAWN_RADIUS);
@@ -1028,10 +1073,10 @@ export class Game {
           if (e.def.ranged) {
             // aimed at where the champion is now, then flies straight so it can be dodged
             this.spawnMissile(null, e.pos, this.pos, {
-              speed: e.def.ranged, range: e.def.attackRange + e.def.radius + ENEMY_MISSILE_EXTRA_RANGE, radius: 25,
-              damage: e.def.damage * enemyDamageScale(this.time),
+              speed: e.def.ranged, range: e.def.attackRange + e.def.radius + ENEMY_MISSILE_EXTRA_RANGE, radius: e.def.missileRadius ?? 25,
+              damage: this.enemyHitDamage(e.def),
             });
-          } else if (edge <= e.def.attackRange + 80) this.hurtPlayer(e.def.damage * enemyDamageScale(this.time));
+          } else if (edge <= e.def.attackRange + 80) this.hurtPlayer(this.enemyHitDamage(e.def));
         }
       } else if (edge <= e.def.attackRange && this.alive && this.stasis <= 0) {
         if (e.attackTimer <= 0) {
@@ -1051,6 +1096,7 @@ export class Game {
       }
       e.actor.root.rotation.y = Math.atan2(this.pos.x - e.pos.x, this.pos.z - e.pos.z);
     }
+    this.crowd = crowd;
     this.rebuildGrid();
     this.separate();
     for (const e of this.enemies) {

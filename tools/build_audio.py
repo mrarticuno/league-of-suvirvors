@@ -25,6 +25,8 @@ SFX = "assets/sounds/wwise2016/sfx/"
 SHARED = SFX + "shared/"
 EZ = "Play_sfx_Ezreal_Ezreal"
 SA = "Play_sfx_Samira_Samira"
+BR = "Play_sfx_Brand_Brand"
+BP = "Play_sfx_Brand_P_"
 
 # bank path (without _events/_audio) -> {sound key: event name candidates (first match wins) or an event id}
 BANKS: dict[str, dict[str, list[str] | int]] = {
@@ -70,6 +72,29 @@ BANKS: dict[str, dict[str, list[str] | int]] = {
         "samira_R": [SA + "R_OnCast"],
         "samira_R_shot": [SA + "RMissile_OnMissileCast"],
         "samira_death": ["Play_sfx_Samira_Death3D_cast"],
+    },
+    SFX + "characters/brand/skins/base/brand_base_sfx": {
+        "brand_auto": [BR + "BasicAttack_OnCast"],
+        "brand_auto2": [BR + "BasicAttack2_OnCast"],
+        "brand_auto_hit": [BR + "BasicAttack_OnHit", BR + "BasicAttack2_OnHit"],
+        "brand_crit": [BR + "CritAttack_OnCast"],
+        "brand_crit_hit": [BR + "CritAttack_OnHit"],
+        "brand_Q": [BR + "Q_OnCast"],
+        "brand_Q_launch": [BR + "QMissile_OnMissileLaunch"],
+        "brand_Q_hit": [BR + "QMissile_hit"],
+        "brand_W": [BR + "W_OnCast"],
+        "brand_W_charge": [BR + "W_buffactivate"],
+        "brand_W_hit": [BR + "W_hit"],
+        "brand_E": [BR + "E_OnCast"],
+        "brand_E_hit": [BR + "E_hit"],
+        "brand_E_spread": [BR + "E_OnMissileLaunch"],
+        "brand_E_spread_hit": [BR + "EMissile_OnHit"],
+        "brand_R": [BR + "R_OnCast"],
+        "brand_R_launch": [BR + "RMissile_OnMissileLaunch"],
+        "brand_R_bounce": [BR + "RMissile2_OnMissileLaunch", BR + "RMissile3_OnMissileLaunch"],
+        "brand_R_hit": [BR + "R_hit"],
+        "brand_detonate": [BP + "detonate1", BP + "detonate2"],
+        "brand_death": ["Play_sfx_Brand_Death3D_cast"],
     },
     SHARED + "hud_global": {
         "hud_levelup": ["Play_sfx_hud_base_spell_levelup"],
@@ -166,7 +191,7 @@ def render(txtp_path, mp3, music):
 
 def main(wwiser, out_dir, final_dir):
     final = Path(final_dir)
-    wads = [Wad(final / w) for w in ("Champions/Ezreal.wad.client", "Champions/Samira.wad.client", "Maps/Shipping/Map11.wad.client", "Maps/Shipping/Common.wad.client")]
+    wads = [Wad(final / w) for w in ("Champions/Ezreal.wad.client", "Champions/Samira.wad.client", "Champions/Brand.wad.client", "Maps/Shipping/Map11.wad.client", "Maps/Shipping/Common.wad.client")]
     read = lambda p: next((d for d in (w.read(p) for w in wads) if d is not None), None)
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)

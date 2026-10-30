@@ -7,7 +7,11 @@ import { t } from './i18n';
 export type BuffKey = 'blue' | 'red';
 
 export const BUFF = {
-  duration: 180, // seconds the buff lasts once collected
+  duration: 90, // seconds the buff lasts once collected
+  firstSpawn: 120, // the buff monsters first appear with the 2:00 horde
+  respawn: 180, // seconds after its death before a buff monster comes back
+  keys: ['blue', 'red'] as BuffKey[],
+  redRegenDelay: 3, // seconds without taking damage before the red buff heals
   dropLife: 10, // seconds the drop stays on the ground before vanishing
   names: { blue: t('buff.blue'), red: t('buff.red') } as Record<BuffKey, string>,
   colors: { blue: 0x3d8bff, red: 0xff4a2a } as Record<BuffKey, number>,
@@ -23,8 +27,8 @@ export function buffEffects(g: Game): ItemEffect[] {
     tick: (dt) => { if (on('blue')) g.mana = Math.min(g.maxMana, g.mana + 0.01 * g.maxMana * dt); },
   };
   const red: ItemEffect = {
-    // Crest of Cinders: on-hit burn that scales with level, a short slow, and HP regen (0.5% max HP/s)
-    tick: (dt) => { if (on('red')) g.heal(0.005 * g.maxHp * dt); },
+    // Crest of Cinders: on-hit burn that scales with level, a short slow, and HP regen (0.5% max HP/s) out of combat
+    tick: (dt) => { if (on('red') && g.time - g.lastHurtAt >= BUFF.redRegenDelay) g.heal(0.005 * g.maxHp * dt); },
     onHit: (e) => {
       if (!on('red')) return 0;
       g.slow(e, 0.1, 1.5);

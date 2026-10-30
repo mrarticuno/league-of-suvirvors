@@ -1,21 +1,22 @@
-"""Generate src/items.json from Riot Data Dragon: stats, recipes and icon ids for Ezreal's build items. Item names go to
+"""Generate src/items.json from Riot Data Dragon: stats, recipes and icon ids for the champions' build items. Item names go to
 every src/locales/<lang>.json as `item.<id>` (other keys are kept). Stats are parsed from the pt_BR descriptions.
 
 Usage: python tools/build_items.py <ddragon version>
 
-Legendaries come from current Ezreal builds (Trinity/Muramana core + on-hit/crit alternatives);
-every component in their recipe trees is included so runs can assemble them piece by piece.
+Legendaries come from current Ezreal builds (Trinity/Muramana core + on-hit/crit alternatives) and mage builds
+(Brand: Luden's/Liandry's/Rabadon's...); every component in their recipe trees is included so runs can assemble them piece by piece.
 """
 import json
 import re
 import sys
 import urllib.request
 
-LEGENDARIES = ["3078", "3004", "3161", "6694", "2517", "3110", "3026", "3071", "6672", "3153", "3031", "3508", "3085", "3068"]
+LEGENDARIES = ["3078", "3004", "3161", "6694", "2517", "3110", "3026", "3071", "6672", "3153", "3031", "3508", "3085", "3068",
+               "6655", "3118", "2503", "4645", "6653", "4646", "3089", "3157", "3116", "3003"]
 # intermediates of the evolution lines (src/items.ts LINES) that no legendary recipe above pulls in
 EXTRA = ["6670", "3086"]
 STAT_KEYS = {
-    "FlatPhysicalDamageMod": "ad", "PercentAttackSpeedMod": "as", "FlatHPPoolMod": "hp", "FlatMPPoolMod": "mana",
+    "FlatPhysicalDamageMod": "ad", "FlatMagicDamageMod": "ap", "PercentAttackSpeedMod": "as", "FlatHPPoolMod": "hp", "FlatMPPoolMod": "mana",
     "FlatCritChanceMod": "crit", "FlatArmorMod": "armor", "PercentMovementSpeedMod": "msPct", "PercentLifeStealMod": "lifesteal",
 }
 # src/locales file -> Data Dragon locale (new game language: add it here and rerun)

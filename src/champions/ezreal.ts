@@ -2,6 +2,7 @@
 import * as THREE from 'three';
 import { audio } from '../audio';
 import { SKILL_KEYS, type ChampionDef, type ChampionKit, type Hit, type SkillDef, type SkillKey } from '../champion';
+import { boundSize } from '../data';
 import type { Enemy, Game } from '../game';
 import { t } from '../i18n';
 import { facingQuat } from '../particles';
@@ -43,7 +44,13 @@ const HITS: Record<SkillKey, Hit> = {
   E: { type: 'magic', source: 'ability', skill: 'E' },
   R: { type: 'magic', source: 'ability', skill: 'R' },
 };
-const CAST_VFX: Partial<Record<SkillKey, string[]>> = { Q: ['Ezreal_Q_bow01'], W: ['Ezreal_W_Cas'], R: ['Ezreal_R_bow_01', 'Ezreal_R_Gauntlet_Glow'] };
+// cast effects and the bone they ride (the skin's animation ParticleEventData); 'true_World' is the champion's origin.
+// The bin names R's gauntlet bone `l_gauntlet`, the skeleton calls it L_Gauntlet_Hand.
+const CAST_VFX: Partial<Record<SkillKey, [string, string][]>> = {
+  Q: [['Ezreal_Q_bow01', 'L_Buffbone_Glb_Hand_Loc']],
+  W: [['Ezreal_W_Cas', 'true_World']],
+  R: [['Ezreal_R_bow_01', 'Buffbone_Glb_Ground_Loc'], ['Ezreal_R_Gauntlet_Glow', 'L_Gauntlet_Hand']],
+};
 
 export const EZREAL: ChampionDef = {
   id: 'ezreal', name: t('champion.ezreal.name'), model: 'ezreal', icon: `${ICON}/champion/Ezreal.png`,
@@ -104,11 +111,10 @@ function ezrealKit(g: Game): ChampionKit {
     dispose() { for (const e of [...marks.keys()]) unmark(e); },
 
     castStart(key) {
-      for (const k of CAST_VFX[key] ?? []) {
-        // bow effects sit on the gauntlet hand in League; the R ones carry their own heights
-        const p = key === 'R' ? g.pos.clone().setY(0)
-          : g.pos.clone().add(new THREE.Vector3(Math.sin(g.facing) * 50, 110, Math.cos(g.facing) * 50));
-        g.vfx.playAt(k, p, g.facing);
+      for (const [k, name] of CAST_VFX[key] ?? []) {
+        const bone = g.player.bone(name);
+        if (bone) g.vfx.playOn(k, bone, g.facing, g.player.root);
+        else g.vfx.playAt(k, g.pos.clone().setY(0), g.facing, { owner: g.player.root });
       }
     },
 
@@ -163,7 +169,7 @@ function ezrealKit(g: Game): ChampionKit {
         g.spawnMissile('Ezreal_R_mis', g.pos, point, {
           speed: R.speed, range: R.range, radius: R.width / 2, damage, hit: HITS.R, height: 60, pierce: true,
           onHit: (e, m) => {
-            g.vfx.hit('Ezreal_R_tar', e.pos.clone().setY(m.pos.y));
+            g.vfx.hit('Ezreal_R_tar', e.pos.clone().setY(m.pos.y), 0, { owner: e.actor.root, size: boundSize(e) });
             audio.play('ezreal_R_hit');
             g.hurtEnemy(e, damage * (e.def.tier === 'epic' ? 1 : R.nonEpicMultiplier), HITS.R);
           },

@@ -17,6 +17,7 @@ OUT = Path("public/assets/models")
 MODELS = {
     "ezreal": ("ezreal", "ezreal_base_tx_cm.png", []),
     "samira": ("samira", "samira_base_tx_cm.png", []),
+    "brand": ("brand", "brand_base_tx_cm.png", []),
     # weapons texture of the samira mesh (ChampionDef.textures)
     "samira_weapons": ("samira", "../samira/samira_base_weapons_tx_cm.png", []),
     "minion_melee": ("sru_chaosminionmelee", "chaosminion_melee_tx_cm.png", ["sru_orderminionmelee"]),

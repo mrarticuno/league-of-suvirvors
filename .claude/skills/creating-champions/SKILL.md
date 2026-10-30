@@ -19,7 +19,7 @@ Contrato completo e comentado: `src/champion.ts`. Exemplo de referência: `src/c
 |---|---|
 | `src/champions/<id>.ts` | **Novo.** Exporta o `ChampionDef` e a função do kit |
 | `src/champions/index.ts` | Registrar em `CHAMPIONS` (e `DEFAULT_CHAMPION` para jogar com ele) |
-| `tools/build_models.py` | Entrada em `MODELS` → `public/assets/models/<model>.glb/.png` |
+| `tools/build_models.py` | Entrada em `MODELS` → `public/assets/models/<model>.glb/.png`. Rodar com `l2g/lol2gltf` (binário fica no repo, ignorado pelo git; não apagar nem recompilar) |
 | `tools/build_audio.py` | Entradas em `BANKS` com as chaves de som do campeão |
 | `tools/extract_lol.py` | Extrair `Champions/<Champ>.wad.client` para `assets-raw/<id>` (antes de `build_models.py`) |
 | `tools/build_vfx.py` | Rodar com `<id>` → `public/assets/vfx/<id>/systems.json` (+ `spells.json` com os números do LoL) |
@@ -31,14 +31,16 @@ Assets (`assets-raw/`, `public/assets/`) não vão para o git.
 ## ChampionDef: regras
 
 - `id`: minúsculo; é o prefixo de **todos** os sons. O `Game` toca sozinho: `<id>_auto`, `<id>_auto2`, `<id>_crit`, `<id>_auto_hit`, `<id>_crit_hit`, `<id>_Q|W|E|R` (início do cast), `<id>_death`. Sons extras (impacto de skill etc.) o kit toca com `audio.play`. Chave ausente no manifest toca nada, sem erro.
-- `model`: nome do `.glb`/`.png` em `public/assets/models/`.
+- `model`: nome do `.glb`/`.png` em `public/assets/models/`. `scale`: multiplicador se o modelo exportado ficar menor que os outros (compare a altura com o Ezreal, ~183).
 - `hide` / `textures`: submeshes escondidos (`initialSubmeshToHide`) e com textura própria (`materialOverride`, submesh -> stem do PNG em `public/assets/models/`), lidos do `skin0.bin` (`tools/read_bin.py`). A textura extra entra em `MODELS` com caminho `../<pasta>/<arquivo>.png` (ex.: `samira_weapons`).
 - `base`: stats do LoL (fonte: Meraki Analytics / `spells.json`), regen **por 5 s**, `*PerLevel` usa a fórmula de crescimento do LoL. `windupPercent = attackCastTime / attackTotalTime`.
 - `skills`: as 4 chaves `Q W E R`, cada uma com `name, maxRank, cooldown[], cost[], castTime, anim, icon, aim`. Arrays com `maxRank` itens. Números próprios do kit (dano, ratios, alcance) ficam no mesmo objeto: declare com `as const satisfies Record<SkillKey, SkillDef & Record<string, unknown>>` e leia do objeto local no kit.
 - `aim` (obrigatório): mira ao se mover com as setinhas, quando o cursor não é usado. Número = alcance da mira automática (alvo marcado, senão o inimigo mais próximo): todo skillshot e todo dash/skill que precisa de alvo. `'move'` = na direção do movimento (dash/blink livre, ex.: E do Ezreal). `'none'` = skill que ignora o `point` (em volta de si, alvo escolhido pelo kit).
 - `ultimateLevels`: só se o R não segue 6/11/16.
 - `anims` / `skills[k].anim`: nomes exatos dos clips no `.glb`. Clip inexistente = sem animação, sem erro: confira os nomes.
-- `vfx`: chaves de sistemas de partícula do ataque básico (`auto`, `crit`, `autoHit`, `critHit`), como no `ResourceResolver` da skin.
+- `vfx`: chaves de sistemas de partícula do ataque básico (`auto`, `crit`, `autoHit`, `critHit`), como no `ResourceResolver` da skin; `death`: pares `[sistema, osso]` tocados na morte (eventos da animação de morte no `animations/skin0.bin`).
+- `idleVfx`: pares `[sistema, osso]` que ficam ligados a run toda (o `idleParticlesEffects` do `skin0.bin`, ex.: as chamas do Brand); param na morte. O bin às vezes omite o prefixo do osso (`BUFFBONE_GLB_CENTER_LOC` vs `C_BUFFBONE_GLB_CENTER_LOC`): confira no `.glb`.
+- `itemBases`: bases de item oferecidas no level up; campeão AP usa `AP_BASES` (`src/items.ts`). Ratio de AP da skill: `apRatio` (o card mostra) e `g.ap` no kit.
 - `icon`: URL do Data Dragon (`.../img/spell/<Champ><K>.png`, `.../img/passive/...`).
 - `icon` do campeão: retrato do Data Dragon (`.../img/champion/<Champ>.png`), usado na seleção.
 - **Textos nos 4 idiomas** (regra do `CLAUDE.md`, "Internacionalização"): nada de string no `ChampionDef`. `name: t('champion.<id>.name')`, `skills[k].name: t('champion.<id>.<K>')`, `passive.name: t('champion.<id>.passive')`, e `hud()`/popups/floaters com chaves `champion.<id>.*` e placeholders (ex. `t('champion.ezreal.hud', { stacks, max })`). Adicione as chaves nos 4 arquivos de `src/locales/`. Nomes oficiais vêm do Data Dragon (`data/{en_US,pt_BR,es_MX,zh_CN}/champion/<Champ>.json`; no zh o nome do campeão é o campo `title`). `tests/i18n.test.ts` já cobre `CHAMPIONS`.
@@ -54,6 +56,7 @@ function luxKit(g: Game): ChampionKit { /* estado da run aqui, em closures */ re
 - `castTime` é a canalização (campeão parado). Atordoamento ou estase cancelam o cast sem avisar o kit: VFX longo de `castStart` deve se autodestruir (sistema com duração, não preso ao cast). Mana, recarga, animação, som `<id>_<K>` e hooks de item já foram aplicados.
 - `castStart`: VFX de conjuração. `attackSpeedBonus`/`moveSpeedBonus`: fração. `canCast(key)`: condição extra antes de gastar mana/recarga (ex.: R que exige acúmulos). `disarmed()`: bloqueia ataque básico (canalização, giro). `hud`: texto curto da passiva. `gauge()`: medidor da passiva ao lado das skills (`label` grande, `fill` 0..1, `ready` brilha; ex.: grau de Estilo da Samira). `castAnim(key, point)`: anim da skill com mais de uma forma (ex.: Q da Samira, arma ou lâmina). `gauge().skill`: slot que brilha quando `ready`. `meleeAuto(target)`: true troca o ataque básico pelo corpo a corpo de `ChampionDef.melee` (anims, VFX, sons `<id>_melee*`, sem míssil).
 - `castTime` precisa ser > 0 (o cast resolve quando a trava zera); skill instantânea usa `0.05`.
+- `onKill(e, hit)`: o `hit` matou `e` (ex.: passiva que restaura mana em abates).
 - `onDamage(e, hit)`: roda em **todo** dano do campeão, antes da mitigação; retorna dano **mágico** extra. Ignore `hit.source === 'item'` se a passiva não deve reagir a queimaduras de item.
 - `dispose`: remova da cena tudo que o kit criou (meshes de marca etc.). `update` roda todo frame depois dos inimigos.
 - Cada hit declara um `Hit` (`type`, `source`, `skill`, `onHit`). Defina como constantes. `onHit: true` só se a skill aplica efeitos ao acertar no LoL. Sempre preencha `skill` em `source: 'ability'` (o tipo não obriga, mas reembolsos usam `g.costOf(hit.skill)`).
@@ -70,7 +73,7 @@ Precisa de uma destas? Primeiro estenda o contrato de forma genérica (`src/cham
 | Mecânica | O que falta | Forma genérica sugerida |
 |---|---|---|
 | Contar/alterar ataques básicos ao disparar (Headshot, "a cada N ataques") | Kit não tem `onAttack`; `onDamage` só soma dano **mágico** | Hook do kit `onAttack(target, damage, crit)` e/ou `onDamage` retornando `{ physical, magic }` |
-| CC em inimigos (root, slow, stun) | `Enemy` não tem campo de CC; loop genérico e `EnemyAI` não param | `rootedUntil`/`slowUntil` genéricos em `Enemy` + `g.rootEnemy(e, s)`, respeitados no loop genérico e documentados para `EnemyAI` |
+| Root em inimigos (sem andar, mas ataca) | Só existem `g.slow(e, pct, s)` e `g.stunEnemy(e, s)` (`EnemyAI` dos chefes ignora o stun) | `rootUntil` genérico em `Enemy` + `g.rootEnemy(e, s)` no loop genérico |
 
 CC em `Enemy` é estado **genérico** (qualquer campeão usa); a regra "estado no kit" vale para mecânicas exclusivas do campeão.
 

@@ -100,6 +100,27 @@ void main() {
   gl_FragColor = c;
 }`;
 
+// VfxPrimitiveAttachedMesh: the owner's skinned mesh redrawn with the emitter's texture and colour (glows, afterimages)
+const overlayVertex = /* glsl */ `
+#include <common>
+#include <skinning_pars_vertex>
+varying vec2 vUv;
+void main() {
+  vUv = uv;
+  #include <skinbase_vertex>
+  #include <begin_vertex>
+  #include <skinning_vertex>
+  #include <project_vertex>
+}`;
+const overlayFragment = /* glsl */ `
+uniform sampler2D map; uniform vec4 color;
+varying vec2 vUv;
+void main() {
+  vec4 c = texture2D(map, vUv) * color;
+  if (c.a <= 0.0) discard;
+  gl_FragColor = c;
+}`;
+
 function material(e: Bin) {
   const defines: Record<string, string> = {};
   const uniforms: Record<string, THREE.IUniform> = {
@@ -182,10 +203,12 @@ interface Particle {
   quat: THREE.Quaternion; // frame of the system at birth (bound particles follow the current one)
   color: number[]; scale: THREE.Vector3; rot: THREE.Vector3; rotVel: THREE.Vector3; orbit: THREE.Vector3;
   frame: number; uvOff: [number, number]; uvRate: [number, number];
+  overlay?: THREE.ShaderMaterial; // attached-mesh particles: the material shared by their skinned meshes
 }
 
-const PRIMITIVES = new Set([undefined, 'VfxPrimitiveArbitraryQuad', 'VfxPrimitiveMesh', 'VfxPrimitiveArbitraryTrail', 'VfxPrimitiveCameraTrail']);
-const _v = new THREE.Vector3(), _w = new THREE.Vector3(), _q = new THREE.Quaternion(), _e = new THREE.Euler();
+const PRIMITIVES = new Set([undefined, 'VfxPrimitiveArbitraryQuad', 'VfxPrimitiveMesh', 'VfxPrimitiveArbitraryTrail', 'VfxPrimitiveCameraTrail',
+  'VfxPrimitiveRay', 'VfxPrimitiveAttachedMesh']);
+const _v = new THREE.Vector3(), _w = new THREE.Vector3(), _q = new THREE.Quaternion(), _q2 = new THREE.Quaternion(), _e = new THREE.Euler();
 const _right = new THREE.Vector3(), _up = new THREE.Vector3(), _fwd = new THREE.Vector3();
 
 class Emitter {
@@ -195,7 +218,7 @@ class Emitter {
   private age = 0;
   private acc = 0; // fractional particles waiting to spawn
   private burst = false;
-  private kind: 'billboard' | 'quad' | 'mesh' | 'trail' | 'camtrail';
+  private kind: 'billboard' | 'quad' | 'mesh' | 'trail' | 'camtrail' | 'ray' | 'attached';
   private meshData?: { pos: number[]; uv: number[] };
   private bound: boolean;
   private lastLocal = new THREE.Vector3(); // spawn point of the newest particle, in system space (trail head)
@@ -203,7 +226,8 @@ class Emitter {
   constructor(private e: Bin, private sys: ParticleSystem) {
     const p = e.primitive?.__type;
     this.kind = p === 'VfxPrimitiveArbitraryQuad' ? 'quad' : p === 'VfxPrimitiveMesh' ? 'mesh'
-      : p === 'VfxPrimitiveArbitraryTrail' ? 'trail' : p === 'VfxPrimitiveCameraTrail' ? 'camtrail' : 'billboard';
+      : p === 'VfxPrimitiveArbitraryTrail' ? 'trail' : p === 'VfxPrimitiveCameraTrail' ? 'camtrail'
+        : p === 'VfxPrimitiveRay' ? 'ray' : p === 'VfxPrimitiveAttachedMesh' ? 'attached' : 'billboard';
     if (this.kind === 'mesh') this.meshData = meshes.get(e.primitive.mMesh?.mSimpleMeshName);
     this.bound = (val(e.bindWeight, 0) ?? 0) >= 0.5;
     this.buf.reserve(4, 6); // allocate attributes up front so an empty emitter still has a valid geometry
@@ -213,9 +237,12 @@ class Emitter {
     this.mesh.onBeforeRender = (_r, _s, cam) => { camera = cam; };
   }
 
-  static supported(e: Bin) {
+  static supported(e: Bin, sys: ParticleSystem) {
+    const type = e.primitive?.__type;
     // distortion emitters refract the screen behind them; drawn as plain textures they become solid white quads
-    return !e.disabled && !e.distortionDefinition && PRIMITIVES.has(e.primitive?.__type) && (e.primitive?.__type !== 'VfxPrimitiveMesh' || meshes.has(e.primitive.mMesh?.mSimpleMeshName));
+    return !e.disabled && !e.distortionDefinition && PRIMITIVES.has(type)
+      && (type !== 'VfxPrimitiveMesh' || meshes.has(e.primitive.mMesh?.mSimpleMeshName))
+      && (type !== 'VfxPrimitiveAttachedMesh' || (!!sys.owner && textures.has(e.texture)));
   }
 
   private get duration() { return this.e.lifetime > 0 ? this.e.lifetime : Infinity; }
@@ -224,6 +251,12 @@ class Emitter {
   private killAt = Infinity;
   /** LoL: when the system is destroyed (e.g. its missile hits) particles survive only `particleLinger` seconds. */
   kill() { this.killAt = Math.min(this.killAt, this.age + (this.e.particleLinger ?? 0)); }
+
+  private drop(p: Particle) {
+    if (!p.overlay) return;
+    for (const m of this.mesh.children.filter((m) => (m as THREE.Mesh).material === p.overlay)) m.removeFromParent();
+    p.overlay.dispose();
+  }
 
   update(dt: number, delta: THREE.Matrix4) {
     const e = this.e;
@@ -242,12 +275,15 @@ class Emitter {
       }
     }
     const worldAcc = vec3(val(e.worldAcceleration, et));
-    if (this.age >= this.killAt) this.particles.length = 0;
+    const fields = e.fieldCollectionDefinition;
+    if (fields) this.fieldAcc(fields, et, worldAcc);
+    if (this.age >= this.killAt) { for (const p of this.particles) this.drop(p); this.particles.length = 0; }
     compact(this.particles, (p) => {
       p.age += dt;
-      if (p.age >= p.life) return false;
+      if (p.age >= p.life) { this.drop(p); return false; }
       const pt = p.age / p.life;
       p.vel.addScaledVector(p.acc, dt).addScaledVector(worldAcc, dt);
+      if (fields) this.fieldForces(fields, et, p, dt);
       p.vel.multiply(_v.set(1 - Math.min(1, p.drag.x * dt), 1 - Math.min(1, p.drag.y * dt), 1 - Math.min(1, p.drag.z * dt)));
       p.pos.addScaledVector(p.vel, dt);
       const extra = val(e.velocity, pt);
@@ -263,19 +299,47 @@ class Emitter {
     this.build(et);
   }
 
+  /** Uniform field accelerations (fieldAccelerationDefinitions) fold into the emitter's world acceleration. */
+  private fieldAcc(f: Bin, et: number, out: THREE.Vector3) {
+    for (const a of f.fieldAccelerationDefinitions ?? []) {
+      const v = vec3(val(a.acceleration, et));
+      out.add(a.isLocalSpace ? v.applyQuaternion(this.sys.quat) : v);
+    }
+  }
+
+  /**
+   * Positional fields around the system: drag slows particles inside `radius`, attraction pulls them toward `Position`
+   * (system space). shortcut: orbital/noise fields are ignored (the champions' orbital ones are empty), add them when one carries data.
+   */
+  private fieldForces(f: Bin, et: number, p: Particle, dt: number) {
+    for (const d of f.fieldDragDefinitions ?? []) {
+      const r = val(d.radius, et) ?? Infinity;
+      if (p.pos.distanceToSquared(this.sys.pos) <= r * r) p.vel.multiplyScalar(Math.max(0, 1 - (val(d.strength, et) ?? 0) * dt));
+    }
+    for (const a of f.fieldAttractionDefinitions ?? []) {
+      const r = val(a.radius, et) ?? Infinity;
+      _w.copy(vec3(val(a.Position, et))).applyMatrix4(this.sys.matrix).sub(p.pos);
+      const d = _w.length();
+      if (d > 1 && d <= r) p.vel.addScaledVector(_w, ((val(a.acceleration, et) ?? 0) * dt) / d);
+    }
+  }
+
   private spawn(et: number) {
     const e = this.e, sys = this.sys;
     const local = vec3(birth(e.EmitterPosition, et));
     const vel = vec3(birth(e.birthVelocity, et));
     const shape = e.SpawnShape;
+    // FlexShape: offsets and sizes authored per unit of the bound object's size (a bigger target gets a bigger effect)
+    const flex = sys.size ? e.FlexShapeDefinition : undefined;
+    const kOffset = flex?.scaleEmitOffsetByBoundObjectSize ? flex.scaleEmitOffsetByBoundObjectSize * sys.size! : 1;
     let rot: THREE.Quaternion | null = null;
     if (shape) {
       const r = Math.random;
-      if (shape.emitOffset) local.add(vec3(birth(shape.emitOffset, et)));
-      if (shape.Size) local.add(vec3(shape.Size).multiply(_v.set(r() - 0.5, r() - 0.5, r() - 0.5)));
+      if (shape.emitOffset) local.addScaledVector(vec3(birth(shape.emitOffset, et)), kOffset);
+      if (shape.Size) local.addScaledVector(vec3(shape.Size).multiply(_v.set(r() - 0.5, r() - 0.5, r() - 0.5)), kOffset);
       if (shape.radius != null) {
-        if (shape.__type === 'VfxShapeSphere') local.add(_v.randomDirection().multiplyScalar(shape.radius * Math.cbrt(r())));
-        else { const a = r() * Math.PI * 2, d = shape.radius * Math.sqrt(r()); local.add(_v.set(Math.cos(a) * d, r() * (shape.height ?? 0), Math.sin(a) * d)); }
+        if (shape.__type === 'VfxShapeSphere') local.add(_v.randomDirection().multiplyScalar(shape.radius * kOffset * Math.cbrt(r())));
+        else { const a = r() * Math.PI * 2, d = shape.radius * kOffset * Math.sqrt(r()); local.add(_v.set(Math.cos(a) * d, r() * (shape.height ?? 0) * kOffset, Math.sin(a) * d)); }
       }
       if (shape.emitRotationAxes) {
         // legacy shapes rotate the offset (and the launch velocity) around the given axes
@@ -291,6 +355,7 @@ class Emitter {
     const uniform = e.isUniformScale;
     const s = vec3(birth(e.birthScale0, et), 1);
     if (uniform) s.set(s.x, s.x, s.x);
+    if (flex?.scaleBirthScaleByBoundObjectSize) s.multiplyScalar(flex.scaleBirthScaleByBoundObjectSize * sys.size!);
     const texDiv = e.texDiv ?? [1, 1];
     const frames = e.numFrames ?? texDiv[0] * texDiv[1];
     const life = birth(e.particleLifetime, et);
@@ -309,7 +374,42 @@ class Emitter {
       frame: (e.startFrame ?? 0) + (e.isRandomStartFrame ? Math.floor(Math.random() * frames) : 0),
       uvOff: (birth(e.birthUVOffset, et) ?? [0, 0]).slice(0, 2),
       uvRate: (birth(e.birthUvScrollRate, et) ?? [0, 0]).slice(0, 2),
+      overlay: this.kind === 'attached' ? this.overlay() : undefined,
     });
+  }
+
+  /**
+   * Skinned copies of the owner's submeshes (all visible ones, or `mSubmeshesToDraw`). Pose afterimages freeze the
+   * pose of the moment they spawn; the others share the owner's live skeleton.
+   * shortcut: the copies are drawn at the owner's size (birth scale, UV scroll and erosion are ignored), fine for glows.
+   */
+  private overlay() {
+    const e = this.e;
+    // bins and models disagree on submesh case (BODY / Body)
+    const names = (e.primitive.mMesh?.mSubmeshesToDraw as string[] | undefined)?.map((n) => n.toLowerCase());
+    const mat = new THREE.ShaderMaterial({
+      vertexShader: overlayVertex, fragmentShader: overlayFragment,
+      uniforms: { map: { value: textures.get(e.texture) }, color: { value: new THREE.Vector4(1, 1, 1, 1) } },
+      transparent: true, depthWrite: false, side: e.disableBackfaceCull ? THREE.DoubleSide : THREE.FrontSide,
+      polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -8, // drawn over the owner's own surface
+      blending: e.blendMode === 1 ? THREE.NormalBlending : THREE.AdditiveBlending,
+    });
+    this.sys.owner!.traverse((o) => {
+      const src = o as THREE.SkinnedMesh;
+      if (!src.isSkinnedMesh || !(names ? names.includes(String(src.userData.submesh).toLowerCase()) : src.visible)) return;
+      let skeleton = src.skeleton;
+      if (this.sys.afterimage) {
+        skeleton = skeleton.clone();
+        skeleton.update();
+        skeleton.update = () => {}; // keep the snapshot: the renderer updates skeletons every frame
+      }
+      const m = new THREE.SkinnedMesh(src.geometry, mat);
+      m.bind(skeleton, src.bindMatrix);
+      m.frustumCulled = false;
+      m.renderOrder = this.mesh.renderOrder;
+      this.mesh.add(m);
+    });
+    return mat;
   }
 
   private build(et: number) {
@@ -336,6 +436,7 @@ class Emitter {
       const s = sc.multiply(p.scale);
       const erode = val(e.alphaErosionDefinition?.erosionDriveCurve, pt) ?? 0;
       if (trail) { points.push({ p, c, w: s.x, pt, erode }); continue; }
+      if (p.overlay) { p.overlay.uniforms.color.value.set(c[0], c[1], c[2], c[3]); continue; }
 
       let frame = p.frame;
       if (!e.isRandomStartFrame && frames > 1) frame += e.frameRate ? Math.floor(p.age * e.frameRate) : Math.floor(pt * frames);
@@ -363,9 +464,18 @@ class Emitter {
         continue;
       }
 
-      // quads: corners in the particle's XY plane; billboards: in the camera plane
+      // quads: corners in the particle's XY plane; billboards: in the camera plane;
+      // rays: a strip from the particle out along its rotated Z (length scale.z, half width scale.x), turned to the camera
       let ax: THREE.Vector3, ay: THREE.Vector3;
-      if (this.kind === 'quad') {
+      let base = p.pos;
+      if (this.kind === 'ray') {
+        if (!camera) continue;
+        _q.copy(p.quat).multiply(_q2.setFromEuler(_e.set(r.x * DEG, r.y * DEG, r.z * DEG)));
+        ay = new THREE.Vector3(0, 0, s.z / 2).applyQuaternion(_q);
+        if (ay.lengthSq() < 1e-6) continue;
+        base = ay.clone().add(p.pos);
+        ax = ay.clone().cross(_w.setFromMatrixPosition(camera.matrixWorld).sub(base)).normalize().multiplyScalar(s.x);
+      } else if (this.kind === 'quad') {
         _q.copy(p.quat).multiply(new THREE.Quaternion().setFromEuler(_e.set(r.x * DEG, r.y * DEG, r.z * DEG)));
         ax = new THREE.Vector3(s.x, 0, 0).applyQuaternion(_q);
         ay = new THREE.Vector3(0, s.y, 0).applyQuaternion(_q);
@@ -387,7 +497,7 @@ class Emitter {
       b.reserve(4, 6);
       const i0 = b.nv;
       for (const [cx, cy] of [[-1, 1], [1, 1], [1, -1], [-1, -1]]) {
-        _w.copy(p.pos).addScaledVector(ax, cx).addScaledVector(ay, cy);
+        _w.copy(base).addScaledVector(ax, cx).addScaledVector(ay, cy);
         const [u, v] = uv((cx + 1) / 2, (1 - cy) / 2);
         b.vert(_w, u, v, c, pt, erode);
       }
@@ -437,6 +547,7 @@ class Emitter {
   }
 
   dispose() {
+    for (const p of this.particles) this.drop(p);
     this.mesh.removeFromParent();
     this.buf.geo.dispose();
     (this.mesh.material as THREE.Material).dispose();
@@ -444,6 +555,9 @@ class Emitter {
 }
 
 // ---- systems ----
+
+/** `owner`: the model attached-mesh emitters redraw; `size`: the bound object's size, for FlexShape emitters. */
+export interface SystemOpts { owner?: THREE.Object3D; size?: number }
 
 export class ParticleSystem {
   readonly matrix = new THREE.Matrix4();
@@ -454,11 +568,18 @@ export class ParticleSystem {
   private prev = new THREE.Matrix4();
   private delta = new THREE.Matrix4();
 
-  constructor(def: Bin, scene: THREE.Scene, pos: THREE.Vector3, quat: THREE.Quaternion) {
+  readonly owner?: THREE.Object3D;
+  readonly size?: number;
+  readonly afterimage: boolean;
+
+  constructor(def: Bin, scene: THREE.Scene, pos: THREE.Vector3, quat: THREE.Quaternion, opts: SystemOpts = {}) {
+    this.owner = opts.owner;
+    this.size = opts.size;
+    this.afterimage = !!def.mIsPoseAfterimage;
     this.setFrame(pos, quat);
     this.prev.copy(this.matrix);
     for (const e of [...(def.complexEmitterDefinitionData ?? []), ...(def.simpleEmitterDefinitionData ?? [])]) {
-      if (!Emitter.supported(e)) continue;
+      if (!Emitter.supported(e, this)) continue;
       const em = new Emitter(e, this);
       this.emitters.push(em);
       scene.add(em.mesh);
@@ -485,9 +606,9 @@ export class ParticleSystem {
   dispose() { for (const e of this.emitters) e.dispose(); }
 }
 
-export function createSystem(key: string, scene: THREE.Scene, pos: THREE.Vector3, quat: THREE.Quaternion) {
+export function createSystem(key: string, scene: THREE.Scene, pos: THREE.Vector3, quat: THREE.Quaternion, opts?: SystemOpts) {
   const def = systems[key];
-  return def ? new ParticleSystem(def, scene, pos, quat) : null;
+  return def ? new ParticleSystem(def, scene, pos, quat, opts) : null;
 }
 
 const UP = new THREE.Vector3(0, 1, 0);

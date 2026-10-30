@@ -70,13 +70,14 @@ pnpm dev        # http://localhost:5173（在第一个界面选择英雄）
 2. 哈希列表（游戏的 `.bin` 通过 xxh64 哈希引用纹理和动画）：
    ```bash
    curl -s https://raw.communitydragon.org/data/hashes/lol/hashes.game.txt \
-     | grep -E "assets/characters/(ezreal|samira|sru_|turret|inhibitor|nexus)" > assets-raw/hashes.filtered.txt
+     | grep -E "assets/characters/(ezreal|samira|brand|sru_|turret|inhibitor|nexus)" > assets-raw/hashes.filtered.txt
    ```
 3. 从 WAD 中提取（`tools/extract_lol.py`）并转换为 `.glb`（`tools/build_models.py`）：
    ```bash
    G="/Applications/League of Legends.app/Contents/LoL/Game/DATA/FINAL"
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt ezreal assets-raw/ezreal "$G/Champions/Ezreal.wad.client"
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt samira assets-raw/samira "$G/Champions/Samira.wad.client"
+   .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt brand assets-raw/brand "$G/Champions/Brand.wad.client"
    for c in sru_chaosminion{melee,ranged,siege,super} sru_orderminionmelee sru_krug sru_murkwolf sru_razorbeak sru_razorbeakmini sru_gromp sru_blue sru_red sru_riftherald sru_baron sru_crab sru_dragon sru_dragon_{air,fire,earth,water,hextech,chemtech}; do
      .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt $c assets-raw/$c "$G/Maps/Shipping/Map11.wad.client" "$G/Maps/Shipping/Common.wad.client"
    done
@@ -98,14 +99,14 @@ pnpm dev        # http://localhost:5173（在第一个界面选择英雄）
    `pieces` 是一个有限的 `.mapgeo` v14 解析器：如果跳过或失败（格式版本不同、缺少 WAD），运行时会根据布局障碍物绘制深色方块/圆柱。不会出错。
 5. 技能特效：从皮肤的 `.bin` 读取伊泽瑞尔的粒子系统，以及它们使用的所有纹理和网格。使用第 4 步下载的哈希列表：
    ```bash
-   for c in ezreal samira; do (cd tools && ../.venv-tools/bin/python build_vfx.py ../assets-raw/hashes $c ../public/assets/vfx/$c "$G"); done
+   for c in ezreal samira brand; do (cd tools && ../.venv-tools/bin/python build_vfx.py ../assets-raw/hashes $c ../public/assets/vfx/$c "$G"); done
    ```
    生成 `systems.json`（按 `ResourceResolver` 键索引的特效，例如 `Ezreal_Q_mis`）、`spells.json`（飞弹速度/宽度/射程）以及资源的 PNG/JSON。`tools/read_bin.py` 可以单独把任意 `.bin` 转为 JSON。发射器运行时位于 `src/particles.ts`；`src/vfx.ts` 只负责选择播放哪个系统以及在哪里播放。
 
 6. 音效与音乐：伊泽瑞尔、野怪、HUD 的 Wwise 音频库（`.bnk`/`.wpk`）以及 Map11 的音乐。需要 `brew install vgmstream ffmpeg` 和 [wwiser](https://github.com/bnnm/wwiser)：
    ```bash
    git clone --depth 1 https://github.com/bnnm/wwiser assets-raw/wwiser
-   (cd tools && ../.venv-tools/bin/python build_audio.py ../assets-raw/wwiser/wwiser.py ../public/assets/sfx "$G")
+   (cd tools && ../.venv-tools/bin/python build_audio.py "$PWD/../assets-raw/wwiser/wwiser.py" ../public/assets/sfx "$G")
    ```
    wwiser 为每个事件生成一个 `.txtp`，vgmstream 渲染，ffmpeg 转为 mp3。事件按 id 查找（名称的 FNV-1；名称来自角色的 `.bin`，表在脚本中的 `BANKS`）。随机容器最多生成 4 个变体（`<key>_<n>.mp3`），运行时随机播放。输出：`public/assets/sfx/*.mp3` + `sounds.json`。没有该文件夹时游戏静音运行。
    未找到的事件（静音）：小兵死亡，以及海洋/海克斯科技/化学科技亚龙的攻击。音乐是召唤师峡谷中名称未知的主事件（id `3832820115`），每个 switch 状态成为一首曲目。
@@ -207,9 +208,9 @@ pnpm dev        # http://localhost:5173（在第一个界面选择英雄）
 
 ## 已知限制 / 下一步
 
-- 粒子：未实现 `VfxPrimitiveRay`、`VfxPrimitiveAttachedMesh`（附着在骨骼上的网格，例如 E 的化身）、力场（`fieldCollectionDefinition`）和 `FlexShapeDefinition`。附着在骨骼上的施法特效从手部的固定点发出。`blendMode` 缺失/4 = 加法混合，1 = alpha（根据纹理推断，无文档）。
-- `.glb` 文件很大（伊泽瑞尔 29 MB，男爵 45 MB，未压缩）。下一步：`gltf-transform resample/quantize`，并移除未使用的动画片段（回城、跳舞）。
-- 每个敌人都是带独立 mixer 的 SkinnedMesh，存活上限 220。要支持更大的怪潮：烘焙到纹理的动画 + 实例化。
+- 粒子：已支持 `VfxPrimitiveRay`、`VfxPrimitiveAttachedMesh`（把所属模型的蒙皮网格重绘为光效或定格姿势的残影）、力场（加速度、阻力、吸引）和 `FlexShapeDefinition`（按目标大小缩放）。未实现：环绕/噪声力场、`VfxPrimitiveBeam`、扭曲；附着网格忽略出生缩放、UV 滚动和溶解。施法特效跟随皮肤动画事件指定的骨骼（`Actor.bone`、`Vfx.playOn`）。`blendMode` 缺失/4 = 加法混合，1 = alpha（根据纹理推断，无文档）。
+- 源 `.glb` 文件很大（伊泽瑞尔 29 MB，男爵 45 MB）；`pnpm build:prod`（`tools/optimize.mjs`）会移除代码未使用的动画片段，重采样并用 meshopt 压缩（伊泽瑞尔 1.9 MB，男爵 1.9 MB）。
+- 每个敌人都是带独立 mixer 的 SkinnedMesh，存活上限 260（`MAX_ENEMIES`）。要支持更大的怪潮：烘焙到纹理的动画 + 实例化。
 - 亚龙：动画共用 `sru_dragon`。炼狱亚龙和山脉亚龙使用云端亚龙的网格（`sru_dragon_air`）配自己的纹理，与原游戏一致（`EnemyDef.mesh`）。
 
 ## 法律声明

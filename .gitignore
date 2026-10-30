@@ -7,3 +7,4 @@ public/assets
 .playwright-mcp/
 __pycache__/
 .env
+l2g/

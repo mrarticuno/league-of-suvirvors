@@ -70,13 +70,14 @@ The models are **not in the repository** (they are Riot assets). Generate them l
 2. Hash list (the game's `.bin` files reference textures/animations by xxh64 hash):
    ```bash
    curl -s https://raw.communitydragon.org/data/hashes/lol/hashes.game.txt \
-     | grep -E "assets/characters/(ezreal|samira|sru_|turret|inhibitor|nexus)" > assets-raw/hashes.filtered.txt
+     | grep -E "assets/characters/(ezreal|samira|brand|sru_|turret|inhibitor|nexus)" > assets-raw/hashes.filtered.txt
    ```
 3. Extract from the WADs (`tools/extract_lol.py`) and convert to `.glb` (`tools/build_models.py`):
    ```bash
    G="/Applications/League of Legends.app/Contents/LoL/Game/DATA/FINAL"
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt ezreal assets-raw/ezreal "$G/Champions/Ezreal.wad.client"
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt samira assets-raw/samira "$G/Champions/Samira.wad.client"
+   .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt brand assets-raw/brand "$G/Champions/Brand.wad.client"
    for c in sru_chaosminion{melee,ranged,siege,super} sru_orderminionmelee sru_krug sru_murkwolf sru_razorbeak sru_razorbeakmini sru_gromp sru_blue sru_red sru_riftherald sru_baron sru_crab sru_dragon sru_dragon_{air,fire,earth,water,hextech,chemtech}; do
      .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt $c assets-raw/$c "$G/Maps/Shipping/Map11.wad.client" "$G/Maps/Shipping/Common.wad.client"
    done
@@ -98,14 +99,14 @@ The models are **not in the repository** (they are Riot assets). Generate them l
    `pieces` is a limited `.mapgeo` v14 parser: if it is skipped or fails (different format version, missing WAD), the runtime draws dark boxes/cylinders from the layout obstacles. Nothing breaks.
 5. Ability VFX: Ezreal's particle systems read from the skin `.bin`, with every texture and mesh they use. Uses the hash lists downloaded in step 4:
    ```bash
-   for c in ezreal samira; do (cd tools && ../.venv-tools/bin/python build_vfx.py ../assets-raw/hashes $c ../public/assets/vfx/$c "$G"); done
+   for c in ezreal samira brand; do (cd tools && ../.venv-tools/bin/python build_vfx.py ../assets-raw/hashes $c ../public/assets/vfx/$c "$G"); done
    ```
    Generates `systems.json` (effects indexed by `ResourceResolver` keys, e.g. `Ezreal_Q_mis`), `spells.json` (missile speed/width/range) and the asset PNG/JSON files. `tools/read_bin.py` alone converts any `.bin` into JSON. The emitter runtime lives in `src/particles.ts`; `src/vfx.ts` only picks which system to play and where.
 
 6. Sounds and music: Wwise banks (`.bnk`/`.wpk`) for Ezreal, the monsters, the HUD and the Map11 music. Needs `brew install vgmstream ffmpeg` and [wwiser](https://github.com/bnnm/wwiser):
    ```bash
    git clone --depth 1 https://github.com/bnnm/wwiser assets-raw/wwiser
-   (cd tools && ../.venv-tools/bin/python build_audio.py ../assets-raw/wwiser/wwiser.py ../public/assets/sfx "$G")
+   (cd tools && ../.venv-tools/bin/python build_audio.py "$PWD/../assets-raw/wwiser/wwiser.py" ../public/assets/sfx "$G")
    ```
    wwiser generates one `.txtp` per event, vgmstream renders it and ffmpeg converts it to mp3. Events are found by id (FNV-1 of the name; the names come from the characters' `.bin` files, the table is `BANKS` in the script). Random containers become up to 4 variations (`<key>_<n>.mp3`), picked at runtime. Output: `public/assets/sfx/*.mp3` + `sounds.json`. Without the folder, the game runs muted.
    Events not found (silent): minion deaths and the Ocean/Hextech/Chemtech dragon attacks. The music is the main SR event with no known name (id `3832820115`); each switch state becomes one track.
@@ -154,6 +155,13 @@ WASD is not used because it clashes with Q/W/E.
   - **E**: 600 dash toward the cursor, magic damage to everyone passed through, +20–40% attack speed for 5 s.
   - **R**: only at Style S with an enemy within 600. 10 volleys over 2 s against everyone around (25% vs. minions), can crit; −30% movement speed, consumes Style.
   - Not from LoL: Style counts any enemy; no Q explosives during E; no attack on immobilized targets (enemies are not affected by CC).
+- **Brand** (Meraki Analytics data and the skin bins): the first AP champion; 550 range. Every particle system of his kit is used (body flames, Ablaze marks, detonation ring and blast, every cast/missile/impact).
+  - **Passive (Blaze)**: abilities apply Ablaze (up to 3 stacks, 4 s): a burn of 2% max health + 8–48 (level) + 5% AP per stack. The 3rd stack primes a ring that explodes after 2 s (radius 475): 8–12% max health (+2% per 100 AP, capped at 270–525) + 30–150 + 20% AP, and ablazes everyone hit. A detonated enemy holds at most 1 stack for 4 s. A kill by an ability or of an ablazed enemy restores 20–40 mana (once per second from minions and small monsters, always from elites and epics).
+  - **Q**: fireball at the first enemy hit; stuns an ablazed target for 1.5 s.
+  - **W**: after 0.627 s, area damage (260) at the target point; +25% against ablazed enemies.
+  - **E**: targeted blast that spreads its damage to enemies within 300 of the target (600 if it was ablazed).
+  - **R**: fireball that bounces up to 4 times (600), an ablazed enemy first; slows ablazed enemies 30–60% for 0.25 s.
+  - Not from LoL (mana balance for hordes): costs Q 40, W/E 45–65, R 80; the burn and the detonation have a flat part and the detonation works on any enemy; the burn ticks every 0.5 s; R never bounces back to Brand.
 - **Two-step level-up**:
   1. One ability rank, by LoL's rule: basic abilities at levels 1/3/5/7/9, R at levels 6/11/16. The step is skipped when no rank is available.
   2. One item out of 3 rolled (or a potion, once the build is complete).
@@ -164,6 +172,7 @@ WASD is not used because it clashes with Q/W/E.
   - Complete build (6 finished or locked items): level-ups offer a Health or Mana Potion (20% of max), and each kill has a 1% chance to drop a blueprint (blue scroll, 1 per run) that makes a random finished item Legendary (+50% stats).
   - Finished items: Ezreal's current builds (Trinity Force, Manamune, Spear of Shojin, Endless Hunger, Serylda's Grudge, Frozen Heart, Guardian Angel) and the on-hit/crit build (Kraken Slayer, Blade of The Ruined King, Infinity Edge, Essence Reaver, Black Cleaver).
   - Implemented passives: Spellblade (Sheen/Trinity/Essence Reaver), Awe (Manamune), Bring It Down (Kraken Slayer), Mist's Edge (Ruined King), crit damage (Infinity Edge), Carve (Black Cleaver), Rebirth (Guardian Angel), Winter's Caress (Frozen Heart), armor penetration, life steal and omnivamp.
+  - Ability Power: AP champions (`ChampionDef.itemBases = AP_BASES`) are offered the Amplifying Tome and Blasting Wand lines (Luden's Echo, Malignance, Blackfire Torch, Archangel's Staff, Shadowflame, Liandry's Torment, Stormsurge, Rabadon's Deathcap, Zhonya's Hourglass, Rylai's Crystal Scepter) besides Tear, Ruby Crystal and Cloth Armor. These items give their stats only (no passives yet).
   - Armor: physical damage (basic attack, Q, on-hit effects) is reduced by the enemy's armor. Magic damage (W, E, R) is not.
 - **Ranged enemies**: fire straight-line skillshots aimed where Ezreal was, with limited range. They can be dodged.
 - **Difficulty curve**: early on, 1 basic attack or 1 ability kills.
@@ -207,9 +216,9 @@ WASD is not used because it clashes with Q/W/E.
 
 ## Known limitations / next steps
 
-- Particles: not implemented: `VfxPrimitiveRay`, `VfxPrimitiveAttachedMesh` (meshes attached to the skeleton, e.g. the E avatar), force fields (`fieldCollectionDefinition`) and `FlexShapeDefinition`. Cast effects attached to bones come out of a fixed point at the hand. `blendMode` missing/4 = additive, 1 = alpha (inferred from the textures, not documented).
-- The `.glb` files are heavy (Ezreal 29 MB, Baron 45 MB, uncompressed). Next step: `gltf-transform resample/quantize` and removing unused clips (recall, dance).
-- Each enemy is a SkinnedMesh with its own mixer, capped at 220 alive. For bigger hordes: texture-baked animation + instancing.
+- Particles: `VfxPrimitiveRay`, `VfxPrimitiveAttachedMesh` (the owner's skinned mesh redrawn as a glow or frozen-pose afterimage), force fields (acceleration, drag, attraction) and `FlexShapeDefinition` (scaled to the target's size) are supported. Not implemented: orbital/noise fields, `VfxPrimitiveBeam`, distortion; attached meshes ignore birth scale, UV scroll and erosion. Cast effects ride the bone named by the skin's animation events (`Actor.bone`, `Vfx.playOn`). `blendMode` missing/4 = additive, 1 = alpha (inferred from the textures, not documented).
+- The source `.glb` files are heavy (Ezreal 29 MB, Baron 45 MB); `pnpm build:prod` (`tools/optimize.mjs`) drops clips the code never names, resamples and meshopt-compresses them (Ezreal 1.9 MB, Baron 1.9 MB).
+- Each enemy is a SkinnedMesh with its own mixer, capped at 260 alive (`MAX_ENEMIES`). For bigger hordes: texture-baked animation + instancing.
 - Dragons: animations shared from `sru_dragon`. Infernal and Mountain use the Cloud mesh (`sru_dragon_air`) with their own texture, as in the game (`EnemyDef.mesh`).
 
 ## Legal notice

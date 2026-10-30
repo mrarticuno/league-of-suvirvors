@@ -4,6 +4,7 @@
 import * as THREE from 'three';
 import { audio } from '../audio';
 import type { ChampionDef, ChampionKit, Hit, SkillDef, SkillKey } from '../champion';
+import { boundSize } from '../data';
 import type { Enemy, Game } from '../game';
 import { t } from '../i18n';
 import { facingQuat } from '../particles';
@@ -204,7 +205,7 @@ function samiraKit(g: Game): ChampionKit {
         for (const e of g.enemiesNear(g.pos, r, near)) {
           if (e.deadFor >= 0 || rush.hit.has(e) || e.pos.distanceTo(g.pos) - e.def.radius > r) continue;
           rush.hit.add(e);
-          g.vfx.hit('Samira_E_dash_hit', e.pos);
+          g.vfx.hit('Samira_E_dash_hit', e.pos, 0, { size: boundSize(e) });
           audio.play('samira_E_hit');
           g.hurtEnemy(e, rush.damage, HITS.E);
         }
@@ -250,7 +251,7 @@ function samiraKit(g: Game): ChampionKit {
     },
 
     castStart(key) {
-      if (key === 'R') g.vfx.playAt('Samira_R_Cas', g.pos.clone().setY(0), g.facing);
+      if (key === 'R') g.vfx.playAt('Samira_R_Cas', g.pos.clone().setY(0), g.facing, { owner: g.player.root });
     },
 
     cast(key, r, point) {
@@ -268,7 +269,7 @@ function samiraKit(g: Game): ChampionKit {
           audio.play('samira_Q_slash');
           for (const e of g.enemiesNear(g.pos, q.slashRange, near)) {
             if (e.deadFor >= 0 || !inCone(e, dir)) continue;
-            g.vfx.hit('Samira_Q_Melee_Tar', e.pos);
+            g.vfx.hit('Samira_Q_Melee_Tar', e.pos, 0, { size: boundSize(e) });
             g.hurtEnemy(e, damage, c ? HITS.slashCrit : HITS.slash);
           }
         } else {
