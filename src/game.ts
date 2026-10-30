@@ -18,7 +18,7 @@ import { runeEffects } from './runes';
 import { SpatialGrid } from './spatial';
 import { t } from './i18n';
 import { compact, TimeWindow } from './util';
-import { facingQuat, type ParticleSystem } from './particles';
+import { animEvents, facingQuat, type ClipEvent, type ParticleSystem } from './particles';
 import { loadVfx, Vfx, type MissileFx } from './vfx';
 
 const SPAWN_RADIUS = 1800;
@@ -81,6 +81,7 @@ export interface Missile {
   radius: number;
   damage: number;
   hit?: Hit; // what it deals to enemies; missiles without it are hostile and hit the champion
+  arc?: number; // targeted missiles: peak height over the straight path (lobbed shots)
   target?: Enemy; // homing
   pierce?: Set<Enemy>; // flies through, hitting each enemy once
   hitFx?: string;
@@ -90,7 +91,7 @@ export interface Missile {
 
 export interface MissileOpts {
   speed: number; range: number; radius: number; damage: number;
-  hit?: Hit; target?: Enemy; pierce?: boolean; height?: number;
+  hit?: Hit; target?: Enemy; pierce?: boolean; height?: number; arc?: number;
   hitFx?: string; hitSound?: string; onHit?: Missile['onHit'];
 }
 
@@ -290,6 +291,10 @@ export class Game {
     this.scene.add(this.player.root);
     this.kit = this.champ.kit(this);
     this.idleFx = (this.champ.idleVfx ?? []).flatMap((v) => this.boneVfx(v, true) ?? []);
+    if (this.champ.animVfx) {
+      this.player.events = animEvents();
+      this.player.onEvent = (ev) => { for (const b of (ev as ClipEvent).bones) this.boneVfx([(ev as ClipEvent).key, b], false); };
+    }
     this.autoRankUp();
     this.hp = this.maxHp;
     this.mana = this.maxMana;
@@ -790,7 +795,7 @@ export class Game {
     this.missiles.push({
       mesh: missileFx.root, fx: missileFx, pos, dir, travelled: 0, speed: o.speed, range: o.range, radius: o.radius,
       damage: o.damage, hit: o.hit, target: o.target, pierce: o.pierce ? new Set() : undefined,
-      hitFx: o.hitFx, hitSound: o.hitSound, onHit: o.onHit,
+      hitFx: o.hitFx, hitSound: o.hitSound, onHit: o.onHit, arc: o.arc,
     });
   }
 
@@ -805,6 +810,10 @@ export class Game {
       m.pos.addScaledVector(m.dir, step);
       m.travelled += step;
       m.mesh.position.copy(m.pos);
+      if (m.arc && m.target) {
+        const k = m.travelled / (m.travelled + Math.hypot(m.target.pos.x - m.pos.x, m.target.pos.z - m.pos.z) || 1);
+        m.mesh.position.y += m.arc * 4 * k * (1 - k);
+      }
       m.fx.update(dt, m.dir, m.travelled);
 
       if (!m.hit) {

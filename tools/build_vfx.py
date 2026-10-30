@@ -15,10 +15,10 @@ from pathlib import Path
 from PIL import Image
 
 from extract_lol import Wad, tex_to_png
-from extract_vfx import scb_to_mesh, sco_to_mesh
+from extract_vfx import scb_to_mesh, sco_to_mesh, skl_bones, skn_to_mesh
 from read_bin import Names, read_bin
 
-ASSET_EXT = (".tex", ".dds", ".scb", ".sco")
+ASSET_EXT = (".tex", ".dds", ".scb", ".sco", ".skn")
 
 
 def read_linked(names, wads, path):
@@ -57,13 +57,20 @@ def rewrite(v, names):
     return v
 
 
-def convert(path, data, out):
+def convert(path, data, out, read=None):
     stem = Path(path).stem.lower()
     if path.lower().endswith(".scb"):
         (out / f"{stem}.json").write_text(json.dumps(scb_to_mesh(data), separators=(",", ":")))
         return f"{stem}.json"
     if path.lower().endswith(".sco"):
         (out / f"{stem}.json").write_text(json.dumps(sco_to_mesh(data), separators=(",", ":")))
+        return f"{stem}.json"
+    if path.lower().endswith(".skn"):
+        mesh = skn_to_mesh(data)
+        skl = read(path[:-4] + ".skl") if read else None
+        if skl:  # child particles spawn at its joints
+            mesh["bones"] = skl_bones(skl)
+        (out / f"{stem}.json").write_text(json.dumps(mesh, separators=(",", ":")))
         return f"{stem}.json"
     img = tex_to_png(data) if data[:4] == b"TEX\0" else Image.open(io.BytesIO(data))
     img.save(out / f"{stem}.png")
@@ -102,6 +109,27 @@ def spell_data(entries):
     return out
 
 
+def anim_events(entries):
+    """Particle events of the animation clips, by .anm stem (the .glb clip name): [{t, key, bones, end?}], 30 fps.
+    A file shared by clips that play different effects (variants picked by game state) is left to the kit."""
+    graph = next((e for e in entries.values() if e["__type"] == "AnimationGraphData"), None)
+    by_file = {}
+    for name, c in (graph or {}).get("mClipDataMap", {}).items():
+        f = ((c.get("mAnimationResourceData") or {}).get("mAnimationFilePath") or "").split("/")[-1][:-4].lower()
+        evs = [{"t": (v.get("mStartFrame") or 0) / 30, "key": v["mEffectKey"],
+                "bones": [x.get("mBoneName") for x in v.get("mParticleEventDataPairList", []) if x.get("mBoneName")],
+                **({"end": v["mEndFrame"] / 30} if v.get("mEndFrame") else {})}
+               for v in (c.get("mEventDataMap") or {}).values() if v.get("__type") == "ParticleEventData" and v.get("mEffectKey")]
+        if f and evs:
+            by_file.setdefault(f, []).append((str(name).startswith("0x"), evs))
+    out = {}
+    for f, clips in by_file.items():
+        if len({tuple(sorted(e["key"] for e in evs)) for _, evs in clips}) > 1:
+            continue
+        out[f] = sorted(clips)[0][1]  # the named clip first
+    return out
+
+
 def main(hashes_dir, char, out_dir, final_dir):
     names = Names(hashes_dir)
     final = Path(final_dir)
@@ -126,11 +154,13 @@ def main(hashes_dir, char, out_dir, final_dir):
             missing.append(a)
             continue
         try:
-            renamed[a] = convert(a, data, out)
+            renamed[a] = convert(a, data, out, main_wad.read)
         except Exception as e:  # odd formats are reported, not fatal
             missing.append(f"{a} ({e})")
     (out / "systems.json").write_text(json.dumps(rewrite(systems, renamed), separators=(",", ":")))
     (out / "spells.json").write_text(json.dumps(spell_data(entries), indent=1))
+    anims = read_linked(names, [main_wad], f"data/characters/{char}/animations/skin0.bin")
+    (out / "events.json").write_text(json.dumps(anim_events(anims), indent=1))
     print(f"{char}: {len(systems)} systems, {len(renamed)}/{len(assets)} assets")
     for m in missing:
         print(f"missing {m}")

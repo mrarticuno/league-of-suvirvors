@@ -132,6 +132,8 @@ export interface ChampionDef {
   vfx: { auto: string; crit: string; autoHit: string; critHit: string; death?: readonly BoneVfx[] };
   /** Systems riding bones for the whole run (the skin's idleParticlesEffects, e.g. a body of flames); stop on death. */
   idleVfx?: readonly BoneVfx[];
+  /** Plays the particle events of its animation clips (events.json of tools/build_vfx.py), as League does. */
+  animVfx?: boolean;
   /** Items offered on level up (src/items.ts ItemPool): attack or ability power items; default 'ad'. */
   itemPool?: ItemPool;
   /** Recommended items (current build-site core, in buy order): offered more often and marked on level up. */

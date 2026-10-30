@@ -107,6 +107,11 @@ export class Actor {
   private bones = new Map<string, THREE.Object3D>();
   private submeshes = new Map<string, THREE.Object3D[]>();
   currentName = '';
+  /** Timed events per clip (e.g. particle events): `onEvent` runs as the current clip passes each one. */
+  events?: Record<string, readonly { t: number }[]>;
+  onEvent?: (ev: { t: number }) => void;
+  private nextEvent = 0;
+  private lastTime = 0;
 
   constructor(id: string, scale = 1) {
     const t = templates.get(id);
@@ -151,6 +156,8 @@ export class Actor {
     if (this.current && this.current !== action) action.crossFadeFrom(this.current, opts.fade ?? 0.12, false);
     this.current = action;
     this.currentName = name;
+    this.nextEvent = 0;
+    this.lastTime = 0;
   }
 
   setTimeScale(s: number) {
@@ -159,6 +166,12 @@ export class Actor {
 
   update(dt: number) {
     this.mixer.update(dt);
+    const evs = this.events?.[this.currentName];
+    if (!evs || !this.current || !this.onEvent) return;
+    const t = this.current.time;
+    if (t < this.lastTime) this.nextEvent = 0; // looped
+    this.lastTime = t;
+    while (this.nextEvent < evs.length && evs[this.nextEvent].t <= t) this.onEvent(evs[this.nextEvent++]);
   }
 
   dispose() {

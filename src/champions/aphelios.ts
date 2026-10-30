@@ -13,7 +13,8 @@ import type { ChampionDef, ChampionKit, Hit, SkillDef, SkillKey } from '../champ
 import { boundSize } from '../data';
 import type { Enemy, Game } from '../game';
 import { t, type Key } from '../i18n';
-import { facingQuat, type ParticleSystem } from '../particles';
+import { facingQuat, missileQuat, type ParticleSystem } from '../particles';
+import type { MissileFx } from '../vfx';
 
 const ICON = 'https://ddragon.leagueoflegends.com/cdn/16.21.1/img';
 // per-weapon HUD icons are not on Data Dragon: CommunityDragon serves the client's hud/icons2d
@@ -36,10 +37,10 @@ const PASSIVE = {
   ad: 4, as: 0.09, lethality: 4.5, // per skill point (Q W E)
   calibrumRange: 100, markDuration: 4.5, markRange: 1800, markBase: 15, markBonusAd: 0.15,
   severumHeal: [0.02, 0.071], severumAbility: 2.5, shieldBase: 10, shieldPerLevel: 10, shieldFrom: 6, shieldHp: 0.06, shieldDuration: 30,
-  gravitumSlow: 0.3, gravitumDecayTo: 0.1, gravitumDecayAt: 0.7, gravitumDuration: 2.5,
+  gravitumSlow: 0.3, gravitumDecayTo: 0.1, gravitumDecayAt: 0.7, gravitumDuration: 2.5, gravitumArc: 90,
   infernumMult: 1.1, infernumBolts: 4, infernumCritBolts: 6, infernumCone: Math.PI / 6, infernumRange: 400, infernumSecondary: [0.75, 1], infernumMinion: 0.3,
   chakramMax: 20, chakramDuration: 5, chakramFirst: 0.15, chakramStep: 0.015, chakramMin: 0.05,
-  crescendumSpeed: 2600, returnSpeed: 600, returnPerAs: 750, linger: 0.25, windup: 0.1067, critWindup: 0.0667,
+  crescendumSpeed: 2600, returnSpeed: 600, returnPerAs: 750, linger: 0.2, windup: 0.1067, critWindup: 0.0667,
 };
 
 // by champion level: 7 steps at levels 1/3/5/7/9/11/13
@@ -75,7 +76,7 @@ const SKILLS = {
   R: {
     name: t('champion.aphelios.R'), desc: t('champion.aphelios.R.desc'), damageType: 'physical', maxRank: 3, anim: 'aphelios_spell4', icon: `${ICON}/spell/ApheliosR.png`,
     cooldown: [120, 110, 100], cost: [100, 100, 100], damage: [125, 175, 225], bonusAdRatio: 0.2, apRatio: 1,
-    range: 1300, aim: 1300, speed: 1000, width: 110, radius: 300, lockDelay: 0.3, castTime: 0.5, skyHeight: 900, skySpeed: 2050, critBase: 1.2,
+    range: 1300, aim: 1300, width: 125, radius: 300, lockDelay: 0.35, castTime: 0.5, speed: 2050, critBase: 1.2,
     markBonus: [50, 80, 110], heal: [250, 350, 450], slow: 0.99, root: 1.35, infernumBonus: [50, 100, 150], infernumBonusAd: 0.25,
     infernumRadius: 400, infernumBolts: 14, infernumCritBolts: 18, infernumPenalty: 0.9, chakrams: 5,
   },
@@ -135,7 +136,8 @@ export const APHELIOS: ChampionDef = {
   build: ['6676', '3031', '3036', '3085', '3026', '3072'],
   passive: { name: t('champion.aphelios.passive'), icon: `${ICON}/passive/ApheliosP.png` },
   anims: { idle: clip('calibrum', 'idle1'), run: clip('calibrum', 'run1'), death: 'aphelios_death', attacks: [clip('calibrum', 'attack1'), clip('calibrum', 'attack2')], crit: clip('calibrum', 'attack2') },
-  vfx: { auto: 'Aphelios_BA_calibrum_mis', crit: 'Aphelios_BA_calibrum_mis', autoHit: 'Aphelios_BA_calibrum_hit', critHit: 'Aphelios_BA_calibrum_hit', death: [['Aphelios_Emote_Death', 'C_Buffbone_Glb_Center_Loc']] },
+  vfx: { auto: 'Aphelios_BA_calibrum_mis', crit: 'Aphelios_BA_calibrum_mis', autoHit: 'Aphelios_BA_calibrum_hit', critHit: 'Aphelios_BA_calibrum_hit' },
+  animVfx: true, // muzzle flashes, Q casts, Phase swaps, R symbols and death ride the clips' own particle events
   kit: apheliosKit,
 };
 
@@ -153,7 +155,7 @@ interface Sentry {
 interface Toss { fx: THREE.Object3D; from: THREE.Vector3; to: THREE.Vector3; t: number; length: number; weapon: Weapon }
 /** One attack from a weapon: who fires it and what it counts as. */
 interface Shot {
-  from: THREE.Vector3; hits: HitPair; sevHits: HitPair; sky?: boolean;
+  from: THREE.Vector3; hits: HitPair; sevHits: HitPair;
   thrown?: boolean; // Crescendum's own blade (a basic attack): Aphelios waits for it to come back
   mark?: boolean; // a long-range attack on a Calibrum mark: consumes every mark
   markBonus?: number; // a Calibrum ability shot marks with this bonus per mark (default the passive's)
@@ -174,7 +176,7 @@ function apheliosKit(g: Game): ChampionKit {
   const qCooldown: Record<Weapon, number> = { calibrum: 0, severum: 0, gravitum: 0, infernum: 0, crescendum: 0 }; // weapons not in the main hand
   let assembling = 0; // Alune assembling the next weapon: no Phase
   let attack: { weapon: Weapon; mark: boolean } = { weapon: main, mark: false }; // the basic attack in windup
-  let attackSwing = 0;
+  let attackSwing = 0, severumSwing = 0;
   let qWeapon: Weapon = main; // the Q being cast (chosen when the cast starts)
   let rWeapon: Weapon = main;
 
@@ -190,7 +192,7 @@ function apheliosKit(g: Game): ChampionKit {
   let onslaught: { left: number; shots: number; next: number; interval: number; i: number; fx: THREE.Object3D[] } | null = null;
   const volleys: { at: number; targets: Enemy[]; weapon: Weapon; fx: THREE.Object3D[] }[] = [];
   const vigils: { at: number; targets: Enemy[]; weapon: Weapon; rank: number; fx: THREE.Object3D[] }[] = [];
-  let spotlight: { fx: THREE.Object3D; pos: THREE.Vector3; dir: THREE.Vector3; left: number; weapon: Weapon; rank: number } | null = null;
+  let spotlight: { fx: ParticleSystem | null; orb: MissileFx; pos: THREE.Vector3; dir: THREE.Vector3; left: number; weapon: Weapon; rank: number } | null = null;
   let glows: ParticleSystem[] = [];
   let rangeRing: THREE.Object3D | null = null;
   let chakramFx: THREE.Object3D | null = null;
@@ -300,6 +302,7 @@ function apheliosKit(g: Game): ChampionKit {
         g.hurtEnemy(e, m.bonus, hitOf);
       } else if (tracers++ < MAX_TRACERS) {
         const bonus = m.bonus;
+        g.vfx.play(FX.chainBeam, target.pos.clone().setY(100), facingQuat(0), { target: e.pos.clone().setY(100) });
         g.spawnMissile(FX.chainMis, target.pos, e.pos, {
           speed: 2400, range: 4000, radius: 10, damage: bonus, target: e, hit: hitOf,
           onHit: (x) => {
@@ -402,18 +405,11 @@ function apheliosKit(g: Game): ChampionKit {
 
   /** A weapon attack from `s.from` on `e`: its missile (Severum strikes at once), then `land`. */
   const fire = (w: Weapon, e: Enemy, damage: number, crit: boolean, s: Shot) => {
-    if (s.sky) {
-      // Moonlight Vigil: every weapon's attack falls from the moon
-      const top = e.pos.clone().setY(SKILLS.R.skyHeight);
-      g.spawnMissile(`Aphelios_R_Mis_${w}`, top, e.pos, {
-        speed: SKILLS.R.skySpeed, range: 4000, radius: 10, damage, target: e, hit: HITS.R, height: SKILLS.R.skyHeight,
-        onHit: (x, m) => land(w, x, damage, crit, s, m.pos),
-      });
-      return;
-    }
     switch (w) {
       case 'severum':
-        g.vfx.playAt('Aphelios_BA_severum_mis', s.from.clone().setY(100), Math.atan2(e.pos.x - s.from.x, e.pos.z - s.from.z));
+        // Severum strikes at once: its "missile" is a beam from the shooter to the target
+        g.vfx.play(severumSwing++ % 2 ? 'Aphelios_BA_severum_mis2' : 'Aphelios_BA_severum_mis', s.from.clone().setY(0),
+          facingQuat(Math.atan2(e.pos.x - s.from.x, e.pos.z - s.from.z)), { target: e.pos.clone().setY(0) });
         land(w, e, damage, crit, s, s.from);
         return;
       case 'crescendum':
@@ -426,7 +422,7 @@ function apheliosKit(g: Game): ChampionKit {
       default: {
         const speed = w === 'calibrum' ? (s.mark ? 3000 : B.missileSpeed) : w === 'gravitum' ? 1500 : 1700;
         g.spawnMissile(`Aphelios_BA_${w}_mis`, s.from, e.pos, {
-          speed, range: 4000, radius: 10, damage, target: e, hit: s.hits[0],
+          speed, range: 4000, radius: 10, damage, target: e, hit: s.hits[0], arc: w === 'gravitum' ? PASSIVE.gravitumArc : undefined, // a lobbed orb
           onHit: (x, m) => land(w, x, damage, crit, s, m.pos),
         });
       }
@@ -472,7 +468,10 @@ function apheliosKit(g: Game): ChampionKit {
       endGravity(e, x);
       if (!alive(e)) continue;
       if (tracers++ < MAX_TRACERS) {
-        g.spawnMissile('Aphelios_Q_gravitum_beam', g.pos, e.pos, { speed: 1850, range: 6000, radius: 10, damage: 0, target: e, hit: HITS.QMagic, onHit: () => {} });
+        // a dark beam from Gravitum to each slowed enemy (its end follows the enemy)
+        const gun = g.player.bone('Gravitum_RingFront') ?? g.player.bone(BONE.gravitum);
+        const from = gun ? gun.getWorldPosition(new THREE.Vector3()) : g.pos.clone().setY(100);
+        g.vfx.play('Aphelios_Q_gravitum_beam', from, facingQuat(g.facing), { target: e.pos, bone: gun, owner: g.player.root });
       }
       g.vfx.hit('Aphelios_Q_gravitum_root_activate', e.pos, 0, { size: boundSize(e) });
       const ground = gravityFx < MAX_MARK_FX ? attach('Aphelios_Q_gravitum_root_ground', e.pos.clone().setY(0)) : null;
@@ -569,15 +568,25 @@ function apheliosKit(g: Game): ChampionKit {
     const d = dir.copy(point).sub(g.pos).setY(0);
     if (d.lengthSq() < 1) d.set(Math.sin(g.facing), 0, Math.cos(g.facing));
     const pos = g.pos.clone().setY(100);
-    spotlight = { fx: attach(`Aphelios_R_moonbeam_${rWeapon}`, pos), pos, dir: d.clone().normalize(), left: r.range, weapon: rWeapon, rank };
+    const heading = d.clone().normalize();
+    // ApheliosRMis: a ball of moonlight in the weapon's colours flies out; the moonbeam trails from the weapon in hand to it
+    const orb = g.vfx.missile(`Aphelios_R_Mis_${rWeapon}`);
+    orb.root.position.copy(pos);
+    g.scene.add(orb.root);
+    spotlight = { fx: beam(`Aphelios_R_moonbeam_${rWeapon}`, rWeapon, pos, missileQuat(heading)), orb, pos, dir: heading, left: r.range, weapon: rWeapon, rank };
     audio.play('aphelios_R_launch');
   };
-  /** Alune smites where the spotlight found an enemy, then each locked-on target takes an attack from the sky. */
+  const beam = (key: string, w: Weapon, target: THREE.Vector3, targetQuat?: THREE.Quaternion) => {
+    const gun = g.player.bone(BONE[w]);
+    const from = gun ? gun.getWorldPosition(new THREE.Vector3()) : g.pos.clone().setY(100);
+    return g.vfx.play(key, from, facingQuat(g.facing), { target, targetQuat, bone: gun, owner: g.player.root, until: undefined });
+  };
+  /** Alune smites where the moonlight found an enemy, then each locked-on target takes an attack of the weapon. */
   const smite = (at: THREE.Vector3, w: Weapon, rank: number) => {
     const r = SKILLS.R;
     g.vfx.playAt('Aphelios_R_Explosion', at.clone().setY(0));
     g.vfx.playAt(`Aphelios_R_Explosion_${w}`, at.clone().setY(0));
-    g.vfx.playAt(`Aphelios_R_moonbeam_${w}_boom`, at.clone().setY(0));
+    beam(`Aphelios_R_moonbeam_${w}_boom`, w, at.clone().setY(100));
     audio.play('aphelios_R_hit');
     const damage = r.damage[rank] + r.bonusAdRatio * g.bonusAd + r.apRatio * g.ap
       + (w === 'infernum' ? r.infernumBonus[rank] + r.infernumBonusAd * g.bonusAd : 0);
@@ -589,7 +598,7 @@ function apheliosKit(g: Game): ChampionKit {
       if (fx.length < MAX_TRACERS) fx.push(attach('Aphelios_R_mark', e.pos));
     }
     for (const e of targets) {
-      g.vfx.hit('Aphelios_R_hit_tar', e.pos, 0, { size: boundSize(e) });
+      g.vfx.hit(e === targets[0] ? 'Aphelios_R_hit_tar' : 'Aphelios_R_hit_tar_small', e.pos, 0, { size: boundSize(e) });
       g.hurtEnemy(e, damage, w === 'severum' ? SEV_R : HITS.R);
     }
     if (targets.length && w === 'severum') g.heal(r.heal[rank]);
@@ -680,16 +689,18 @@ function apheliosKit(g: Game): ChampionKit {
       if (key === 'Q') {
         const w = qWeapon;
         audio.play(`aphelios_${w}_Q`);
-        const bone = g.player.bone(BONE[w]);
-        const cas: Partial<Record<Weapon, string>> = { calibrum: 'Aphelios_Q_calibrum_cas', gravitum: 'Aphelios_Q_gravitum_cas', infernum: 'Aphelios_Q_infernum_cas' };
-        if (bone && cas[w]) g.vfx.playOn(cas[w]!, bone, g.facing, g.player.root);
-        if (w === 'infernum' && bone) for (const k of DUSK_SWAP[off]) g.vfx.playOn(k, bone, g.facing, g.player.root);
+        // Calibrum's and Gravitum's cast effects ride their clips; Duskwave's clip has a variant per off-hand weapon
+        const hand = g.player.bone('R_Hand'), layout = g.player.bone('C_Buffbone_GLB_Layout_Loc');
+        if (w === 'infernum' && hand && layout) {
+          g.vfx.playOn('Aphelios_Q_infernum_cas', hand, g.facing, g.player.root);
+          const [swap, swipe] = DUSK_SWAP[off];
+          if (swap) g.vfx.playOn(swap, hand, g.facing, g.player.root);
+          if (swipe) g.vfx.playOn(swipe, layout, g.facing, g.player.root);
+        }
       } else if (key === 'R') {
         rWeapon = main;
         g.vfx.playAt('Aphelios_R_cas', g.pos.clone().setY(0), g.facing, { owner: g.player.root });
         g.vfx.playAt(`Aphelios_R_cas_${main}`, g.pos.clone().setY(0), g.facing, { owner: g.player.root });
-        g.vfx.playAt('Aphelios_R_cas_symbol', g.pos.clone().setY(0), g.facing, { owner: g.player.root });
-        g.vfx.playAt('Aphelios_R_cas_symbol_burst', g.pos.clone().setY(0), g.facing, { owner: g.player.root });
       } else if (key === 'W') {
         audio.play(`aphelios_W_${off}`);
       }
@@ -699,8 +710,7 @@ function apheliosKit(g: Game): ChampionKit {
         const was = main;
         setMain(off);
         off = was;
-        showWeapons();
-        swapFx(main);
+        showWeapons(); // the swap effects are the Phase clip's own events
         return;
       }
       if (key === 'E') {
@@ -762,7 +772,8 @@ function apheliosKit(g: Game): ChampionKit {
         if (d > move + 40) { b.fx.position.addScaledVector(to.normalize(), move); continue; }
         drop(b.fx);
         blades.splice(i, 1);
-        addChakrams(1); // caught: one more chakram
+        if (b.mini) addChakrams(1); // only the spectral chakrams of abilities stack; catching Crescendum refreshes them
+        else if (chakrams > 0) chakramUntil = g.time + PASSIVE.chakramDuration;
         if (b.mini) audio.play('aphelios_chakram_catch');
         else {
           audio.play('aphelios_crescendum_catch');
@@ -819,13 +830,15 @@ function apheliosKit(g: Game): ChampionKit {
         const stepLen = SKILLS.R.speed * dt;
         s.pos.addScaledVector(s.dir, stepLen);
         s.left -= stepLen;
-        s.fx.position.copy(s.pos);
+        s.orb.root.position.copy(s.pos);
+        s.orb.update(dt, s.dir, SKILLS.R.range - s.left);
         let found: Enemy | null = null;
         for (const e of g.enemiesNear(s.pos, SKILLS.R.width / 2, near2)) {
           if (alive(e) && edge(e, s.pos) <= SKILLS.R.width / 2) { found = e; break; }
         }
         if (found || s.left <= 0) {
-          drop(s.fx);
+          s.fx?.kill();
+          s.orb.root.removeFromParent();
           spotlight = null;
           if (found) smite(found.pos.clone(), s.weapon, s.rank);
           else g.vfx.playAt('Aphelios_R_Fizzle', s.pos.clone().setY(0));
@@ -843,7 +856,7 @@ function apheliosKit(g: Game): ChampionKit {
           const crit = roll();
           const damage = g.ad * (crit ? r.critBase + g.items.critDamage : 1);
           fire(v.weapon, e, damage, crit, shotFrom(g.pos.clone(), HITS.RAttack, SEV.RAttack, {
-            sky: true, markBonus: r.markBonus[v.rank], enhanced: v.weapon === 'gravitum', rRank: v.weapon === 'infernum' ? v.rank : undefined,
+            markBonus: r.markBonus[v.rank], enhanced: v.weapon === 'gravitum', rRank: v.weapon === 'infernum' ? v.rank : undefined,
           }));
         }
       }
@@ -860,7 +873,8 @@ function apheliosKit(g: Game): ChampionKit {
       for (const v of vigils) for (const o of v.fx) drop(o);
       endOnslaught();
       loseChakrams();
-      drop(spotlight?.fx);
+      spotlight?.fx?.kill();
+      spotlight?.orb.root.removeFromParent();
       drop(rangeRing);
       for (const s of glows) s.stop();
     },

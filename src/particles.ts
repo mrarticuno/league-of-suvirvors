@@ -10,7 +10,8 @@ type Bin = any; // bin JSON is loosely typed: fields are optional and nested Val
 
 let systems: Record<string, Bin> = {};
 const textures = new Map<string, THREE.Texture>();
-const meshes = new Map<string, { pos: number[]; uv: number[] }>();
+// `bones`: joints of a skinned particle mesh (drawn static in its bind pose), where its child systems spawn
+const meshes = new Map<string, { pos: number[]; uv: number[]; bones?: Record<string, number[]> }>();
 let camera: THREE.Camera | null = null; // captured from the renderer, needed for billboards and camera trails
 
 function assetNames(v: Bin, out: Set<string>) {
@@ -18,9 +19,17 @@ function assetNames(v: Bin, out: Set<string>) {
   else if (v && typeof v === 'object') for (const x of Object.values(v)) assetNames(x, out);
 }
 
+/** A particle event of an animation clip (tools/build_vfx.py events.json): `key` at each bone, `t` seconds in. */
+export interface ClipEvent { t: number; key: string; bones: string[] }
+let clipEvents: Record<string, ClipEvent[]> = {};
+/** The loaded champion's clip particle events, by clip name, in time order. */
+export const animEvents = () => clipEvents;
+
 /** `dir`: the champion's folder from tools/build_vfx.py (assets/vfx/<id>/). */
 export async function loadParticles(dir: string) {
   systems = await (await fetch(asset(`${dir}systems.json`))).json();
+  clipEvents = await fetch(asset(`${dir}events.json`)).then((r) => r.json()).catch(() => ({})); // older exports have none
+  for (const evs of Object.values(clipEvents)) evs.sort((a, b) => a.t - b.t);
   const names = new Set<string>();
   assetNames(systems, names);
   const loader = new THREE.TextureLoader();
@@ -204,12 +213,18 @@ interface Particle {
   color: number[]; scale: THREE.Vector3; rot: THREE.Vector3; rotVel: THREE.Vector3; orbit: THREE.Vector3;
   frame: number; uvOff: [number, number]; uvRate: [number, number];
   overlay?: THREE.ShaderMaterial; // attached-mesh particles: the material shared by their skinned meshes
+  children?: { sys: ParticleSystem; at: THREE.Vector3 }[]; // child systems riding the particle (at: offset in its frame)
 }
 
 const PRIMITIVES = new Set([undefined, 'VfxPrimitiveArbitraryQuad', 'VfxPrimitiveMesh', 'VfxPrimitiveArbitraryTrail', 'VfxPrimitiveCameraTrail',
-  'VfxPrimitiveRay', 'VfxPrimitiveAttachedMesh']);
+  'VfxPrimitiveRay', 'VfxPrimitiveAttachedMesh', 'VfxPrimitiveBeam']);
+/** Simple (.scb/.sco) or skinned (.skn) particle mesh. */
+const meshName = (e: Bin): string | undefined => e.primitive?.mMesh?.mSimpleMeshName ?? e.primitive?.mMesh?.mMeshName;
 const _v = new THREE.Vector3(), _w = new THREE.Vector3(), _q = new THREE.Quaternion(), _q2 = new THREE.Quaternion(), _e = new THREE.Euler();
 const _right = new THREE.Vector3(), _up = new THREE.Vector3(), _fwd = new THREE.Vector3();
+const _cs = new THREE.Vector3(), _cq = new THREE.Quaternion();
+const UP = new THREE.Vector3(0, 1, 0);
+const GROUND = 2; // ground-layer geometry, just above the (flat) terrain
 
 class Emitter {
   particles: Particle[] = [];
@@ -218,8 +233,9 @@ class Emitter {
   private age = 0;
   private acc = 0; // fractional particles waiting to spawn
   private burst = false;
-  private kind: 'billboard' | 'quad' | 'mesh' | 'trail' | 'camtrail' | 'ray' | 'attached';
-  private meshData?: { pos: number[]; uv: number[] };
+  private kind: 'billboard' | 'quad' | 'mesh' | 'trail' | 'camtrail' | 'ray' | 'attached' | 'beam';
+  private meshData?: { pos: number[]; uv: number[]; bones?: Record<string, number[]> };
+  private orphans: ParticleSystem[] = []; // child systems whose particle died, fading out
   private bound: boolean;
   private lastLocal = new THREE.Vector3(); // spawn point of the newest particle, in system space (trail head)
 
@@ -227,8 +243,8 @@ class Emitter {
     const p = e.primitive?.__type;
     this.kind = p === 'VfxPrimitiveArbitraryQuad' ? 'quad' : p === 'VfxPrimitiveMesh' ? 'mesh'
       : p === 'VfxPrimitiveArbitraryTrail' ? 'trail' : p === 'VfxPrimitiveCameraTrail' ? 'camtrail'
-        : p === 'VfxPrimitiveRay' ? 'ray' : p === 'VfxPrimitiveAttachedMesh' ? 'attached' : 'billboard';
-    if (this.kind === 'mesh') this.meshData = meshes.get(e.primitive.mMesh?.mSimpleMeshName);
+        : p === 'VfxPrimitiveRay' ? 'ray' : p === 'VfxPrimitiveAttachedMesh' ? 'attached' : p === 'VfxPrimitiveBeam' ? 'beam' : 'billboard';
+    if (this.kind === 'mesh' || this.kind === 'beam') this.meshData = meshes.get(meshName(e)!);
     this.bound = (val(e.bindWeight, 0) ?? 0) >= 0.5;
     this.buf.reserve(4, 6); // allocate attributes up front so an empty emitter still has a valid geometry
     this.mesh = new THREE.Mesh(this.buf.geo, material(e));
@@ -241,18 +257,26 @@ class Emitter {
     const type = e.primitive?.__type;
     // distortion emitters refract the screen behind them; drawn as plain textures they become solid white quads
     return !e.disabled && !e.distortionDefinition && PRIMITIVES.has(type)
-      && (type !== 'VfxPrimitiveMesh' || meshes.has(e.primitive.mMesh?.mSimpleMeshName))
+      && (type !== 'VfxPrimitiveMesh' || meshes.has(meshName(e)!))
       && (type !== 'VfxPrimitiveAttachedMesh' || (!!sys.owner && textures.has(e.texture)));
   }
 
   private get duration() { return this.e.lifetime > 0 ? this.e.lifetime : Infinity; }
   get active() { return !this.sys.stopped && this.age - (this.e.timeBeforeFirstEmission ?? 0) < this.duration; }
-  get done() { return !this.active && this.particles.length === 0 && (this.sys.stopped || this.age > (this.e.timeBeforeFirstEmission ?? 0)); }
+  get done() {
+    return !this.active && this.particles.length === 0 && this.orphans.length === 0
+      && (this.sys.stopped || this.age > (this.e.timeBeforeFirstEmission ?? 0));
+  }
   private killAt = Infinity;
   /** LoL: when the system is destroyed (e.g. its missile hits) particles survive only `particleLinger` seconds. */
-  kill() { this.killAt = Math.min(this.killAt, this.age + (this.e.particleLinger ?? 0)); }
+  kill() {
+    this.killAt = Math.min(this.killAt, this.age + (this.e.particleLinger ?? 0));
+    for (const p of this.particles) for (const c of p.children ?? []) c.sys.kill();
+    for (const c of this.orphans) c.kill();
+  }
 
   private drop(p: Particle) {
+    for (const c of p.children ?? []) { c.sys.stop(); this.orphans.push(c.sys); }
     if (!p.overlay) return;
     for (const m of this.mesh.children.filter((m) => (m as THREE.Mesh).material === p.overlay)) m.removeFromParent();
     p.overlay.dispose();
@@ -296,7 +320,42 @@ class Emitter {
       }
       return true;
     });
+    for (const p of this.particles) if (p.children) this.moveChildren(p, dt);
+    compact(this.orphans, (c) => { c.update(dt); if (!c.done) return true; c.dispose(); return false; });
     this.build(et);
+  }
+
+  /** The particle's frame: its birth frame turned by its rotation, its size by its scale (child systems ride it). */
+  private frame(p: Particle, pt: number, s: THREE.Vector3, q: THREE.Quaternion) {
+    const e = this.e;
+    const sc = vec3(val(e.scale0, pt), 1);
+    if (e.isUniformScale) sc.set(sc.x, sc.x, sc.x);
+    s.copy(sc.multiply(p.scale));
+    const r = _v.copy(p.rot).addScaledVector(p.rotVel, p.age).add(vec3(val(e.rotation0, pt)));
+    return q.copy(p.quat).multiply(_q2.setFromEuler(_e.set(r.x * DEG, r.y * DEG, r.z * DEG)));
+  }
+
+  private moveChildren(p: Particle, dt: number) {
+    const q = this.frame(p, p.age / p.life, _cs, _cq);
+    for (const c of p.children!) {
+      c.sys.setFrame(_w.copy(c.at).multiply(_cs).applyQuaternion(q).add(p.pos), q);
+      c.sys.update(dt);
+    }
+  }
+
+  /** childParticleSetDefinition: each new particle carries these systems, at the mesh's joints (`boneToSpawnAt`). */
+  private spawnChildren(p: Particle) {
+    const set = this.e.childParticleSetDefinition;
+    const ids: Bin[] = set?.childrenIdentifiers ?? [];
+    if (!ids.length || !this.sys.scene || this.sys.depth >= 3) return;
+    const bones = this.meshData?.bones;
+    p.children = [];
+    ids.forEach((id, i) => {
+      const def = systems[id.effectKey];
+      if (!def) return;
+      const sys = new ParticleSystem(def, this.sys.scene!, p.pos, p.quat, { owner: this.sys.owner, size: this.sys.size, depth: this.sys.depth + 1 });
+      p.children!.push({ sys, at: vec3(bones?.[set.boneToSpawnAt?.[i]]) });
+    });
   }
 
   /** Uniform field accelerations (fieldAccelerationDefinitions) fold into the emitter's world acceleration. */
@@ -376,6 +435,7 @@ class Emitter {
       uvRate: (birth(e.birthUvScrollRate, et) ?? [0, 0]).slice(0, 2),
       overlay: this.kind === 'attached' ? this.overlay() : undefined,
     });
+    this.spawnChildren(this.particles[this.particles.length - 1]);
   }
 
   /**
@@ -451,6 +511,8 @@ class Emitter {
       };
       const r = _v.copy(p.rot).addScaledVector(p.rotVel, p.age).add(vec3(val(e.rotation0, pt)));
 
+      if (this.kind === 'beam') { this.buildBeam(p, s, c, pt, erode, uv); continue; }
+
       if (this.kind === 'mesh') {
         const m = this.meshData!;
         const n = m.pos.length / 3;
@@ -509,6 +571,58 @@ class Emitter {
     b.commit();
   }
 
+  /**
+   * VfxPrimitiveBeam: from the particle (plus the source offset) to the system's target, or to its own position plus the
+   * target offset (in the target's frame) without one. A beam mesh is stretched along its Z between the two ends;
+   * without one, a camera-facing strip of half width scale.x, U along the length (one tile per mBirthTilingSize.y).
+   * Ground-layer beams lie flat on the terrain (y = 0) between the two ends.
+   */
+  private buildBeam(p: Particle, s: THREE.Vector3, c: number[], pt: number, erode: number, uv: (u: number, v: number) => [number, number]) {
+    const beam = this.e.primitive.mBeam ?? {};
+    const b = this.buf, sys = this.sys;
+    const src = vec3(beam.mLocalSpaceSourceOffset).applyQuaternion(p.quat).add(p.pos);
+    const dst = vec3(beam.mLocalSpaceTargetOffset).applyQuaternion(sys.targetQuat ?? p.quat).add(sys.target ?? p.pos);
+    const ground = !!this.e.isGroundLayer;
+    if (ground) { src.y = GROUND; dst.y = GROUND; }
+    const along = _fwd.subVectors(dst, src);
+    const len = along.length();
+    if (len < 1) return;
+    along.divideScalar(len);
+    const m = this.meshData;
+    if (m) {
+      // mesh frame: the mesh's +Z at the source, X level and across it, Y the rest (League's mesh space is mirrored:
+      // Severum's swipe bows toward its target, Gravitum's swirl unrolls from the gun)
+      const x = _right.crossVectors(along, UP);
+      if (x.lengthSq() < 1e-6) x.set(1, 0, 0);
+      x.normalize();
+      const y = _up.crossVectors(along, x);
+      let z0 = Infinity, z1 = -Infinity;
+      for (let i = 2; i < m.pos.length; i += 3) { z0 = Math.min(z0, m.pos[i]); z1 = Math.max(z1, m.pos[i]); }
+      const n = m.pos.length / 3;
+      b.reserve(n, n);
+      for (let i = 0; i < n; i++) {
+        const k = (z1 - m.pos[i * 3 + 2]) / (z1 - z0 || 1);
+        _w.copy(src).addScaledVector(along, k * len).addScaledVector(x, m.pos[i * 3] * s.x).addScaledVector(y, m.pos[i * 3 + 1] * s.y);
+        const [u, v] = uv(m.uv[i * 2], m.uv[i * 2 + 1]);
+        b.idx[b.ni++] = b.vert(_w, u, v, c, pt, erode);
+      }
+      return;
+    }
+    if (!camera && !ground) return;
+    const side = ground ? _w.crossVectors(along, UP).normalize().multiplyScalar(s.x)
+      : _w.setFromMatrixPosition(camera!.matrixWorld).sub(src).cross(along).normalize().multiplyScalar(s.x);
+    const tile = val(beam.mBirthTilingSize, 0)?.[1];
+    const uLen = tile ? len / tile : 1;
+    b.reserve(4, 6);
+    const i0 = b.nv;
+    for (const [end, k] of [[0, -1], [1, -1], [1, 1], [0, 1]]) {
+      const [u, v] = uv(end * uLen, (k + 1) / 2);
+      b.vert(_v.copy(src).addScaledVector(along, end * len).addScaledVector(side, k), u, v, c, pt, erode);
+    }
+    b.idx.set([i0, i0 + 1, i0 + 2, i0, i0 + 2, i0 + 3], b.ni);
+    b.ni += 6;
+  }
+
   /** Ribbon through the trail particles (newest first), starting at the emitter while it is active. */
   private buildTrail(points: { p: Particle; c: number[]; w: number; pt: number; erode: number }[], et: number, cos: number, sin: number, scroll: number[]) {
     const b = this.buf, e = this.e;
@@ -548,6 +662,8 @@ class Emitter {
 
   dispose() {
     for (const p of this.particles) this.drop(p);
+    for (const c of this.orphans) c.dispose();
+    this.orphans = [];
     this.mesh.removeFromParent();
     this.buf.geo.dispose();
     (this.mesh.material as THREE.Material).dispose();
@@ -556,8 +672,11 @@ class Emitter {
 
 // ---- systems ----
 
-/** `owner`: the model attached-mesh emitters redraw; `size`: the bound object's size, for FlexShape emitters. */
-export interface SystemOpts { owner?: THREE.Object3D; size?: number }
+/**
+ * `owner`: the model attached-mesh emitters redraw; `size`: the bound object's size, for FlexShape emitters;
+ * `target`: where beams end (kept live: move the vector), `targetQuat` the frame of their target offset.
+ */
+export interface SystemOpts { owner?: THREE.Object3D; size?: number; target?: THREE.Vector3; targetQuat?: THREE.Quaternion; depth?: number }
 
 export class ParticleSystem {
   readonly matrix = new THREE.Matrix4();
@@ -571,10 +690,20 @@ export class ParticleSystem {
   readonly owner?: THREE.Object3D;
   readonly size?: number;
   readonly afterimage: boolean;
+  readonly scene?: THREE.Scene;
+  readonly depth: number; // child systems nest: a bound on runaway sets
+  readonly name: string; // League's particleName, for debugging
+  target?: THREE.Vector3;
+  targetQuat?: THREE.Quaternion;
 
   constructor(def: Bin, scene: THREE.Scene, pos: THREE.Vector3, quat: THREE.Quaternion, opts: SystemOpts = {}) {
     this.owner = opts.owner;
     this.size = opts.size;
+    this.scene = scene;
+    this.depth = opts.depth ?? 0;
+    this.name = def.particleName ?? '';
+    this.target = opts.target;
+    this.targetQuat = opts.targetQuat;
     this.afterimage = !!def.mIsPoseAfterimage;
     this.setFrame(pos, quat);
     this.prev.copy(this.matrix);
@@ -611,7 +740,6 @@ export function createSystem(key: string, scene: THREE.Scene, pos: THREE.Vector3
   return def ? new ParticleSystem(def, scene, pos, quat, opts) : null;
 }
 
-const UP = new THREE.Vector3(0, 1, 0);
 /** Missile frame: X side, Y along the flight direction, Z up. */
 export function missileQuat(dir: THREE.Vector3, out = new THREE.Quaternion()) {
   const y = _fwd.copy(dir).setY(0).normalize();

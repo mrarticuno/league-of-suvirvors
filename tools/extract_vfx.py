@@ -52,6 +52,56 @@ def scb_to_mesh(data):
     return {"pos": pos, "uv": uv}
 
 
+def skn_to_mesh(data):
+    # skinned mesh (particle balls, swords): drawn static in its bind pose
+    magic, major, _minor = struct.unpack_from("<IHH", data, 0)
+    assert magic == 0x00112233, "not an SKN"
+    o = 8
+    if major > 0:
+        n = struct.unpack_from("<I", data, o)[0]
+        o += 4 + n * 80  # name[64] + 4 u32
+    if major >= 4:
+        o += 4  # flags
+    ni, nv = struct.unpack_from("<II", data, o)
+    o += 8
+    size, vtype = 52, 0
+    if major >= 4:
+        size, vtype = struct.unpack_from("<II", data, o)
+        o += 8 + 40  # bounding box + sphere
+    idx = struct.unpack_from(f"<{ni}H", data, o)
+    o += 2 * ni
+    verts = [(struct.unpack_from("<3f", data, o + size * i), struct.unpack_from("<2f", data, o + size * i + 44)) for i in range(nv)]
+    pos, uv = [], []
+    for i in idx:
+        pos += verts[i][0]
+        uv += verts[i][1]
+    return {"pos": pos, "uv": uv}
+
+
+def skl_bones(data):
+    """Bind-pose position of each joint of a (new format) .skl, by name: where child particles spawn."""
+    assert struct.unpack_from("<I", data, 4)[0] == 0x22FD4FC3, "not a new-format SKL"
+    count = struct.unpack_from("<H", data, 14)[0]
+    joints = struct.unpack_from("<i", data, 20)[0]
+    out = {}
+    for i in range(count):
+        o = joints + 100 * i
+        t = struct.unpack_from("<3f", data, o + 56)
+        sc = struct.unpack_from("<3f", data, o + 68)
+        x, y, z, w = struct.unpack_from("<4f", data, o + 80)
+        name_at = o + 96 + struct.unpack_from("<i", data, o + 96)[0]
+        name = data[name_at:data.index(b"\0", name_at)].decode()
+        # world position = inverse of the inverse bind matrix (T R S) applied to the origin: S^-1 R^-1 (-t)
+        v = (-t[0], -t[1], -t[2])
+        qx, qy, qz = -x, -y, -z  # conjugate
+        cx = qy * v[2] - qz * v[1] + w * v[0]
+        cy = qz * v[0] - qx * v[2] + w * v[1]
+        cz = qx * v[1] - qy * v[0] + w * v[2]
+        r = (v[0] + 2 * (qy * cz - qz * cy), v[1] + 2 * (qz * cx - qx * cz), v[2] + 2 * (qx * cy - qy * cx))
+        out[name] = [round(r[k] / (sc[k] or 1), 3) for k in range(3)]
+    return out
+
+
 def sco_to_mesh(data):
     lines = [l.strip() for l in data.decode("latin-1").splitlines()]
     i = next(i for i, l in enumerate(lines) if l.startswith("Verts="))

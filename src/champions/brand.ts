@@ -190,8 +190,7 @@ function brandKit(g: Game): ChampionKit {
       b.at.copy(e.pos).setY(0);
       if (rings < PASSIVE.maxRings) {
         rings++;
-        b.ring = [follow('Brand_P_redring', e), follow('Brand_P_Timer', e)];
-        g.vfx.playAt('Brand_P_redring_Ignition_Child', b.at);
+        b.ring = [follow('Brand_P_redring', e), follow('Brand_P_Timer', e)]; // the ring spawns its Ignition child itself
       }
     }
   };

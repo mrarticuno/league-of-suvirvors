@@ -41,6 +41,7 @@ Assets (`assets-raw/`, `public/assets/`) não vão para o git.
 - `rankLevels`: nível de cada rank por skill, só se não segue o LoL (básicas 1/3/5/7/9, R 6/11/16). `autoRank`: skills que sobem sozinhas (sem ponto; R do Aphelios). `SkillDef.unlockLevel`: conjurável a partir do nível, independente do rank (os ranks então compram atributos via `stat`).
 - `anims` / `skills[k].anim`: nomes exatos dos clips no `.glb`. Clip inexistente = sem animação, sem erro: confira os nomes.
 - `vfx`: chaves de sistemas de partícula do ataque básico (`auto`, `crit`, `autoHit`, `critHit`), como no `ResourceResolver` da skin; `death`: pares `[sistema, osso]` tocados na morte (eventos da animação de morte no `animations/skin0.bin`).
+- `animVfx`: ver "Escolhendo VFX".
 - `idleVfx`: pares `[sistema, osso]` que ficam ligados a run toda (o `idleParticlesEffects` do `skin0.bin`, ex.: as chamas do Brand); param na morte. O bin às vezes omite o prefixo do osso (`BUFFBONE_GLB_CENTER_LOC` vs `C_BUFFBONE_GLB_CENTER_LOC`): confira no `.glb`.
 - Mago: ratio de AP da skill em `apRatio` (o card mostra) e `g.ap` no kit; `itemPool: 'ap'` no `ChampionDef` para receber itens AP no level up.
 - `build` (obrigatório): os 6 itens lendários recomendados, na ordem de compra de um site de builds (OP.GG/u.gg, patch atual), só ids que existem em `src/items.json` (sem ativas/suporte); o level up oferece esses itens com mais frequência e marca como recomendado.
@@ -119,7 +120,10 @@ Dump de um bin para consulta: `read_linked(Names('../assets-raw/hashes'), [Wad(.
 - Use **todos** os sistemas de gameplay do `systems.json`: cast (`_cas`, na mão via `playOn`), míssil (`_mis`), impacto (`_tar`), zona/indicador, marcas por acúmulo, buff no alvo (`_buf`), idle e morte. Mago depende do visual.
 - Ignore: sistemas sem emissores (só `particleName`), os `*_Audio` (só som), emotes (`Dance`, `Joke`, `Taunt`), variantes de outro modo (`DoomBots_*`) e chaves de outros campeões (`*_BV2`).
 - Par `_green`/`_red`: indicador por time; o jogador é aliado, use `_green`.
-- Emissor com `childParticleSetDefinition` (filho) não é criado pelo runtime: toque o sistema filho junto (ex. `Brand_P_redring` + `Brand_P_redring_Ignition_Child`).
+- Emissor com `childParticleSetDefinition` (filho): o runtime cria os filhos sozinho (nos ossos da malha `.skn` da partícula). Não toque o sistema filho à mão (duplica).
+- `VfxPrimitiveBeam`: passe o fim do feixe em `target` (vetor vivo, ex. `e.pos`) no `g.vfx.play`; `targetQuat` é o frame do offset de alvo (ex. `missileQuat(dir)` quando o alvo é um míssil). Sem `target`, o feixe vai até o próprio offset. Feixe `isGroundLayer` corre no chão.
+- `animVfx: true` no `ChampionDef`: o jogo toca os eventos de partícula dos clips (`events.json` do `build_vfx.py`: flash do tiro, cast, troca, morte). Não repita esses sistemas no kit. Clip com variantes de efeito (ex. `D_Spell1A` do Aphelios, um por arma secundária) fica fora do `events.json`: o kit toca.
+- `MissileOpts.arc`: altura do pico para míssil com alvo lançado em parábola.
 - Sistema que o jogo atual não usa (sobra de versão antiga) pode virar feedback (ex. `Brand_PHguardian_tar` no atordoamento do Q). Comente no kit.
 - Orçamento: marcas por inimigo em horda custam caro. Limite as simultâneas (Brand: 40 marcas, 12 anéis); acima disso a mecânica roda sem o visual.
 

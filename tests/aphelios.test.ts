@@ -21,7 +21,7 @@ function rig() {
     spawnMissile: (_fx: string, _from: THREE.Vector3, to: THREE.Vector3, o: MissileOpts) => missiles.push({ to, o }),
   };
   const kit = APHELIOS.kit(g as unknown as Game);
-  const land = () => { for (const m of missiles.splice(0)) m.o.onHit?.(m.o.target!, { pos: m.to } as never); };
+  const land = () => { for (const m of missiles.splice(0)) if (m.o.target) m.o.onHit?.(m.o.target, { pos: m.to } as never); }; // untargeted (split bolts) miss
   return { g, kit, missiles, land };
 }
 const enemy = (x = 300) => ({ def: { tier: 'minion', radius: 50 }, hp: 100, maxHp: 100, deadFor: -1, pos: new THREE.Vector3(x, 0, 0) }) as unknown as Enemy;
@@ -94,4 +94,19 @@ it('Severum heals for part of its damage; healing past full health becomes a shi
   r.g.hp = r.g.maxHp;
   r.kit.onDealt!(e, h, 1000);
   expect(r.g.addShield).toHaveBeenCalled();
+});
+
+it('Crescendum: no attacks until the blade is caught, then the timer resets; only spectral chakrams stack', () => {
+  const r = rig();
+  const e = enemy(300);
+  while (!icon(r.kit).includes('q_crescendum')) { attack(r, e); r.land(); r.kit.update!(0.5); }
+  r.kit.update!(5); // earlier chakrams expire
+  r.g.resetAttack.mockClear();
+  attack(r, e);
+  expect(r.kit.disarmed!()).toBe(true);
+  r.land();
+  for (let i = 0; i < 40 && r.kit.disarmed!(); i++) r.kit.update!(0.05);
+  expect(r.kit.disarmed!()).toBe(false);
+  expect(r.g.resetAttack).toHaveBeenCalled();
+  expect(r.kit.hud!()).toBe(''); // catching Crescendum itself adds no chakram
 });
