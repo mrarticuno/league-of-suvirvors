@@ -578,5 +578,19 @@
  "champion.teemo.W.desc": "被动：提莫获得12–28%额外移动速度。主动：使该加成翻倍，持续3秒。",
  "champion.teemo.E.desc": "被动：提莫的普通攻击在命中时造成额外魔法伤害并使目标中毒，在4秒内每秒造成魔法伤害（对野怪145%）。",
  "champion.teemo.R.desc": "向目标区域投掷一个蘑菇（最多3层充能）。蘑菇在1秒后布置完毕，持续5分钟；敌人踩到时爆炸，对400码内的敌人造成魔法伤害，并使其减速30–50%，持续4秒。落在另一个蘑菇上的蘑菇会向前弹跳。",
- "champion.teemo.recharge": "充能时间（秒）"
+ "champion.teemo.recharge": "充能时间（秒）",
+ "champion.aurelionsol.R.desc": "召唤一颗陨星坠落在目标区域。1秒后落地，对450码内的敌人造成魔法伤害并击飞1秒。",
+ "champion.lux.name": "拉克丝",
+ "champion.lux.title": "光辉女郎",
+ "champion.lux.passive": "光芒四射",
+ "champion.lux.Q": "光之束缚",
+ "champion.lux.W": "曲光屏障",
+ "champion.lux.E": "透光奇点",
+ "champion.lux.R": "终极闪光",
+ "champion.lux.hud": "被照亮：{n}",
+ "champion.lux.shield": "护盾",
+ "champion.lux.Q.desc": "发射一个光球，对命中的前两个敌人造成魔法伤害，并将其禁锢2秒。",
+ "champion.lux.W.desc": "向1175码外掷出魔杖，魔杖随后飞回。拉克丝在掷出时和魔杖返回时各获得一层持续2.5秒的护盾（可叠加）。",
+ "champion.lux.E.desc": "向目标区域发射一个奇点，使其中的敌人减速25–45%（离开后减速持续1秒）。再次按下可将其引爆，造成魔法伤害；5秒后会自动引爆。",
+ "champion.lux.R.desc": "1秒后发射一道3340码长的巨型激光，对直线上的所有敌人造成魔法伤害。会引爆被命中敌人身上的光芒四射，然后重新照亮它们。"
 }

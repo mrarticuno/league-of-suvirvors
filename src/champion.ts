@@ -166,6 +166,8 @@ export interface ChampionKit {
   attackSpeedBonus?(): number;
   /** Bonus (or, negative, reduced) movement speed (fraction) from the champion's own mechanics. */
   moveSpeedBonus?(): number;
+  /** The skill was pressed while on cooldown: a free second activation, no mana nor cast time (e.g. detonating Lucent Singularity). */
+  recast?(key: SkillKey, point: THREE.Vector3): void;
   /** Extra cast condition checked before mana and cooldown are spent (e.g. an ultimate that needs stacks). */
   canCast?(key: SkillKey): boolean;
   /** True while the champion flies over scenery and units: no wall nor unit collision (e.g. Comet of Legend). */

@@ -578,5 +578,19 @@
  "champion.teemo.W.desc": "Passive: Teemo has 12–28% bonus Move Speed. Active: doubles it for 3s.",
  "champion.teemo.E.desc": "Passive: Teemo's basic attacks deal bonus magic damage on-hit and poison the target, dealing magic damage every second for 4s (145% against monsters).",
  "champion.teemo.R.desc": "Tosses a mushroom to the target area (up to 3 charges). It arms after 1s and lasts 5 min; when an enemy steps on it, it explodes, dealing magic damage to enemies within 400 units and slowing them by 30–50% for 4s. A mushroom landing on another bounces forward.",
- "champion.teemo.recharge": "Charge recharge (s)"
+ "champion.teemo.recharge": "Charge recharge (s)",
+ "champion.aurelionsol.R.desc": "Calls a meteor down on the target area. After 1s it lands, dealing magic damage to enemies within 450 units and knocking them up for 1s.",
+ "champion.lux.name": "Lux",
+ "champion.lux.title": "the Lady of Luminosity",
+ "champion.lux.passive": "Illumination",
+ "champion.lux.Q": "Light Binding",
+ "champion.lux.W": "Prismatic Barrier",
+ "champion.lux.E": "Lucent Singularity",
+ "champion.lux.R": "Final Spark",
+ "champion.lux.hud": "Illuminated: {n}",
+ "champion.lux.shield": "Shield",
+ "champion.lux.Q.desc": "Fires a sphere of light that deals magic damage to the first two enemies hit and roots them for 2s.",
+ "champion.lux.W.desc": "Throws her wand out to 1175 units and it flies back to her. Lux gains a Shield for 2.5s when she throws it and another when it returns (they stack).",
+ "champion.lux.E.desc": "Sends a singularity to the target area that slows enemies inside by 25–45% (the Slow lingers 1s after they leave). Press again to detonate it for magic damage; it detonates by itself after 5s.",
+ "champion.lux.R.desc": "After 1s, fires a massive laser 3340 units long that deals magic damage to every enemy in the line. It detonates Illumination on the enemies it hits, then illuminates them again."
 }

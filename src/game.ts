@@ -515,7 +515,8 @@ export class Game {
   }
 
   cast(key: SkillKey, point: THREE.Vector3) {
-    if (!this.alive || this.stunned > 0 || !this.learned(key) || this.cooldowns[key] > 0 || this.castLock > 0) return;
+    if (!this.alive || this.stunned > 0 || !this.learned(key) || this.castLock > 0) return;
+    if (this.cooldowns[key] > 0) return this.kit.recast?.(key, point);
     if (this.mana < this.costOf(key) || this.kit.canCast?.(key) === false) return;
     const skill = this.champ.skills[key];
     this.mana -= this.costOf(key);
