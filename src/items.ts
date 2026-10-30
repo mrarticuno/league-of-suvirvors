@@ -91,7 +91,7 @@ export function offerScore(o: Offer, slots: Slot[], build: readonly string[]) {
   return o.kind === 'level' ? rec + 5 + slots[o.slot].level : rec + (slots.length < 3 ? 4 : 0);
 }
 
-export const POTION = { hp: 0.2, mana: 0.2 }; // fraction of max HP / mana restored by the build-complete potions
+export const POTION = { hp: 0.05, mana: 0.05 }; // fraction of max HP / mana restored by the build-complete potions
 /** The build-complete potions (also offered by Triple Tonic): name and effect text. */
 export const POTIONS = {
   hp: {
