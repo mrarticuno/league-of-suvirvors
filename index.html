@@ -25,9 +25,9 @@
       button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
       /* Scroll areas never show a scrollbar: cards rising in or a picked card scaling up overflow for a moment, and a
          bar popping in and out shifts the whole layout (the flicker). They still scroll by wheel, touch and keyboard. */
-      .overlay, #select-list, #sel-filters, #offers, .ioffer, .chips { scrollbar-width: none; overscroll-behavior: contain; }
+      .overlay, #select-list, #sel-filters, #offers, .ioffer { scrollbar-width: none; overscroll-behavior: contain; }
       .overlay::-webkit-scrollbar, #select-list::-webkit-scrollbar, #sel-filters::-webkit-scrollbar, #offers::-webkit-scrollbar,
-      .ioffer::-webkit-scrollbar, .chips::-webkit-scrollbar { display: none; }
+      .ioffer::-webkit-scrollbar { display: none; }
       .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
       .display { font-family: var(--display); }
       #app canvas { display: block; transition: filter 1.4s ease; }
@@ -160,9 +160,10 @@
       #mana-bar span { font-size: 10px; }
       #mana-fill { background: linear-gradient(180deg, #6daaff, #2558b8); }
       #inventory { grid-area: iv; display: grid; grid-template-columns: repeat(3, 42px); gap: 5px; padding-left: 14px; border-left: 1px solid var(--line); align-self: stretch; align-content: center; }
-      #inventory img, #inventory span { width: 42px; height: 42px; border: 1px solid var(--gold-dim); display: block; background: #070b14; }
+      #inventory b, #inventory span { width: 42px; height: 42px; border: 1px solid var(--gold-dim); display: block; background: #070b14; }
       #inventory span { border-color: var(--line); }
-      @media (max-width: 1240px) { :root { --slot: 56px; } #portrait { width: 84px; height: 84px; } #inventory { grid-template-columns: repeat(3, 36px); } #inventory img, #inventory span { width: 36px; height: 36px; } }
+      #inventory b { position: relative; } #inventory b img { display: block; width: 100%; height: 100%; }
+      @media (max-width: 1240px) { :root { --slot: 56px; } #portrait { width: 84px; height: 84px; } #inventory { grid-template-columns: repeat(3, 36px); } #inventory b, #inventory span { width: 36px; height: 36px; } }
       @media (max-width: 1080px) {
         #stats { display: none; }
         #dock { grid-template-columns: auto auto 1px auto 1px auto auto; grid-template-areas: 'po ga s1 sk s2 fl iv' 'po hp hp hp hp hp iv' 'po mp mp mp mp mp iv'; }
@@ -182,22 +183,19 @@
       /* ---------- overlays: level up, pause ---------- */
       .overlay { position: fixed; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: center; gap: 16px; background: rgba(3, 6, 12, 0.8); }
       .overlay h2 { color: var(--gold-hi); margin: 0; font: 800 26px var(--display); letter-spacing: 0.04em; text-align: center; }
-      /* level-up items: inventory strip, one card per offered base (its finished items + the plans it allows) */
+      /* level-up items: inventory strip, one card per offer (a new item or the next level of an owned one) */
       #levelup { overflow-x: hidden; overflow-y: auto; justify-content: flex-start; gap: 14px; padding: max(18px, env(safe-area-inset-top)) 20px max(18px, env(safe-area-inset-bottom)); }
       #inv-edit { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
       #inv-edit:empty { display: none; }
       #inv-edit .slot { position: relative; width: 56px; height: 56px; border: 1px solid var(--gold-dim); background: #070b14; transition: transform 0.25s cubic-bezier(0.3, 1.5, 0.5, 1), box-shadow 0.25s; }
       #inv-edit .slot.empty { border: 1px dashed #2a3650; }
       #inv-edit .slot img { width: 100%; height: 100%; display: block; }
-      #inv-edit .slot .prog { position: absolute; left: 3px; right: 3px; bottom: 3px; height: 4px; background: rgba(0, 0, 0, 0.7); }
-      #inv-edit .slot .prog i { display: block; height: 100%; background: linear-gradient(90deg, #c79a45, #f6e2a6); }
       #inv-edit .slot.target { transform: translateY(-4px); box-shadow: 0 0 0 2px var(--gold-hi), 0 0 18px rgba(246, 226, 166, 0.6); }
-      #inv-edit .slot.lockwarn { box-shadow: 0 0 0 2px var(--danger), 0 0 16px rgba(255, 90, 78, 0.6); animation: shake 0.45s ease; }
       #inv-edit .slot.burst { animation: unseal 1.2s cubic-bezier(0.2, 0.8, 0.3, 1); }
       #inv-edit .slot .ring { --tc: var(--gold-hi); border-radius: 0; }
-      /* slot states: finished, locked (no evolution left), legendary (blueprint) */
+      /* item level badge (HUD and strip); slot states: max level, legendary (blueprint) */
+      #inv-edit .lv, #inventory .lv { position: absolute; right: 1px; bottom: 1px; min-width: 13px; padding: 0 2px; background: rgba(3, 6, 12, 0.85); font: 700 10px/13px var(--ui); font-style: normal; color: var(--gold-hi); text-align: center; }
       #inv-edit .final, #inventory .final { border-color: #ffd257; }
-      #inv-edit .locked, #inventory .locked { border-color: #a33; filter: grayscale(0.8); }
       #inv-edit .legendary, #inventory .legendary { border-color: #ff9a2e; box-shadow: 0 0 8px #ff9a2e; }
       #offers { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr)); gap: 18px; width: min(1180px, 100%); align-items: start; }
       #offers:empty { display: none; }
@@ -213,20 +211,6 @@
       .io-head b { display: block; font: 800 20px/1.15 var(--display); color: var(--gold-hi); }
       .io-head small { display: block; margin-top: 4px; font-size: 12px; color: #9fe3b0; }
       .io-label { font-size: 10px; letter-spacing: 0.2em; color: var(--muted); text-transform: uppercase; }
-      .chips { display: flex; flex-wrap: wrap; gap: 6px; max-height: 96px; overflow-x: hidden; overflow-y: auto; margin-top: 6px; }
-      .ichip { position: relative; width: 42px; height: 42px; padding: 0; border: 1px solid var(--gold-dim); background: #070b14; cursor: pointer; flex: none; transition: transform 0.2s cubic-bezier(0.3, 1.5, 0.5, 1), border-color 0.2s; }
-      .ichip img { display: block; width: 100%; height: 100%; }
-      .ichip:hover, .ichip.on { transform: translateY(-3px); border-color: var(--gold-hi); }
-      .ichip.on { box-shadow: 0 0 12px rgba(246, 226, 166, 0.5); }
-      .ichip.taken img { filter: grayscale(1) brightness(0.4); }
-      .ichip.mine { border-color: #4fdc7a; }
-      .ichip i { position: absolute; right: -4px; top: -4px; width: 16px; height: 16px; border-radius: 50%; display: grid; place-items: center; font: 700 10px var(--ui); font-style: normal; }
-      .ichip.mine i { background: #4fdc7a; color: #05080f; }
-      .ichip.taken i { background: #3a1a1a; color: #ff8a7a; box-shadow: inset 0 0 0 1px #a33; }
-      .ichip.hit { border-color: var(--gold-hi); box-shadow: 0 0 0 1px var(--gold-hi), 0 0 10px rgba(246, 226, 166, 0.45); }
-      .io-detail { min-height: 58px; padding: 10px 12px; background: rgba(0, 0, 0, 0.28); font-size: 12px; line-height: 1.4; color: #d6cfbf; display: flex; flex-direction: column; gap: 2px; }
-      .io-detail b { font: 700 14px var(--display); color: var(--gold-hi); }
-      .io-detail .fd-st { color: #9fe3b0; } .io-detail .fd-pa { color: #9fd8ff; } .io-detail em { font-style: normal; color: var(--muted); }
       .io-acts { display: flex; flex-direction: column; gap: 8px; }
       .iact { position: relative; display: grid; grid-template-columns: auto 1fr; column-gap: 12px; row-gap: 6px; align-items: center; width: 100%; padding: 10px 12px; text-align: left; cursor: pointer; background: #0a1322; border: 1px solid #2a3650;
         transition: transform 0.15s cubic-bezier(0.3, 0.7, 0.4, 1), border-color 0.2s, background 0.2s; }
@@ -235,23 +219,11 @@
       .iact kbd { grid-row: span 2; width: 26px; height: 26px; display: grid; place-items: center; border: 1px solid var(--gold-dim); font: 700 12px var(--ui); color: var(--gold-hi); }
       .ia-main { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-width: 0; }
       .ia-main > b { font-size: 13px; }
-      .ia-path { display: inline-flex; align-items: center; gap: 4px; }
-      .ia-path img { width: 26px; height: 26px; border: 1px solid var(--gold-dim); }
-      .ia-path svg { width: 14px; height: 14px; color: var(--gold); }
-      .ia-path em { font-style: normal; font-size: 11px; color: var(--muted); }
-      .ia-gain { font-size: 12px; color: #9fe3b0; }
       .ia-meta { grid-column: 2; display: flex; align-items: center; gap: 10px; font-size: 11px; color: var(--muted); }
-      .ia-bar { flex: 1; max-width: 140px; height: 5px; background: #05080f; box-shadow: inset 0 0 0 1px #1e2a40; }
-      .ia-bar i { display: block; height: 100%; background: linear-gradient(90deg, #c79a45, #f6e2a6); }
       .iact .tag { position: absolute; right: 8px; top: -9px; padding: 2px 8px; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; }
       .iact.rec { clip-path: inset(-14px 0 0 0); border-color: var(--gold-hi); background: linear-gradient(180deg, rgba(246, 226, 166, 0.1), #0a1322); }
       .iact.rec .tag { background: linear-gradient(180deg, #f6e2a6, #c79a45); color: #1a1206; }
       .iact.rec::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(115deg, transparent 40%, rgba(255, 240, 200, 0.12) 50%, transparent 60%); animation: shine 3.4s ease-in-out infinite; }
-      .iact.done .ia-meta { color: var(--gold-hi); }
-      .iact.warn { border-color: #6a2a2a; }
-      .iact.warn .tag { background: #3a1212; color: #ffb3a8; box-shadow: inset 0 0 0 1px #a33; }
-      .iact.dead { opacity: 0.6; }
-      .iact.dead .ia-bar i { background: #6a2a2a; }
       #continue { min-width: min(280px, 100%); }
       .fly { position: fixed; z-index: 20; pointer-events: none; border: 1px solid var(--gold-hi); box-shadow: 0 0 24px rgba(246, 226, 166, 0.8); }
       #item-fx { position: fixed; inset: 0; z-index: 21; display: none; flex-direction: column; align-items: center; justify-content: center; gap: 10px; pointer-events: none; background: radial-gradient(circle at 50% 46%, rgba(70, 56, 24, 0.92), rgba(3, 6, 12, 0.94) 60%); backdrop-filter: blur(6px); }
@@ -274,6 +246,7 @@
       .sk-pips .pip.next { border-color: var(--gold-hi); animation: glint 1.4s ease-in-out infinite; }
       .sk-pips .pip.lit { background: var(--gold-hi); box-shadow: 0 0 14px var(--gold-hi); animation: snap 0.5s cubic-bezier(0.3, 1.7, 0.5, 1); }
       .sk-desc { margin: 0; font: 500 13px/1.45 var(--ui); color: #d6cfbf; }
+      .sk-desc.locked { color: var(--muted); } .sk-desc em { display: block; margin-top: 4px; font-style: normal; font-size: 11px; color: #ffd257; }
       .sk-rows { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; background: rgba(0, 0, 0, 0.28); }
       .sk-row { display: grid; grid-template-columns: 1fr auto 14px auto; align-items: center; column-gap: 6px; font-size: 12px; }
       .sk-row span { color: var(--muted); }
@@ -302,7 +275,6 @@
         #offers { flex-shrink: 0; display: flex; overflow-x: auto; scroll-snap-type: x mandatory; width: 100%; }
         .ioffer { flex: 0 0 min(340px, 46vw); scroll-snap-align: start; padding: 12px; gap: 8px; }
         .io-icon { width: 44px; height: 44px; } .io-head b { font-size: 16px; }
-        .chips { max-height: 46px; } .ichip { width: 34px; height: 34px; } .io-detail { display: none; }
       }
       #choices button.skill-choice b { color: #ffd257; }
       #choices span { font-size: 12px; opacity: 0.8; }
@@ -635,14 +607,14 @@
       body.touch #hp-bar { width: 170px; height: 15px; } body.touch #hp-bar span { font-size: 10px; }
       body.touch #mana-bar { height: 7px; } body.touch #mana-bar span { display: none; }
       body.touch #inventory { grid-template-columns: repeat(6, 22px); gap: 3px; padding: 0; border: 0; }
-      body.touch #inventory img, body.touch #inventory span { width: 22px; height: 22px; }
+      body.touch #inventory b, body.touch #inventory span { width: 22px; height: 22px; }
       body.touch #gauge { width: 24px; height: 24px; margin: 0; padding: 1px; justify-self: end; }
       body.touch #gauge-label { font-size: 12px; }
       body.touch #lvl-toast { bottom: auto; top: 34%; } body.touch #lvl-toast b { font-size: 28px; }
       body.touch #menu #stats { font-size: 13px; }
       @media (min-width: 900px) and (min-height: 600px) {
         body.touch #portrait { width: 80px; height: 80px; } body.touch #hp-bar { width: 240px; height: 20px; } body.touch #mana-bar { height: 11px; }
-        body.touch #inventory { grid-template-columns: repeat(6, 32px); } body.touch #inventory img, body.touch #inventory span { width: 32px; height: 32px; }
+        body.touch #inventory { grid-template-columns: repeat(6, 32px); } body.touch #inventory b, body.touch #inventory span { width: 32px; height: 32px; }
         body.touch #gauge { width: 34px; height: 34px; } body.touch #hud-tl { top: calc(170px + env(safe-area-inset-top)); }
         body.touch #timer { font-size: 30px; } body.touch #hud-top { width: min(460px, 40vw); }
       }

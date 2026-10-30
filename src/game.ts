@@ -5,13 +5,13 @@ import { BUFF, buffEffects, isBuffMonster, type BuffKey } from './buffs';
 import { MAX_CHAMPION_LEVEL, SKILL_KEYS, type BoneVfx, type ChampionDef, type ChampionKit, type Hit, type SkillKey } from './champion';
 import { DEFAULT_CHAMPION } from './champions';
 import {
-  DIRECTOR, DRAGONS, ENEMIES, ENEMY_ARMOR, ENEMY_MISSILE_EXTRA_RANGE, EVENTS, enemyArmorScale, enemyDamageScale, enemyHpScale, HORDE,
+  DIRECTOR, DRAGONS, ENEMIES, ENEMY_ARMOR, ENEMY_MISSILE_EXTRA_RANGE, ENEMY_MR, EVENTS, enemyArmorScale, enemyDamageScale, enemyHpScale, HORDE,
   boundSize, CROWD_RANGE, HP_REGEN_MULT, MAX_ENEMIES, POOL, RUN_LENGTH, xpToNext, type EnemyDef,
 } from './data';
 import { AI, SPAWNERS, type EnemyAI } from './enemies';
 import { Hazards } from './hazards';
 import { ITEM_PASSIVES, type FxStat, type ItemEffect } from './itemEffects';
-import { BLUEPRINT_CHANCE, buildComplete, isFinal, MAX_ITEMS, POTION, slotItem, sumStats, type Slot } from './items';
+import { BLUEPRINT_CHANCE, buildComplete, MAX_ITEMS, MAX_LEVEL, PASSIVE_POWER, POTION, sumStats, type Slot } from './items';
 import { loadMapPieces, loadMapTextures, WorldMap } from './map';
 import { emptyPage, type Page } from './progress';
 import { runeEffects } from './runes';
@@ -23,6 +23,7 @@ import { loadVfx, Vfx, type MissileFx } from './vfx';
 
 const SPAWN_RADIUS = 1800;
 const FLASH = { range: 400, cooldown: 120 };
+const BASE_MR = 30, BASE_MR_PER_LEVEL = 1.3; // LoL marksmen and mages: no champion file lists MR
 const DESPAWN_RADIUS = 3600;
 const AIM_FAR = 5000; // 'move' aim: farther than any dash or blink
 const GRID_CELL = 150;
@@ -57,6 +58,9 @@ export interface Enemy {
   armor: number;
   shred: number; // Black Cleaver stacks
   shredUntil: number;
+  mr: number; // magic resist
+  mrShred: number; // Bloodletter's Curse stacks
+  mrShredUntil: number;
   slowPct: number; // movement slow while time < slowUntil
   slowUntil: number;
   stunUntil: number; // no moving nor attacking while time < stunUntil (generic loop only: EnemyAI bosses ignore it)
@@ -138,7 +142,7 @@ export class Game {
   choices: Choice[] = []; // rune popups waiting to be shown
   bonusRunePoints = 0; // extra rune points earned this run (Treasure Hunter)
   flashReady = 0; // Hextech Flashtraption cooldown end (run time)
-  private fxCache = new Map<string, ItemEffect>(); // effect state outlives evolutions of the other slots
+  private fxCache = new Map<string, ItemEffect>(); // effect state outlives changes to the other slots
   private blueprintDropped = false; // at most one blueprint per run
   private blueprint: THREE.Object3D | null = null; // scroll lying on the ground
   autoAttack = true;
@@ -323,13 +327,17 @@ export class Game {
   get moveSpeed() { return Math.round(this.champ.base.moveSpeed * (1 + this.items.msPct + this.fxStat('msPct') + (this.kit.moveSpeedBonus?.() ?? 0))); }
   get critChance() { return Math.min(1, this.items.crit + this.fxStat('crit')); }
   get armor() { const B = this.champ.base; return grow(B.armor, B.armorPerLevel, this.level) + this.items.armor + this.fxStat('armor'); }
+  get mr() { return grow(BASE_MR, BASE_MR_PER_LEVEL, this.level) + this.items.mr + this.fxStat('mr'); }
   get abilityHaste() { return this.items.ah + this.fxStat('ah'); }
   get attackRange() { return this.champ.base.attackRange + this.fxStat('range'); }
   /** Center distance within which an enemy can be in attack range. */
   get attackReach() { return this.attackRange + this.champ.base.radius; }
   get alive() { return this.hp > 0; }
   has(id: string) { return this.owned.has(id); }
-  cooldownOf(key: SkillKey) { return this.champ.skills[key].cooldown[this.ranks[key] - 1] * (100 / (100 + this.abilityHaste)); }
+  cooldownOf(key: SkillKey) {
+    const haste = this.abilityHaste + this.fxStat(key === 'R' ? 'ultHaste' : 'basicHaste');
+    return this.champ.skills[key].cooldown[this.ranks[key] - 1] * (100 / (100 + haste));
+  }
   costOf(key: SkillKey) { return this.champ.skills[key].cost[Math.max(0, this.ranks[key] - 1)]; }
 
   // ---- level up ----
@@ -349,37 +357,42 @@ export class Game {
   private setSlots(slots: Slot[]) {
     const hpBefore = this.maxHp, manaBefore = this.maxMana;
     this.slots = slots;
-    this.inventory = slots.map(slotItem);
+    this.inventory = slots.map((s) => s.id);
     this.owned = new Set(this.inventory);
-    this.items = sumStats(this.inventory, this.legendary);
+    this.items = sumStats(slots, this.legendary);
     this.itemFx = this.activeEffects();
     this.hp = Math.max(1, Math.min(this.maxHp, this.hp + this.maxHp - hpBefore));
     this.mana = Math.max(0, Math.min(this.maxMana, this.mana + this.maxMana - manaBefore));
   }
 
-  /** One effect per owned item with hooks; of each UNIQUE group only the highest rank. */
+  /** One effect per owned item with hooks and its passive unlocked; of each UNIQUE group only the highest rank. */
   private activeEffects() {
     const out: ItemEffect[] = [];
     const best = new Map<string, ItemEffect>();
-    for (const id of this.owned) {
+    for (const { id, level } of this.slots) {
       const make = ITEM_PASSIVES[id]?.effect;
-      if (!make) continue;
+      if (!make || !PASSIVE_POWER[level - 1]) continue;
       let fx = this.fxCache.get(id);
-      if (!fx) this.fxCache.set(id, (fx = make(this)));
+      if (!fx) this.fxCache.set(id, (fx = make(this, () => this.passivePower(id))));
       if (!fx.unique) out.push(fx);
       else if ((best.get(fx.unique)?.rank ?? -Infinity) < (fx.rank ?? 0)) best.set(fx.unique, fx);
     }
     return [...out, ...best.values(), ...this.runeFx, ...this.buffFx];
   }
 
-  takeItem(base: string) {
-    if (this.slots.length >= MAX_ITEMS) return;
-    this.setSlots([...this.slots, { base, path: [] }]);
+  /** Strength (0..1) of an owned item's passive at its current level. */
+  passivePower(id: string) {
+    const s = this.slots.find((x) => x.id === id);
+    return s ? PASSIVE_POWER[s.level - 1] : 0;
+  }
+  takeItem(id: string) {
+    if (this.slots.length >= MAX_ITEMS || this.owned.has(id)) return;
+    this.setSlots([...this.slots, { id, level: 1 }]);
     audio.play('hud_item');
   }
-  /** Evolve slot i one step; callers only pass steps from nextSteps(). */
-  evolve(i: number, step: string) {
-    this.setSlots(this.slots.map((s, j) => (j === i ? { ...s, path: [...s.path, step] } : s)));
+  /** One more level for slot i. */
+  levelItem(i: number) {
+    this.setSlots(this.slots.map((s, j) => (j === i ? { ...s, level: Math.min(MAX_LEVEL, s.level + 1) } : s)));
     audio.play('hud_item');
   }
   drinkPotion(kind: keyof typeof POTION) {
@@ -391,7 +404,10 @@ export class Game {
 
   /** Healing goes through here so heal/shield power (Revitalize) applies. */
   heal(amount: number) {
-    if (this.alive) this.hp = Math.min(this.maxHp, this.hp + amount * (1 + this.fxStat('healMult')));
+    if (!this.alive) return;
+    const healed = this.hp + amount * (1 + this.fxStat('healMult'));
+    this.hp = Math.min(this.maxHp, healed);
+    if (healed > this.hp) for (const fx of this.itemFx) fx.onOverheal?.(healed - this.hp);
   }
   addShield(amount: number, seconds: number) {
     this.shield += amount * (1 + this.fxStat('healMult'));
@@ -526,7 +542,7 @@ export class Game {
     }
   }
 
-  /** Blueprint scroll: bobs on the ground until the champion walks over it, then a random finished item turns legendary. */
+  /** Blueprint scroll: bobs on the ground until the champion walks over it, then a random max-level item turns legendary. */
   private updateBlueprint(dt: number) {
     const bp = this.blueprint;
     if (!bp) return;
@@ -535,8 +551,8 @@ export class Game {
     if (bp.position.distanceTo(this.pos) > this.champ.base.radius + 60) return;
     bp.removeFromParent();
     this.blueprint = null;
-    const finals = this.slots.flatMap((s, i) => (isFinal(s) ? [i] : []));
-    this.legendary = finals[Math.floor(Math.random() * finals.length)];
+    const maxed = this.slots.flatMap((s, i) => (s.level >= MAX_LEVEL ? [i] : []));
+    this.legendary = maxed[Math.floor(Math.random() * maxed.length)];
     this.setSlots(this.slots);
     this.float(this.pos, t('float.legendaryItem'), 'crit');
     audio.play('hud_legendary');
@@ -767,7 +783,7 @@ export class Game {
 
       if (!m.hit) {
         if (Math.hypot(m.pos.x - this.pos.x, m.pos.z - this.pos.z) <= radius + m.radius) {
-          this.hurtPlayer(m.damage);
+          this.hurtPlayer(m.damage, false, true);
           this.vfx.enemyHit(m.pos);
           return this.removeMesh(m.mesh);
         }
@@ -806,11 +822,15 @@ export class Game {
     return false;
   }
 
-  /** Physical damage is reduced by armor (after Black Cleaver shred and armor penetration); magic is not (no MR). */
-  private mitigate(e: Enemy, amount: number) {
-    const shred = e.shredUntil > this.time ? e.shred * 0.06 : 0;
-    const armor = e.armor * (1 - shred) * (1 - this.items.armorPen);
-    return amount * (100 / (100 + armor));
+  /** Damage left after the target's armor (physical) or magic resist (magic), with shred and penetration applied. */
+  private mitigate(e: Enemy, amount: number, type: 'physical' | 'magic') {
+    if (amount <= 0) return 0;
+    const physical = type === 'physical';
+    const shred = physical ? (e.shredUntil > this.time ? e.shred * 0.06 : 0) : (e.mrShredUntil > this.time ? e.mrShred * 0.075 : 0);
+    const pen = physical ? this.items.armorPen + this.fxStat('armorPen') : this.items.magicPen + this.fxStat('magicPen');
+    const flat = physical ? this.items.lethality + this.fxStat('lethality') : this.items.magicPenFlat + this.fxStat('magicPenFlat');
+    const resist = Math.max(0, (physical ? e.armor : e.mr) * (1 - shred) * (1 - pen) - flat);
+    return amount * (100 / (100 + resist));
   }
 
   /** Damage pipeline: on-hit items, champion passives, mitigation, healing, death. */
@@ -818,11 +838,19 @@ export class Game {
     if (e.deadFor >= 0) return;
     let physical = hit.type === 'physical' ? amount : 0;
     let magic = hit.type === 'magic' ? amount : 0;
-    if (hit.onHit) for (const fx of this.itemFx) if (fx.onHit) physical += fx.onHit(e, hit);
+    const pure = hit.type === 'true' ? amount : 0;
+    if (hit.onHit) {
+      for (const fx of this.itemFx) {
+        if (fx.onHit) physical += fx.onHit(e, hit);
+        if (fx.onHitMagic) magic += fx.onHitMagic(e, hit);
+      }
+    }
     magic += this.kit.onDamage?.(e, hit) ?? 0;
-    physical = this.mitigate(e, physical);
+    physical = this.mitigate(e, physical, 'physical');
+    magic = this.mitigate(e, magic, 'magic');
     if (physical > 0) for (const fx of this.itemFx) fx.onPhysical?.(e);
-    let total = physical + magic;
+    if (magic > 0) for (const fx of this.itemFx) fx.onMagic?.(e);
+    let total = physical + magic + pure;
     for (const fx of this.itemFx) if (fx.damageMult) total *= fx.damageMult(e, hit);
     const dealt = Math.min(e.hp, total);
     const vamp = this.items.omnivamp + this.fxStat('omnivamp') + (hit.source === 'auto' ? this.items.lifesteal + this.fxStat('lifesteal') : 0);
@@ -834,10 +862,10 @@ export class Game {
     for (const fx of this.itemFx) fx.onDealt?.(e, hit, dealt);
   }
 
-  /** `nonLethal` damage leaves the champion at 1 HP at worst (Baron's whip). */
-  hurtPlayer(amount: number, nonLethal = false) {
+  /** `nonLethal` damage leaves the champion at 1 HP at worst (Baron's whip); `magic` is reduced by MR instead of armor. */
+  hurtPlayer(amount: number, nonLethal = false, magic = false) {
     if (!this.alive || this.stasis > 0) return;
-    let taken = amount * (100 / (100 + this.armor));
+    let taken = amount * (100 / (100 + Math.max(0, magic ? this.mr : this.armor)));
     for (const fx of this.itemFx) if (fx.onHurt) taken = fx.onHurt(taken);
     const absorbed = Math.min(this.shield, taken);
     this.shield -= absorbed;
@@ -869,7 +897,7 @@ export class Game {
   /** Crowd control: no actions for `seconds`; `airborne` plays the knock-up arc. */
   stun(seconds: number, airborne = true) {
     if (!this.alive || this.stasis > 0) return;
-    seconds *= 1 - Math.min(0.8, this.fxStat('tenacity'));
+    seconds *= 1 - Math.min(0.8, this.items.tenacity + this.fxStat('tenacity'));
     for (const fx of this.itemFx) fx.onStunned?.();
     this.stunned = this.stunLength = Math.max(this.stunned, seconds);
     this.airborne = airborne;
@@ -893,7 +921,7 @@ export class Game {
     this.gainXp(e.def.xp); // XP is absorbed on kill (no gems to collect)
     for (const fx of this.itemFx) fx.onKill?.(e);
     this.kit.onKill?.(e, hit);
-    if (!this.blueprintDropped && buildComplete(this.slots) && this.slots.some(isFinal) && Math.random() < BLUEPRINT_CHANCE) {
+    if (!this.blueprintDropped && buildComplete(this.slots) && Math.random() < BLUEPRINT_CHANCE) {
       this.blueprintDropped = true;
       this.blueprint = makeBlueprint();
       this.blueprint.position.set(e.pos.x, 0, e.pos.z);
@@ -1017,6 +1045,7 @@ export class Game {
       id: this.nextId++, def, actor, pos: at ?? new THREE.Vector3(this.pos.x + Math.cos(a) * r, 0, this.pos.z + Math.sin(a) * r),
       hp, maxHp: hp, attackTimer: 0, windup: -1, deadFor: -1, animDt: 0,
       armor: (def.armor ?? ENEMY_ARMOR[def.tier]) * (epic ? 1 : enemyArmorScale(this.time)), shred: 0, shredUntil: 0, slowPct: 0, slowUntil: 0, stunUntil: 0,
+      mr: ENEMY_MR[def.tier] * (epic ? 1 : enemyArmorScale(this.time)), mrShred: 0, mrShredUntil: 0,
     };
     e.ai = AI[def.model]?.(this, e);
     actor.play(def.anims.run);
@@ -1076,7 +1105,10 @@ export class Game {
               speed: e.def.ranged, range: e.def.attackRange + e.def.radius + ENEMY_MISSILE_EXTRA_RANGE, radius: e.def.missileRadius ?? 25,
               damage: this.enemyHitDamage(e.def),
             });
-          } else if (edge <= e.def.attackRange + 80) this.hurtPlayer(this.enemyHitDamage(e.def));
+          } else if (edge <= e.def.attackRange + 80) {
+            this.hurtPlayer(this.enemyHitDamage(e.def));
+            for (const fx of this.itemFx) fx.onStruck?.(e);
+          }
         }
       } else if (edge <= e.def.attackRange && this.alive && this.stasis <= 0) {
         if (e.attackTimer <= 0) {

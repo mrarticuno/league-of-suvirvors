@@ -9,7 +9,6 @@ import type { ChampionDef, ChampionKit, Hit, SkillDef, SkillKey } from '../champ
 import { boundSize } from '../data';
 import type { Enemy, Game } from '../game';
 import { t } from '../i18n';
-import { AP_BASES } from '../items';
 
 const ICON = 'https://ddragon.leagueoflegends.com/cdn/16.21.1/img';
 const HAND = 'R_BUFFBONE_GLB_HAND_LOC';
@@ -68,7 +67,9 @@ export const BRAND: ChampionDef = {
   scale: 1.45, // the export stands ~125 tall, Ezreal ~183
   title: t('champion.brand.title'), splash: 'https://ddragon.leagueoflegends.com/cdn/img/champion/splash/Brand_0.jpg',
   roles: ['mage', 'support'], difficulty: 4,
-  itemBases: AP_BASES,
+  itemPool: 'ap',
+  // OP.GG mid 16.21: Blackfire Torch, Rylai's, Liandry's; then Shadowflame, Rabadon's, Void Staff (Zhonya's has an active)
+  build: ['2503', '3116', '6653', '4645', '3089', '3135'],
   base: {
     hp: 570, hpPerLevel: 105,
     hpRegen5: 5.5, hpRegen5PerLevel: 0.55,

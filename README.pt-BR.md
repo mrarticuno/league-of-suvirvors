@@ -8,7 +8,7 @@
 
 <p align="center">
   <b>Survivors-like 2.5D no navegador com campeões de League of Legends.</b><br>
-  Vista superior, modelos 3D e animações originais do LoL. Sobreviva às hordas, evolua itens e derrube o Barão Na'Shor aos 20 minutos.
+  Vista superior, modelos 3D e animações originais do LoL. Sobreviva às hordas, suba o nível dos itens e derrube o Barão Na'Shor aos 20 minutos.
 </p>
 
 <p align="center">
@@ -34,9 +34,9 @@
 |---|---|
 | ![Seleção de campeão com a splash art e o kit do Ezreal](docs/media/champion-select.jpg) | ![Página de runas: Precisão + Feitiçaria com fragmentos](docs/media/rune-page.jpg) |
 
-| Level-up: habilidades | Level-up: evolução de itens |
+| Level-up: habilidades | Level-up: itens |
 |---|---|
-| ![Cartas de habilidade com dano, recarga e recomendação](docs/media/skill-pick.jpg) | ![Cartas de item com os itens finais de cada linha e os planos de evolução](docs/media/item-shop.jpg) |
+| ![Cartas de habilidade com dano, recarga e recomendação](docs/media/skill-pick.jpg) | ![Cartas de item com o nível, os atributos antes e depois da escolha e a passiva](docs/media/item-shop.jpg) |
 
 | Samira | Barão Na'Shor (20:00) |
 |---|---|
@@ -60,7 +60,7 @@ Os modelos **não estão no repositório** (são assets da Riot). Gere-os localm
 
 ## Pipeline de assets (macOS, com LoL instalado)
 
-1. Ferramentas: Python 3 e .NET 8 SDK.
+1. Ferramentas: Python 3 e .NET 8 SDK (sem admin: `curl -sSL https://dot.net/v1/dotnet-install.sh | bash -s -- --channel 8.0 --install-dir ~/.dotnet`, depois use `~/.dotnet/dotnet`). `l2g/` é ignorado pelo git: compile uma vez e mantenha.
    ```bash
    python3 -m venv .venv-tools && .venv-tools/bin/pip install xxhash zstandard pillow pygltflib
    git clone https://github.com/Crauzer/lol2gltf && cd lol2gltf/src/lol2gltf
@@ -154,7 +154,7 @@ WASD não é usado porque colide com Q/W/E.
   - **W**: dois cortes em área (325), no início e após 0,75 s; destrói projéteis inimigos na área. Sem ataque básico durante o giro.
   - **E**: dash de 600 na direção do cursor, dano mágico em quem atravessa, +20–40% de velocidade de ataque por 5 s.
   - **R**: só com Estilo S e inimigo a até 600. 10 rajadas em 2 s contra todos em volta (25% em tropas), pode critar; −30% de velocidade de movimento, consome o Estilo.
-  - Fora do LoL: Estilo conta qualquer inimigo; sem explosivos do Q durante o E; sem o ataque em alvo imobilizado (inimigos não sofrem CC).
+  - Fora do LoL: Estilo conta qualquer inimigo; sem explosivos do Q durante o E; sem o ataque em alvo imobilizado (ainda não implementado).
 - **Brand** (dados da Meraki Analytics e dos bins da skin): primeiro campeão AP; alcance 550. Usa todos os sistemas de partícula do kit (chamas do corpo, marcas de Em Chamas, anel e explosão da detonação, todo cast/míssil/impacto).
   - **Passiva (Labareda)**: habilidades aplicam Em Chamas (até 3 acúmulos, 4 s): queimadura de 2% da vida máxima + 8–48 (nível) + 5% PdH por acúmulo. O 3º acúmulo arma um anel que explode após 2 s (raio 475): 8–12% da vida máxima (+2% a cada 100 PdH, limite 270–525) + 30–150 + 20% PdH, e põe em chamas todos os atingidos. Um inimigo detonado segura no máximo 1 acúmulo por 4 s. Um abate por habilidade ou de inimigo em chamas restaura 20–40 de mana (uma vez por segundo vindo de tropas e monstros pequenos; sempre de elites e épicos).
   - **Q**: bola de fogo no primeiro inimigo atingido; atordoa um alvo em chamas por 1,5 s.
@@ -165,14 +165,14 @@ WASD não é usado porque colide com Q/W/E.
 - **Level-up em duas etapas**:
   1. Um rank de habilidade, pela regra do LoL: básicas nos níveis 1/3/5/7/9, R nos níveis 6/11/16. A etapa é pulada quando não há rank disponível.
   2. Um item entre 3 sorteados (ou uma poção, com a build completa).
-- **Itens**: dados reais do Data Dragon (pt-BR, ícones), gerados por `tools/build_items.py` em `src/items.json`. Regras completas em `docs/superpowers/specs/2026-10-28-item-evolution-design.md`.
-  - Só itens básicos de origem são ofertados. Uma cópia nova pode virar item novo ou evoluir um passo um item da mesma linha; o jogador escolhe o slot e o ramo (`LINES` em `src/items.ts`).
-  - Itens completos custam de 3 a 5 cópias do básico e são únicos. Ramos cujo item completo já é seu (ou está reservado por outro slot) ficam bloqueados; um item sem ramo livre fica travado.
-  - Inventário de no máximo 6 itens; não é possível descartar. Cada oferta mostra a árvore da linha (o que você tem, o que está bloqueado, o custo de cada item completo).
-  - Build completa (6 itens completos ou travados): o level-up oferece Poção de Vida ou de Mana (20% do máximo), e cada abate tem 1% de chance de derrubar um blueprint (pergaminho azul, 1 por run) que torna um item completo aleatório Lendário (+50% dos stats).
-  - Itens completos: builds atuais do Ezreal (Força da Trindade, Manamune, Lança de Shojin, Fome Eterna, Rancor de Serylda, Coração Congelado, Anjo Guardião) e a build on-hit/crítico (Mata-Cráquens, Espada do Rei Destruído, Gume do Infinito, Colhedor de Essência, Cutelo Negro).
-  - Passivas implementadas: Lâmina Arcana (Fulgor/Trindade/Colhedor), Fascínio (Manamune), Derrubar (Mata-Cráquens), Gume da Névoa (Rei Destruído), dano crítico (Gume do Infinito), Talhar (Cutelo Negro), Renascimento (Anjo Guardião), Carícia do Inverno (Coração Congelado), penetração de armadura, roubo de vida e vampirismo.
-  - Armadura: dano físico (ataque básico, Q, efeitos ao acertar) é reduzido pela armadura do inimigo. O dano mágico (W, E, R) não.
+- **Itens**: dados reais do Data Dragon (atributos, nomes, ícones), gerados por `tools/build_items.py` em `src/items.json`; passivas em `src/itemPassives/`.
+  - Sem receitas: o level-up oferece um item lendário pronto ou mais um nível para um item seu, como as armas de um survivors. Inventário de no máximo 6 itens; não é possível descartar.
+  - Cada item tem 5 níveis. Os atributos crescem de 40% (nível 1) a 100% (nível 5); a passiva é liberada no nível 3 com 60% da força, 80% no nível 4 e 100% no nível 5. Manamune, Cajado do Arcanjo e Aproximação do Inverno ganham a passiva transformada (Muramana, Abraço do Serafim, Fimbulwinter) no nível 5.
+  - Catálogo: todos os lendários do Summoner's Rift, menos itens com ativa (Zhonya, Youmuu, as Hidras...), itens de suporte, itens de corta-cura (Lembrete Mortal, Serrespada Quimtec, Morellonomicon; a Armadura de Espinhos fica só com o reflexo) e passivas que dependem de visão ou de escudos de campeão (Glaive Umbral, Presa da Serpente). Campeões AD recebem itens de ataque, campeões AP itens de poder de habilidade, e os dois recebem tanques e híbridos.
+  - Passivas adaptadas às hordas: gatilhos de "campeão" viram abates de monstro elite/épico; escudos de feitiço bloqueiam o próximo dano sofrido.
+  - Build recomendada por campeão (OP.GG, patch 16.21): ofertada três vezes mais e marcada como "Recomendado". Ezreal: Força da Trindade, Manamune, Lança de Shojin, Rancor de Serylda, Fome Eterna, Anjo Guardião. Samira: O Coletor, Gume do Infinito, Lembranças do Lorde Dominik, Arco-escudo Imortal, Sanguinária, Anjo Guardião. Brand: Tocha de Fogo Negro, Rylai, Liandry, Chama Sombria, Rabadon, Cajado do Vazio.
+  - Build completa (6 itens no nível 5): o level-up oferece Poção de Vida ou de Mana (20% do máximo), e cada abate tem 1% de chance de derrubar um blueprint (pergaminho azul, 1 por run) que torna um item aleatório Lendário (+50% dos atributos).
+  - Resistências: dano físico é reduzido pela armadura do inimigo (penetração de armadura, letalidade), dano mágico pela resistência mágica (penetração mágica; monstros têm metade da armadura em RM, tropas nenhuma). Projéteis de inimigos à distância causam dano mágico (reduzido pela sua RM), golpes corpo a corpo dano físico.
 - **Inimigos à distância**: disparam skillshots em linha reta, mirados onde o Ezreal estava, com alcance limitado. Dá para desviar.
 - **Curva de dificuldade**: no início, 1 ataque básico ou 1 habilidade mata.
   - Vida: base × `(1 + 0,08 × (nível − 1)) × (1 + tempo / 900 s)`.
@@ -206,8 +206,10 @@ WASD não é usado porque colide com Q/W/E.
 ## Arquitetura (onde adicionar conteúdo)
 
 - **Campeões** (`src/champion.ts`, `src/champions/`): um campeão é um `ChampionDef` (stats base, skills com ranks/custos/recargas/animação/ícone, animações, VFX do ataque básico) mais um `kit`, criado a cada run, que resolve as skills e guarda as peculiaridades (acúmulos, marcas...). O `Game` cuida do genérico: movimento, ataque básico, recargas, mana, itens e o pipeline de dano.
-  - Novo campeão: criar `src/champions/<nome>.ts` (modelo: `ezreal.ts`) e registrar em `src/champions/index.ts`. Sons seguem `<id>_auto`, `<id>_Q`, `<id>_death`...
-  - Hooks do kit: `cast` (obrigatório), `castStart`, `attackSpeedBonus`, `onDamage` (dano mágico extra antes da mitigação, ex. detonar a marca do W), `update`, `dispose`, `hud`.
+  - Novo campeão: criar `src/champions/<nome>.ts` (modelos: `ezreal.ts`; `brand.ts` para mago AP com dano contínuo e marcas por inimigo) e registrar em `src/champions/index.ts`. Sons seguem `<id>_auto`, `<id>_Q`, `<id>_death`... Passo a passo: `.claude/skills/creating-champions/SKILL.md`.
+  - Hooks do kit: `cast` (obrigatório), `castStart`, `castAnim`, `canCast`, `attackSpeedBonus`/`moveSpeedBonus`, `disarmed`, `meleeAuto`, `onDamage` (dano mágico extra antes da mitigação, ex. detonar a marca do W), `onKill` (ex. mana da Labareda em abates), `update`, `dispose`, `hud`, `gauge`.
+  - Extras do `ChampionDef`: `idleVfx` (sistemas presos a ossos a run toda, ex. as chamas do Brand), `vfx.death`, `scale` (tamanho do modelo), itens AP para magos (skills escalam com `apRatio`).
+  - Controle em inimigos: `game.slow(e, pct, s)` e `game.stunEnemy(e, s)` (só no loop genérico; as IAs de chefe ignoram o atordoamento).
   - Projéteis: `game.spawnMissile(vfx, de, para, { hit, target | pierce, onHit, ... })`. Sem `onHit`, o impacto padrão aplica VFX, som e dano.
 - **Passivas de itens** (`src/itemEffects.ts`): cada entrada tem a descrição e, se implementada, uma fábrica de hooks (`onHit`, `onAttack`, `onCast`, `onPhysical`, `tick`, `onLethal`, `bonusAd`, `enemyAttackCooldown`). `unique` + `rank` reproduzem as passivas ÚNICAS do LoL (ex. Lâmina Arcana: só a melhor funciona). Stats continuam em `items.json`.
 - **Inimigos** (`src/data.ts` + `src/enemies/`): inimigo comum só precisa do `EnemyDef`. Comportamento próprio registra uma IA em `AI`; eventos da linha do tempo com regra especial (dragão sorteado, arena do Barão) registram um spawner em `SPAWNERS`. `src/hazards.ts` tem os marcadores de chão e erupções para chefes.
@@ -215,7 +217,7 @@ WASD não é usado porque colide com Q/W/E.
 
 ## Limitações conhecidas / próximos passos
 
-- Partículas: `VfxPrimitiveRay`, `VfxPrimitiveAttachedMesh` (a malha do dono redesenhada como brilho ou pós-imagem com pose congelada), campos de força (aceleração, arrasto, atração) e `FlexShapeDefinition` (escala pelo tamanho do alvo) são suportados. Não implementados: campos orbitais/ruído, `VfxPrimitiveBeam`, distorção; malhas anexadas ignoram escala de nascimento, rolagem de UV e erosão. Efeitos de cast seguem o osso indicado pelos eventos de animação da skin (`Actor.bone`, `Vfx.playOn`). `blendMode` ausente/4 = aditivo, 1 = alpha (inferido das texturas, não documentado).
+- Partículas: conjuntos de partículas filhas (`childParticleSetDefinition`) não são criados; o kit toca o sistema filho por conta própria (ex. `Brand_P_redring_Ignition_Child`). `VfxPrimitiveRay`, `VfxPrimitiveAttachedMesh` (a malha do dono redesenhada como brilho ou pós-imagem com pose congelada), campos de força (aceleração, arrasto, atração) e `FlexShapeDefinition` (escala pelo tamanho do alvo) são suportados. Não implementados: campos orbitais/ruído, `VfxPrimitiveBeam`, distorção; malhas anexadas ignoram escala de nascimento, rolagem de UV e erosão. Efeitos de cast seguem o osso indicado pelos eventos de animação da skin (`Actor.bone`, `Vfx.playOn`). `blendMode` ausente/4 = aditivo, 1 = alpha (inferido das texturas, não documentado).
 - Os `.glb` de origem são pesados (Ezreal 29 MB, Barão 45 MB); `pnpm build:prod` (`tools/optimize.mjs`) remove os clips que o código não usa, faz resample e comprime com meshopt (Ezreal 1,9 MB, Barão 1,9 MB).
 - Cada inimigo é um SkinnedMesh com o próprio mixer, com limite de 260 vivos (`MAX_ENEMIES`). Para hordas maiores: animação baked em textura + instancing.
 - Dragões: animações compartilhadas do `sru_dragon`. Infernal e Montanha usam a malha do Nuvens (`sru_dragon_air`) com a própria textura, como no jogo (`EnemyDef.mesh`).

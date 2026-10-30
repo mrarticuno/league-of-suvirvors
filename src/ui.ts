@@ -8,8 +8,8 @@ import type { Choice, Game } from './game';
 import { KILLS_PER_POINT, nodeCost, type Progress } from './progress';
 import { PASSIVES } from './itemEffects';
 import {
-  buildComplete, claimed, describeStats, isFinal, isLocked, itemIcon, ITEMS, lineFinals, LINES, MAX_ITEMS, planOffer, planScore,
-  POTIONS, rollOffers, slotItem, slotProgress, statDelta, type Plan,
+  buildComplete, itemIcon, ITEMS, MAX_ITEMS, MAX_LEVEL, offerScore, PASSIVE_LEVEL, PASSIVE_POWER, POTIONS, rollOffers, statsAt, statValue,
+  type ItemStats, type Offer,
 } from './items';
 import { RUNES, TREES } from './runes';
 
@@ -165,8 +165,9 @@ export class Hud {
         $('flash-slot').classList.toggle('cooling', fcd > 0);
       }
     }
-    if (changed('inventory', `${g.inventory.join(',')}|${g.legendary}`)) {
-      $('inventory').innerHTML = slotsHtml(g, (i, cls, title) => `<img src="${itemIcon(slotItem(g.slots[i]))}" class="${cls}" title="${title}">`, '<span></span>');
+    if (changed('inventory', `${g.slots.map((s) => `${s.id}:${s.level}`).join(',')}|${g.legendary}`)) {
+      $('inventory').innerHTML = slotsHtml(g, (i, cls, title) =>
+        `<b class="${cls}" title="${title}"><img src="${itemIcon(g.slots[i].id)}" alt="">${lvBadge(g.slots[i].level)}</b>`, '<span></span>');
     }
     const hordeIn = g.nextHordeAt - g.time;
     style('horde', 'display', hordeIn <= HORDE.warning ? 'block' : 'none');
@@ -289,10 +290,9 @@ export class Hud {
   }
 
   /**
-   * Item step: one card per offered base. A card shows the finished items its line can end in (open, already yours,
-   * or out of reach) and every plan the offer allows (a new item, or evolving an owned slot): the stats it gives now,
-   * the copies still needed, and warnings for plans that block another slot or can never be finished. Intermediate
-   * items stay hidden: the player picks where a slot is heading, not the next component.
+   * Item step: one card per offer (a new item or the next level of an owned one), like the skill cards: the level
+   * pips, each stat now and after the pick, the passive with its strength (or the level that unlocks it). The best
+   * offer for the champion's recommended build is tagged.
    */
   private itemStep(g: Game, done: () => void) {
     $('levelup-title').textContent = t('levelup.item', { level: g.level });
@@ -302,57 +302,15 @@ export class Hud {
     this.invStrip(g);
     if (buildComplete(g.slots)) return this.potionStep(g, done);
     $('continue').textContent = t('levelup.declineItems');
-    const offers = rollOffers(g.slots, g.champ.itemBases);
-    const byOffer = offers.map((base) => planOffer(g.slots, base));
-    const plans = byOffer.flat(); // number keys follow this order
-    const best = plans.filter((p) => !p.dead).reduce<Plan | null>((a, p) => (!a || planScore(p, g.slots.length) > planScore(a, g.slots.length) ? p : a), null);
-    const yours = new Set([...claimed(g.slots), ...g.inventory]);
-    let n = 0;
-    $('offers').innerHTML = offers.map((base, o) => {
-      const open = new Set(byOffer[o].flatMap((p) => p.finals));
-      const chips = lineFinals(base).map((f) => {
-        const st = open.has(f) ? 'open' : yours.has(f) ? 'mine' : 'taken';
-        const label = st === 'open' ? ITEMS[f].name : `${ITEMS[f].name} — ${t(st === 'mine' ? 'itemsel.mine' : 'itemsel.taken')}`;
-        return `<button class="ichip ${st}" data-final="${f}" title="${label}" aria-label="${label}"><img src="${itemIcon(f)}" alt="">${st === 'mine' ? '<i>✓</i>' : st === 'taken' ? '<i>×</i>' : ''}</button>`;
-      }).join('');
-      return `<article class="ioffer ${best && byOffer[o].includes(best) ? 'best' : ''}" data-o="${o}" style="animation-delay:${o * 0.08}s">
-        <header class="io-head"><span class="io-icon"><img src="${itemIcon(base)}" alt=""></span>
-          <div><b>${ITEMS[base].name}</b><small>${describeStats(ITEMS[base].stats)}</small></div></header>
-        <div><span class="io-label">${t('itemsel.finals')}</span><div class="chips">${chips}</div></div>
-        <div class="io-detail"></div>
-        <div class="io-acts">${byOffer[o].map((p) => planHtml(g, p, n++, p === best)).join('')}</div>
-      </article>`;
-    }).join('') || `<div class="ioffer">${t('levelup.noItems')}</div>`;
-
-    const cards = $('offers').querySelectorAll<HTMLElement>('.ioffer[data-o]');
-    cards.forEach((card) => {
-      const base = offers[Number(card.dataset.o)];
-      const detail = card.querySelector<HTMLElement>('.io-detail')!;
-      const show = (f: string) => {
-        detail.innerHTML = finalDetail(base, f);
-        card.querySelectorAll('.ichip').forEach((c) => c.classList.toggle('on', (c as HTMLElement).dataset.final === f));
-      };
-      const first = card.querySelector<HTMLElement>('.ichip.open') ?? card.querySelector<HTMLElement>('.ichip');
-      if (first) show(first.dataset.final!);
-      card.querySelectorAll<HTMLElement>('.ichip').forEach((c) => {
-        c.addEventListener('mouseenter', () => show(c.dataset.final!));
-        c.addEventListener('focus', () => show(c.dataset.final!));
-        c.addEventListener('click', () => show(c.dataset.final!));
-      });
-    });
-    // hovering a plan lights the finished items it leads to and the slot it fills or would block
-    const mark = (p: Plan | null) => {
-      $('offers').querySelectorAll<HTMLElement>('.ichip').forEach((c) => c.classList.toggle('hit', !!p && c.closest<HTMLElement>('.ioffer')!.dataset.o === String(offers.indexOf(p.base)) && p.finals.includes(c.dataset.final!)));
-      $('inv-edit').querySelectorAll<HTMLElement>('[data-cell]').forEach((c) => {
-        const i = Number(c.dataset.cell);
-        c.classList.toggle('target', !!p && p.slot === i);
-        c.classList.toggle('lockwarn', !!p && p.locks.includes(i));
-      });
-    };
-    this.keyActions = plans.map((p, i) => () => this.pickPlan(g, p, i, done));
+    const build = g.champ.build;
+    const offers = rollOffers(g.slots, g.champ.itemPool ?? 'ad', build);
+    const best = offers.reduce<Offer | null>((a, o) => (!a || offerScore(o, g.slots, build) > offerScore(a, g.slots, build) ? o : a), null);
+    $('offers').innerHTML = offers.map((o, i) => itemCard(g, o, i, o === best)).join('') || `<div class="ioffer">${t('levelup.noItems')}</div>`;
+    const mark = (o: Offer | null) => $('inv-edit').querySelectorAll<HTMLElement>('[data-cell]').forEach((c) => c.classList.toggle('target', !!o && o.slot === Number(c.dataset.cell)));
+    this.keyActions = offers.map((o, i) => () => this.pickItem(g, o, i, done));
     $('offers').querySelectorAll<HTMLElement>('[data-a]').forEach((b) => {
       const i = Number(b.dataset.a);
-      b.addEventListener('mouseenter', () => mark(plans[i]));
+      b.addEventListener('mouseenter', () => mark(offers[i]));
       b.addEventListener('mouseleave', () => mark(null));
       b.addEventListener('click', () => this.keyActions[i]?.());
     });
@@ -363,36 +321,30 @@ export class Hud {
     $('inv-edit').innerHTML = Array.from({ length: MAX_ITEMS }, (_, i) => {
       const s = g.slots[i];
       if (!s) return `<div class="slot empty" data-cell="${i}"></div>`;
-      const pr = slotProgress(g.slots, i);
-      const item = ITEMS[slotItem(s)].name;
-      const state = g.legendary === i ? 'legendary' : isFinal(s) ? 'final' : pr.left === null ? 'locked' : '';
-      const title = state ? t(`slot.${state}`, { item }) : t('itemsel.slotLeft', { item, n: pr.left! });
-      const pct = pr.left === null ? 0 : (pr.done / (pr.done + pr.left)) * 100;
-      return `<div class="slot ${state} ${burst === i ? 'burst' : ''}" data-cell="${i}" title="${title}"><img src="${itemIcon(slotItem(s))}" alt="">
-        ${state === 'final' || state === 'legendary' ? '' : `<span class="prog"><i style="width:${pct.toFixed(0)}%"></i></span>`}
+      const state = slotState(g, i);
+      return `<div class="slot ${state} ${burst === i ? 'burst' : ''}" data-cell="${i}" title="${slotTitle(g, i)}"><img src="${itemIcon(s.id)}" alt="">${lvBadge(s.level)}
         ${burst === i ? '<i class="ring"></i><i class="ring r2"></i>' : ''}</div>`;
     }).join('');
   }
 
-  /** The pick lands: the chosen card rises, the others fall away, the item flies into its slot; a finished item gets its own moment. */
-  private async pickPlan(g: Game, p: Plan, i: number, done: () => void) {
+  /** The pick lands: the chosen card rises, the others fall away, the item flies into its slot; max level gets its own moment. */
+  private async pickItem(g: Game, o: Offer, i: number, done: () => void) {
     if (this.busy) return;
     this.busy = true;
     this.keyActions = [];
     const card = $('offers').querySelector(`[data-a="${i}"]`)?.closest('.ioffer');
     const from = card?.querySelector('.io-icon img')?.getBoundingClientRect();
     $('offers').querySelectorAll('.ioffer').forEach((c) => c.classList.add(c === card ? 'chosen' : 'dismiss'));
-    if (p.kind === 'new') g.takeItem(p.base);
-    else g.evolve(p.slot, p.step!);
-    const item = slotItem(g.slots[p.slot]);
+    if (o.kind === 'new') g.takeItem(o.id);
+    else g.levelItem(o.slot);
     const calm = matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const cell = $('inv-edit').querySelector<HTMLElement>(`[data-cell="${p.slot}"]`);
+    const cell = $('inv-edit').querySelector<HTMLElement>(`[data-cell="${o.slot}"]`);
     if (!calm && from && cell) {
       await wait(200);
       const to = cell.getBoundingClientRect();
       const fly = document.createElement('img');
       fly.className = 'fly';
-      fly.src = itemIcon(item);
+      fly.src = itemIcon(o.id);
       Object.assign(fly.style, { left: `${from.left}px`, top: `${from.top}px`, width: `${from.width}px`, height: `${from.height}px` });
       document.body.append(fly);
       const dx = to.left - from.left, dy = to.top - from.top;
@@ -403,8 +355,8 @@ export class Hud {
       ], { duration: 640, easing: 'cubic-bezier(0.5, 0, 0.3, 1)' }).finished;
       fly.remove();
     }
-    this.invStrip(g, p.slot);
-    if (p.completes) await this.celebrate(itemIcon(item), ITEMS[item].name, t('itemsel.finished'), calm);
+    this.invStrip(g, o.slot);
+    if (g.slots[o.slot].level >= MAX_LEVEL) await this.celebrate(itemIcon(o.id), ITEMS[o.id].name, t('itemsel.maxed'), calm);
     else await wait(calm ? 0 : 650);
     this.busy = false;
     done();
@@ -532,45 +484,45 @@ function hook(p: Progress) {
 
 /** Six inventory cells; `cell` renders an owned slot with its state class and tooltip. */
 function slotsHtml(g: Game, cell: (i: number, cls: string, title: string) => string, empty: string) {
-  return Array.from({ length: MAX_ITEMS }, (_, i) => {
-    const s = g.slots[i];
-    if (!s) return empty;
-    const legendary = g.legendary === i;
-    const state = legendary ? 'legendary' : isFinal(s) ? 'final' : isLocked(g.slots, i) ? 'locked' : '';
-    const item = ITEMS[slotItem(s)].name;
-    return cell(i, state, state ? t(`slot.${state}`, { item }) : item);
-  }).join('');
+  return Array.from({ length: MAX_ITEMS }, (_, i) => (g.slots[i] ? cell(i, slotState(g, i), slotTitle(g, i)) : empty)).join('');
 }
+const slotState = (g: Game, i: number) => (g.legendary === i ? 'legendary' : g.slots[i].level >= MAX_LEVEL ? 'final' : '');
+function slotTitle(g: Game, i: number) {
+  const { id, level } = g.slots[i];
+  const state = slotState(g, i);
+  return state ? t(`slot.${state}`, { item: ITEMS[id].name }) : t('slot.level', { item: ITEMS[id].name, level, max: MAX_LEVEL });
+}
+const lvBadge = (level: number) => `<i class="lv">${level}</i>`;
 
 const wait = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 const ARROW = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6"/></svg>';
 
-/** One plan of the item step as a button: what it does, where it leads, what it gives now, how far it gets. */
-function planHtml(g: Game, p: Plan, n: number, best: boolean) {
-  const name = (id: string) => ITEMS[id].name;
-  const gain = describeStats(p.kind === 'new' ? ITEMS[p.base].stats : statDelta(ITEMS[p.from!].stats, ITEMS[p.step!].stats));
-  const ends = p.completes ? [p.step!] : p.finals;
-  const meta = p.dead ? t('itemsel.dead') : p.completes ? t('itemsel.completes', { item: name(p.step!) })
-    : p.left === 1 ? t('itemsel.copiesOne') : t('itemsel.copies', { n: p.left });
-  const pct = p.dead ? 100 : (p.done / (p.done + p.left)) * 100;
-  const tag = best ? t('itemsel.recommended') : p.locks.length ? t('itemsel.locks', { item: p.locks.map((j) => name(slotItem(g.slots[j]))).join(', ') })
-    : p.dead ? t('itemsel.deadTag') : '';
-  const cls = [best && 'rec', (p.dead || p.locks.length) && !best && 'warn', p.dead && 'dead', p.completes && 'done'].filter(Boolean).join(' ');
-  return `<button class="iact ${cls}" data-a="${n}">
-    <kbd>${n + 1}</kbd>
-    <span class="ia-main"><b>${p.kind === 'new' ? t('itemsel.new') : t('itemsel.evolve', { item: name(p.from!) })}</b>
-      <span class="ia-path"><img src="${itemIcon(p.kind === 'new' ? p.base : p.from!)}" alt="">${ARROW}${ends.slice(0, 3).map((f) => `<img src="${itemIcon(f)}" alt="${name(f)}" title="${name(f)}">`).join('')}${ends.length > 3 ? `<em>+${ends.length - 3}</em>` : ''}</span>
-      <span class="ia-gain">${gain}</span></span>
-    <span class="ia-meta"><span class="ia-bar"><i style="width:${pct.toFixed(0)}%"></i></span>${meta}</span>
-    ${tag ? `<span class="tag">${tag}</span>` : ''}</button>`;
-}
-
-/** A finished item of `base`'s line: stats, passive and how many copies of the base it takes. */
-function finalDetail(base: string, f: string) {
-  const it = ITEMS[f];
-  const copies = Math.min(...LINES[base].filter((p) => p.at(-1) === f).map((p) => p.length)) + 1;
-  return `<b>${it.name}</b><span class="fd-st">${describeStats(it.stats)}</span>${PASSIVES[f] ? `<span class="fd-pa">${PASSIVES[f]}</span>` : ''}
-    <em>${t('itemsel.copiesOf', { n: copies, base: ITEMS[base].name })}</em>`;
+/** An item offer as a card: level pips, stats now and after the pick, the passive and its strength, the pick button. */
+function itemCard(g: Game, o: Offer, n: number, best: boolean) {
+  const it = ITEMS[o.id];
+  const now = o.kind === 'level' ? g.slots[o.slot].level : 0;
+  const next = now + 1;
+  const pct = (p: number) => `${Math.round(p * 100)}%`;
+  const row = (label: string, a: string | null, b: string) => `<div class="sk-row"><span>${label}</span><b>${a ?? '—'}</b>${ARROW}<b class="up">${b}</b></div>`;
+  const before: ItemStats = now ? statsAt(o.id, now) : {};
+  const rows = Object.entries(statsAt(o.id, next)).map(([k, v]) => {
+    const key = k as keyof ItemStats;
+    return row(t(`stat.${key}`), now ? statValue(key, before[key]!) : null, statValue(key, v));
+  });
+  const passive = PASSIVES[o.id];
+  if (passive && next >= PASSIVE_LEVEL) rows.push(row(t('itemsel.passive'), PASSIVE_POWER[now - 1] ? pct(PASSIVE_POWER[now - 1]) : null, pct(PASSIVE_POWER[next - 1])));
+  const pips = Array.from({ length: MAX_LEVEL }, (_, i) => `<i class="pip ${i < now ? 'on' : i === now ? 'next' : ''}"></i>`).join('');
+  const why = best && g.champ.build.includes(o.id) ? t('itemsel.inBuild') : next >= MAX_LEVEL ? t('itemsel.toMax') : '';
+  return `<article class="ioffer skc ${best ? 'best' : ''}" style="animation-delay:${n * 0.07}s">
+    <header class="io-head"><span class="io-icon"><img src="${itemIcon(o.id)}" alt=""></span>
+      <div><b>${it.name}</b><small>${o.kind === 'new' ? t('itemsel.new') : t('itemsel.level', { from: now, to: next })}</small></div></header>
+    <div class="sk-pips" aria-label="${t('itemsel.level', { from: now, to: next })}">${pips}</div>
+    <div class="sk-rows">${rows.join('')}</div>
+    ${passive ? `<p class="sk-desc ${next < PASSIVE_LEVEL ? 'locked' : ''}">${passive}${next < PASSIVE_LEVEL ? `<em>${t('itemsel.unlocksAt', { level: PASSIVE_LEVEL })}</em>` : ''}</p>` : ''}
+    <button class="iact ${best ? 'rec' : ''}" data-a="${n}"><kbd>${n + 1}</kbd>
+      <span class="ia-main"><b>${o.kind === 'new' ? t('itemsel.take') : t('itemsel.levelUp')}</b></span>
+      ${why ? `<span class="ia-meta">${why}</span>` : ''}${best ? `<span class="tag">${t('itemsel.recommended')}</span>` : ''}</button>
+  </article>`;
 }
 
 /** A skill of the skill step: `n` is its number among the skills that can rank up (-1: not this level). */

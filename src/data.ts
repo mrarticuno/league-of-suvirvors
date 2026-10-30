@@ -177,6 +177,7 @@ export const BARON = {
 };
 
 export const ENEMY_ARMOR = { minion: 0, monster: 10, elite: 30, epic: 120 }; // LoL minions have no armor
+export const ENEMY_MR = { minion: 0, monster: 5, elite: 15, epic: 60 }; // half the armor: magic damage was unmitigated before MR
 export const enemyArmorScale = (time: number) => 1 + time / 450;
 
 export const RUN_LENGTH = 1200; // baron spawns at 20:00; killing it wins the run

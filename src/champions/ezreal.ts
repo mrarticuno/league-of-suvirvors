@@ -72,6 +72,8 @@ export const EZREAL: ChampionDef = {
     armor: 24, armorPerLevel: 4.2,
   },
   skills: SKILLS,
+  // OP.GG 16.21: Trinity Force, Manamune, Spear of Shojin; then Serylda's, Endless Hunger, Guardian Angel
+  build: ['3078', '3004', '3161', '6694', '2517', '3026'],
   passive: { name: t('champion.ezreal.passive'), icon: `${ICON}/passive/Ezreal_RisingSpellForce.png` },
   anims: {
     idle: 'ezreal_idle', run: 'ezreal_run', death: 'ezreal_death',

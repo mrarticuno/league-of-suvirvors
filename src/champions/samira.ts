@@ -88,6 +88,8 @@ export const SAMIRA: ChampionDef = {
     armor: 26, armorPerLevel: 4.7,
   },
   skills: SKILLS,
+  // OP.GG 16.21: The Collector, Infinity Edge, Lord Dominik's; then Immortal Shieldbow, Bloodthirster, Guardian Angel
+  build: ['6676', '3031', '3036', '6673', '3072', '3026'],
   passive: { name: t('champion.samira.passive'), icon: `${ICON}/passive/SamiraP.png` },
   anims: {
     idle: 'idle_gun', run: 'run_gun', death: 'death',

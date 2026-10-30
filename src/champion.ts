@@ -5,6 +5,7 @@
 // Sound keys follow `${id}_<event>`: _auto, _auto2, _crit, _auto_hit, _crit_hit, _<Q|W|E|R>, _death.
 import type * as THREE from 'three';
 import type { Enemy, Game } from './game';
+import type { ItemPool } from './items';
 
 export type SkillKey = 'Q' | 'W' | 'E' | 'R';
 export const SKILL_KEYS: readonly SkillKey[] = ['Q', 'W', 'E', 'R'];
@@ -14,7 +15,7 @@ export type DamageType = 'physical' | 'magic';
 
 /** What a hit is: decides mitigation, which item effects apply and what the champion's passives react to. */
 export interface Hit {
-  type: DamageType;
+  type: DamageType | 'true'; // true damage ignores armor and MR (item procs)
   source: 'auto' | 'ability' | 'item'; // 'item': procs and damage over time (item burns, Brand's Blaze) that trigger nothing
   skill?: SkillKey;
   onHit?: boolean; // applies on-hit item effects (autos do; some abilities too, e.g. Mystic Shot)
@@ -125,8 +126,10 @@ export interface ChampionDef {
   vfx: { auto: string; crit: string; autoHit: string; critHit: string; death?: readonly BoneVfx[] };
   /** Systems riding bones for the whole run (the skin's idleParticlesEffects, e.g. a body of flames); stop on death. */
   idleVfx?: readonly BoneVfx[];
-  /** Item bases offered on level up (src/items.ts); default AD_BASES. */
-  itemBases?: readonly string[];
+  /** Items offered on level up (src/items.ts ItemPool): attack or ability power items; default 'ad'. */
+  itemPool?: ItemPool;
+  /** Recommended items (current build-site core, in buy order): offered more often and marked on level up. */
+  build: readonly string[];
   /**
    * Close-range basic attack (e.g. a blade) used instead of the missile when the kit's `meleeAuto` says so:
    * no missile, the hit lands at the end of the windup. Sounds: `<id>_melee`, `_melee2`, `_melee_crit`, `_melee_hit`, `_melee_crit_hit`.
