@@ -59,6 +59,7 @@ renderer.domElement.addEventListener('mousedown', (e) => {
     else {
       moveTarget = cursor.clone();
       rightHeld = true;
+      game.moveOrder();
     }
   } else if (e.button === 0 && !game.autoAttack) game.manualTarget = enemy;
 });
@@ -165,9 +166,13 @@ function arrowDir() {
   ).normalize();
 }
 
+let inputHeld = false; // arrows or joystick last frame: pressing them again is a new move order
 function moveInput() {
   const v = arrowDir();
   if (touch?.move.lengthSq()) v.copy(touch.move);
+  if (v.lengthSq() && !inputHeld && !game.paused) game.moveOrder();
+  inputHeld = v.lengthSq() > 0;
+  if (game.steering) moveTarget = null; // the kit walks the champion: an older click must not pull it back afterwards
   if (v.lengthSq()) {
     moveTarget = null;
     return v;

@@ -31,7 +31,7 @@ it('stars sweep the orbit and hit an enemy on it once per pass', () => {
   const { g, enemies, step } = rig();
   const e = enemy(0, 250);
   enemies.push(e);
-  step(2.5); // stars pass over it 1s apart (the first one starts on it, back at 3s)
+  step(5); // stars pass over it 2s apart (the first one starts on it, back at 6s)
   expect(hitsOn(g, e, 'item')).toBe(3);
   const far = enemy(0, 650); // only the expanded orbit reaches it
   enemies.push(far);
@@ -86,4 +86,13 @@ it('Comet of Legend flies through walls and units, faster and unable to attack, 
   step(3.1);
   expect(kit.ghost!()).toBe(false);
   expect(kit.moveSpeedBonus!()).toBe(0);
+});
+
+it('Comet of Legend keeps flying toward the cast point until a move order ends it', () => {
+  const { kit } = rig();
+  kit.cast('E', 0, new THREE.Vector3(300, 0, 0));
+  expect(kit.steer!()?.x).toBeCloseTo(1);
+  kit.onMoveOrder!();
+  expect(kit.steer!()).toBeUndefined();
+  expect(kit.ghost!()).toBe(false);
 });

@@ -29,6 +29,8 @@ BR = "Play_sfx_Brand_Brand"
 BP = "Play_sfx_Brand_P_"
 AP = "Play_sfx_Aphelios_Aphelios"
 AS = "Play_sfx_AurelionSol_AurelionSol"
+TE = "Play_sfx_Teemo_Teemo"
+TM = "Play_sfx_TeemoMushroom_TeemoRTrap_"
 LX = "Play_sfx_Lux_Lux"
 
 # bank path (without _events/_audio) -> {sound key: event name candidates (first match wins) or an event id}
@@ -188,6 +190,30 @@ BANKS: dict[str, dict[str, list[str] | int]] = {
         "lux_R_end": [LX + "RBeam_beamend"],
         "lux_death": ["Play_sfx_Lux_Death3D_cast"],
     },
+    SFX + "characters/teemo/skins/base/teemo_base_sfx": {
+        "teemo_auto": [TE + "BasicAttack_OnCast"],
+        "teemo_auto2": [TE + "BasicAttack_OnCast"],
+        "teemo_crit": [TE + "CritAttack_OnCast"],
+        "teemo_auto_hit": [TE + "BasicAttack_OnHit"],
+        "teemo_crit_hit": [TE + "CritAttack_OnHit"],
+        "teemo_E_auto": [TE + "EAttack_OnCast"],
+        "teemo_E_crit": [TE + "ECrit_OnCast"],
+        "teemo_E_hit": [TE + "EAttack_OnHit"],
+        "teemo_E_crit_hit": [TE + "ECrit_OnHit"],
+        "teemo_P": [TE + "PStealthBuff_buffactivate"],
+        "teemo_P_end": [TE + "PStealthBuff_buffdeactivate"],
+        "teemo_Q": [TE + "Q_OnCast"],
+        "teemo_Q_launch": [TE + "Q_OnMissileLaunch"],
+        "teemo_Q_hit": [TE + "Q_OnHit"],
+        "teemo_W": [TE + "W_OnCast"],
+        "teemo_W_end": [TE + "W_OnBuffDeactivate"],
+        "teemo_R": [TE + "R_OnCast"],
+        "teemo_R_launch": [TE + "R_missilelaunch"],
+        "teemo_R_bounce": [TE + "RBounce_missilecast"],
+        "teemo_R_arm": [TM + "buffactivate_arm"],
+        "teemo_R_hit": [TM + "hitlocation"],
+        "teemo_death": ["Play_sfx_Teemo_Death3D_cast"],
+    },
     SHARED + "hud_global": {
         "hud_levelup": ["Play_sfx_hud_base_spell_levelup"],
         "hud_item": ["Play_sfx_hud_base_store_item_buy_basic"],
@@ -283,7 +309,7 @@ def render(txtp_path, mp3, music):
 
 def main(wwiser, out_dir, final_dir):
     final = Path(final_dir)
-    wads = [Wad(final / w) for w in ("Champions/Ezreal.wad.client", "Champions/Samira.wad.client", "Champions/Brand.wad.client", "Champions/Aphelios.wad.client", "Champions/AurelionSol.wad.client", "Champions/Lux.wad.client", "Maps/Shipping/Map11.wad.client", "Maps/Shipping/Common.wad.client")]
+    wads = [Wad(final / w) for w in ("Champions/Ezreal.wad.client", "Champions/Samira.wad.client", "Champions/Brand.wad.client", "Champions/Aphelios.wad.client", "Champions/AurelionSol.wad.client", "Champions/Lux.wad.client", "Champions/Teemo.wad.client", "Maps/Shipping/Map11.wad.client", "Maps/Shipping/Common.wad.client")]
     read = lambda p: next((d for d in (w.read(p) for w in wads) if d is not None), None)
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)

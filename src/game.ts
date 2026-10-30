@@ -72,6 +72,7 @@ export interface Enemy {
   slowUntil: number;
   stunUntil: number; // no moving nor attacking while time < stunUntil (generic loop only: EnemyAI bosses ignore it)
   rootUntil: number; // no moving (still attacks) while time < rootUntil (generic loop only, like stunUntil)
+  blindUntil: number; // basic attacks miss while time < blindUntil (generic loop only, like stunUntil)
   airUntil: number; // knocked up: the model arcs into the air while time < airUntil (Game.knockUp)
   airFor: number; // length of that knock-up
   ai?: EnemyAI; // own behaviour (src/enemies), replaces the generic chase-and-attack loop
@@ -215,7 +216,7 @@ export class Game {
   async setChampion(c: ChampionDef) {
     // the particle systems are one champion's at a time (loadVfx replaces them)
     const vfx = this.vfxFor === c.id ? null : loadVfx(`assets/vfx/${c.id}/`);
-    await Promise.all([vfx, loadModel(c.model, c.hide, c.model, c.textures), audio.loadPrefix(c.id)]);
+    await Promise.all([vfx, loadModel(c.model, c.hide, c.model, { textures: c.textures, sequences: c.sequences, translucent: c.translucent }), audio.loadPrefix(c.id)]);
     this.vfxFor = c.id;
     this.champ = c;
   }
@@ -299,6 +300,7 @@ export class Game {
     this.cooldowns = { Q: 0, W: 0, E: 0, R: 0 };
     this.pos.set(0, 0, 0);
     this.player = new Actor(this.champ.model, this.champ.scale);
+    if (this.champ.conformPath) this.player.conformToPath(...this.champ.conformPath);
     this.scene.add(this.player.root);
     this.kit = this.champ.kit(this);
     this.idleFx = (this.champ.idleVfx ?? []).flatMap((v) => this.boneVfx(v, true) ?? []);
@@ -453,6 +455,8 @@ export class Game {
   isSlowed(e: Enemy) { return e.slowUntil > this.time; }
   /** Root: the enemy cannot move for `seconds` but still attacks (generic loop only, like stunEnemy). */
   rootEnemy(e: Enemy, seconds: number) { e.rootUntil = Math.max(e.rootUntil, this.time + seconds); }
+  /** Blind: the enemy's basic attacks miss for `seconds` (generic loop only, like stunEnemy). */
+  blindEnemy(e: Enemy, seconds: number) { e.blindUntil = Math.max(e.blindUntil, this.time + seconds); }
   stunEnemy(e: Enemy, seconds: number) {
     e.stunUntil = Math.max(e.stunUntil, this.time + seconds);
     e.windup = -1;
@@ -529,6 +533,12 @@ export class Game {
     audio.play(`${this.champ.id}_${key}`);
     this.animLock = Math.min(this.player.duration(anim), castTime + 0.6);
   }
+
+  /** The player gave a new move order (main.ts: click on the ground, arrow key or joystick pressed). */
+  moveOrder() { this.kit.onMoveOrder?.(); }
+
+  /** True while the kit walks the champion on its own (`ChampionKit.steer`): main.ts drops the old click target. */
+  get steering() { return this.kit.steer?.() !== undefined; }
 
   /**
    * Cast point while moving with the arrow keys (SkillDef.aim): the auto-aimed enemy, else `moveDir` from the champion
@@ -703,6 +713,7 @@ export class Game {
       return;
     }
 
+    move = this.kit.steer?.() ?? move;
     const moving = move.lengthSq() > 0;
     // Survivors rule: the champion attacks while moving. During the windup it turns to the target; after it, back to running.
     this.tryAttack(dt);
@@ -1137,7 +1148,7 @@ export class Game {
     const e: Enemy = {
       id: this.nextId++, def, actor, pos: at ?? new THREE.Vector3(this.pos.x + Math.cos(a) * r, 0, this.pos.z + Math.sin(a) * r),
       hp, maxHp: hp, attackTimer: 0, windup: -1, deadFor: -1, animDt: 0,
-      armor: (def.armor ?? ENEMY_ARMOR[def.tier]) * (epic ? 1 : enemyArmorScale(this.time)), shred: 0, shredUntil: 0, slowPct: 0, slowUntil: 0, stunUntil: 0, rootUntil: 0, airUntil: 0, airFor: 0,
+      armor: (def.armor ?? ENEMY_ARMOR[def.tier]) * (epic ? 1 : enemyArmorScale(this.time)), shred: 0, shredUntil: 0, slowPct: 0, slowUntil: 0, stunUntil: 0, rootUntil: 0, blindUntil: 0, airUntil: 0, airFor: 0,
       mr: ENEMY_MR[def.tier] * (epic ? 1 : enemyArmorScale(this.time)), mrShred: 0, mrShredUntil: 0,
     };
     e.ai = AI[def.model]?.(this, e);
@@ -1190,7 +1201,7 @@ export class Game {
       }
       if (e.windup >= 0) {
         e.windup -= dt;
-        if (e.windup < 0 && this.alive && this.stasis <= 0) {
+        if (e.windup < 0 && this.alive && this.stasis <= 0 && e.blindUntil <= this.time) {
           audio.playAt(`${e.def.model}_hit`, e.pos, this.pos);
           if (e.def.ranged) {
             // aimed at where the champion is now, then flies straight so it can be dodged
