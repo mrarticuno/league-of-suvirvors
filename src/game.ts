@@ -72,6 +72,7 @@ export interface Enemy {
   slowUntil: number;
   stunUntil: number; // no moving nor attacking while time < stunUntil (generic loop only: EnemyAI bosses ignore it)
   rootUntil: number; // no moving (still attacks) while time < rootUntil (generic loop only, like stunUntil)
+  blindUntil: number; // basic attacks miss while time < blindUntil (generic loop only, like stunUntil)
   airUntil: number; // knocked up: the model arcs into the air while time < airUntil (Game.knockUp)
   airFor: number; // length of that knock-up
   ai?: EnemyAI; // own behaviour (src/enemies), replaces the generic chase-and-attack loop
@@ -453,6 +454,8 @@ export class Game {
   isSlowed(e: Enemy) { return e.slowUntil > this.time; }
   /** Root: the enemy cannot move for `seconds` but still attacks (generic loop only, like stunEnemy). */
   rootEnemy(e: Enemy, seconds: number) { e.rootUntil = Math.max(e.rootUntil, this.time + seconds); }
+  /** Blind: the enemy's basic attacks miss for `seconds` (generic loop only, like stunEnemy). */
+  blindEnemy(e: Enemy, seconds: number) { e.blindUntil = Math.max(e.blindUntil, this.time + seconds); }
   stunEnemy(e: Enemy, seconds: number) {
     e.stunUntil = Math.max(e.stunUntil, this.time + seconds);
     e.windup = -1;
@@ -1136,7 +1139,7 @@ export class Game {
     const e: Enemy = {
       id: this.nextId++, def, actor, pos: at ?? new THREE.Vector3(this.pos.x + Math.cos(a) * r, 0, this.pos.z + Math.sin(a) * r),
       hp, maxHp: hp, attackTimer: 0, windup: -1, deadFor: -1, animDt: 0,
-      armor: (def.armor ?? ENEMY_ARMOR[def.tier]) * (epic ? 1 : enemyArmorScale(this.time)), shred: 0, shredUntil: 0, slowPct: 0, slowUntil: 0, stunUntil: 0, rootUntil: 0, airUntil: 0, airFor: 0,
+      armor: (def.armor ?? ENEMY_ARMOR[def.tier]) * (epic ? 1 : enemyArmorScale(this.time)), shred: 0, shredUntil: 0, slowPct: 0, slowUntil: 0, stunUntil: 0, rootUntil: 0, blindUntil: 0, airUntil: 0, airFor: 0,
       mr: ENEMY_MR[def.tier] * (epic ? 1 : enemyArmorScale(this.time)), mrShred: 0, mrShredUntil: 0,
     };
     e.ai = AI[def.model]?.(this, e);
@@ -1189,7 +1192,7 @@ export class Game {
       }
       if (e.windup >= 0) {
         e.windup -= dt;
-        if (e.windup < 0 && this.alive && this.stasis <= 0) {
+        if (e.windup < 0 && this.alive && this.stasis <= 0 && e.blindUntil <= this.time) {
           audio.playAt(`${e.def.model}_hit`, e.pos, this.pos);
           if (e.def.ranged) {
             // aimed at where the champion is now, then flies straight so it can be dodged

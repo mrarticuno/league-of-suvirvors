@@ -5,6 +5,7 @@ import { AURELIONSOL } from './aurelionsol';
 import { BRAND } from './brand';
 import { EZREAL } from './ezreal';
 import { SAMIRA } from './samira';
+import { TEEMO } from './teemo';
 
-export const CHAMPIONS: Record<string, ChampionDef> = { ezreal: EZREAL, samira: SAMIRA, brand: BRAND, aphelios: APHELIOS, aurelionsol: AURELIONSOL };
+export const CHAMPIONS: Record<string, ChampionDef> = { ezreal: EZREAL, samira: SAMIRA, brand: BRAND, aphelios: APHELIOS, aurelionsol: AURELIONSOL, teemo: TEEMO };
 export const DEFAULT_CHAMPION = EZREAL;
