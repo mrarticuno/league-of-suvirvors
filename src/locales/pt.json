@@ -562,5 +562,21 @@
  "champion.aurelionsol.Q.desc": "Lança uma estrela que cresce enquanto Aurelion Sol fica a até 650 unidades. Ela explode quando ele se afasta, após 5s ou no tamanho máximo, causando dano mágico e Atordoamento de 0,55–1,1s nos inimigos da área. Quanto maior ficou, mais dano causa (até +50%).",
  "champion.aurelionsol.W.desc": "Passiva: cada acerto das estrelas causa mais dano. Ativa: as estrelas se afastam até 650 unidades, giram duas vezes mais rápido e causam 40% a mais de dano, gastando mana a cada segundo.",
  "champion.aurelionsol.E.desc": "Levanta voo por 3s, passando por cima de paredes e unidades com 60–100% de Velocidade de Movimento adicional. Não pode atacar enquanto voa.",
- "champion.aurelionsol.R.desc": "Faz um meteoro cair na área alvo. Após 1s ele atinge o chão, causando dano mágico aos inimigos em até 450 unidades e arremessando-os ao ar por 1s."
+ "champion.aurelionsol.R.desc": "Faz um meteoro cair na área alvo. Após 1s ele atinge o chão, causando dano mágico aos inimigos em até 450 unidades e arremessando-os ao ar por 1s.",
+ "champion.teemo.name": "Teemo",
+ "champion.teemo.title": "o Explorador Veloz",
+ "champion.teemo.passive": "Técnicas de Guerrilha",
+ "champion.teemo.Q": "Dardo Ofuscante",
+ "champion.teemo.W": "Mover Depressa",
+ "champion.teemo.E": "Tiro Tóxico",
+ "champion.teemo.R": "Armadilha Venenosa",
+ "champion.teemo.hud.on": "Elemento Surpresa: +{n}% VA",
+ "champion.teemo.hud.off": "Fique parado 2s: +{n}% VA",
+ "champion.teemo.blind": "Cegueira (s)",
+ "champion.teemo.poison": "Dano do veneno",
+ "champion.teemo.Q.desc": "Dispara um dardo no inimigo alvo que causa dano mágico e o cega por 4–6s: seus ataques básicos erram.",
+ "champion.teemo.W.desc": "Passivo: Teemo tem 12–28% de Velocidade de Movimento bônus. Ativo: dobra esse bônus por 3s.",
+ "champion.teemo.E.desc": "Passivo: os ataques básicos de Teemo causam dano mágico adicional ao atingir e envenenam o alvo, causando dano mágico a cada segundo por 4s (145% contra monstros).",
+ "champion.teemo.R.desc": "Arremessa um cogumelo na área alvo (até 3 cargas). Ele se arma após 1s e dura 5 min; quando um inimigo pisa nele, explode, causando dano mágico aos inimigos em até 400 unidades e aplicando 30–50% de Lentidão por 4s. Um cogumelo que cai sobre outro quica para frente.",
+ "champion.teemo.recharge": "Recarga da carga (s)"
 }

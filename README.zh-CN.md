@@ -70,7 +70,7 @@ pnpm dev        # http://localhost:5173（在第一个界面选择英雄）
 2. 哈希列表（游戏的 `.bin` 通过 xxh64 哈希引用纹理和动画）：
    ```bash
    curl -s https://raw.communitydragon.org/data/hashes/lol/hashes.game.txt \
-     | grep -E "assets/characters/(ezreal|samira|brand|aphelios|aurelionsol|sru_|turret|inhibitor|nexus)" > assets-raw/hashes.filtered.txt
+     | grep -E "assets/characters/(ezreal|samira|brand|aphelios|aurelionsol|teemo|sru_|turret|inhibitor|nexus)" > assets-raw/hashes.filtered.txt
    ```
 3. 从 WAD 中提取（`tools/extract_lol.py`）并转换为 `.glb`（`tools/build_models.py`）：
    ```bash
@@ -79,6 +79,8 @@ pnpm dev        # http://localhost:5173（在第一个界面选择英雄）
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt samira assets-raw/samira "$G/Champions/Samira.wad.client"
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt brand assets-raw/brand "$G/Champions/Brand.wad.client"
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt aurelionsol assets-raw/aurelionsol "$G/Champions/AurelionSol.wad.client"
+   .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt teemo assets-raw/teemo "$G/Champions/Teemo.wad.client"
+   .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt teemomushroom assets-raw/teemomushroom "$G/Champions/Teemo.wad.client"
    # 厄斐琉斯和折镜的驻灵（同一 WAD 中的独立角色）
    for c in aphelios apheliosturret; do .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt $c assets-raw/$c "$G/Champions/Aphelios.wad.client"; done
    for c in sru_chaosminion{melee,ranged,siege,super} sru_orderminionmelee sru_krug sru_murkwolf sru_razorbeak sru_razorbeakmini sru_gromp sru_blue sru_red sru_riftherald sru_baron sru_crab sru_dragon sru_dragon_{air,fire,earth,water,hextech,chemtech}; do
@@ -102,7 +104,7 @@ pnpm dev        # http://localhost:5173（在第一个界面选择英雄）
    `pieces` 是一个有限的 `.mapgeo` v14 解析器：如果跳过或失败（格式版本不同、缺少 WAD），运行时会根据布局障碍物绘制深色方块/圆柱。不会出错。
 5. 技能特效：从皮肤的 `.bin` 读取伊泽瑞尔的粒子系统，以及它们使用的所有纹理和网格。使用第 4 步下载的哈希列表：
    ```bash
-   for c in ezreal samira brand aphelios aurelionsol; do (cd tools && ../.venv-tools/bin/python build_vfx.py ../assets-raw/hashes $c ../public/assets/vfx/$c "$G"); done
+   for c in ezreal samira brand aphelios aurelionsol teemo; do (cd tools && ../.venv-tools/bin/python build_vfx.py ../assets-raw/hashes $c ../public/assets/vfx/$c "$G"); done
    ```
    生成 `systems.json`（按 `ResourceResolver` 键索引的特效，例如 `Ezreal_Q_mis`）、`spells.json`（飞弹速度/宽度/射程）以及资源的 PNG/JSON。`tools/read_bin.py` 可以单独把任意 `.bin` 转为 JSON。发射器运行时位于 `src/particles.ts`；`src/vfx.ts` 只负责选择播放哪个系统以及在哪里播放。
 
@@ -179,6 +181,13 @@ pnpm dev        # http://localhost:5173（在第一个界面选择英雄）
   - **E（星流横溢）**：飞行 3 秒，越过墙体和单位，+60–100% 移动速度，无法攻击。
   - **R（星天落瀑）**：1 秒后陨星落在目标区域：450 码内 200/325/450 + 75% 法术强度并击飞 1 秒。
   - 非英雄联盟原版：Q 消耗 50–70，R 100，W 无开启消耗；E 可转向，冷却 20–12 秒（原为 80–60 秒的长距离固定直线）；星辰回复法力；星河急涌使用当前奇点（E）的漩涡特效并随半径变大，爆炸使用星天落瀑的命中粒子（当前技能组没有会变大的星星）。
+- **提莫**（英雄联盟属性；游击队军备不隐身）：射程 500，法术强度装备。
+  - **被动（游击队军备）**：静止 2 秒后提莫进入伪装（潜行待机姿势，不隐身）：静止期间及移动后 5 秒内获得 +20/40/60/80% 攻击速度（1/5/10/15 级）。静止时计量条会填满。
+  - **Q（致盲吹箭）**：向目标敌人（射程 680）射出吹箭，造成 80–260 + 70% 法术强度并致盲 4–6 秒（其普通攻击落空）。
+  - **W（小莫快跑）**：被动 +12–28% 移动速度；主动使其翻倍，持续 3 秒。
+  - **E（毒性射击）**：被动。普通攻击命中时造成 9–65 + 30% 法术强度魔法伤害，并使目标中毒，4 秒内每秒造成 6–30 + 10% 法术强度（对野怪 145%）。
+  - **R（种蘑菇）**：最多 3 层充能，逐层恢复（30/25/20 秒，受技能急速缩短）。投掷一个蘑菇（射程 600/750/900），1 秒后布置完毕，持续 5 分钟；敌人踩到（135）时爆炸：400 码内造成 200/325/450 + 50% 法术强度并减速 30–50%，持续 4 秒。落在另一个蘑菇上的蘑菇会向前弹跳 350/450/550，若仍落在蘑菇上则继续弹跳。
+  - 非英雄联盟原版：不隐身；Q 消耗 40–60（原为 70–90），且总是按对小兵/野怪的双倍时长致盲；W 的被动永不失效（没有敌方英雄和防御塔）；R 每级都是 3 层充能（原为 3/4/5），伤害一次性造成（原为 4 秒中毒）。
 - **两步升级**：
   1. 按英雄联盟规则提升一个技能等级：基础技能在 1/3/5/7/9 级，R 在 6/11/16 级（厄斐琉斯：属性点，见上文）。没有可升级的技能时跳过此步。
   2. 从随机的 3 件装备中选 1 件（出装完成后改为药水）。
@@ -187,7 +196,7 @@ pnpm dev        # http://localhost:5173（在第一个界面选择英雄）
   - 每件装备有 5 级。属性从 40%（1 级）成长到 100%（5 级）；被动在 3 级解锁，强度 60%，4 级 80%，5 级 100%。魔宗、大天使之杖和凛冬之临在 5 级获得转化后的被动（魔切、炽天使之拥、末日寒冬）。
   - 装备池：召唤师峡谷的全部传说装备，除了带主动效果的装备（中娅沙漏、幽梦之灵、九头蛇系列……）、辅助装备、重伤装备（凡性的提醒、炼金朋克链锯剑、莫雷洛秘典；荆棘之甲只保留反伤）以及需要视野或英雄护盾的被动（暗行者之爪、毒蛇之牙）。物理英雄获得攻击装备，法术英雄获得法强装备，坦克和混合装备两者都有。
   - 被动针对怪潮调整："英雄"触发改为击杀精英 / 史诗野怪；法术护盾格挡下一次受到的伤害。
-  - 每个英雄的推荐出装（OP.GG，16.21 版本）：出现概率为三倍，并标记为“推荐”。伊泽瑞尔：三相之力、魔宗、朔极之矛、赛瑞尔达的怨恨、无穷饥渴、守护天使。莎弥拉：收集者、无尽之刃、多米尼克领主的致意、不朽盾弓、饮血剑、守护天使。布兰德：黑焰火炬、瑞莱的冰晶节杖、兰德里的折磨、影焰、灭世者的死亡之帽、虚空之杖。厄斐琉斯：收集者、无尽之刃、多米尼克领主的致意、卢安娜的飓风、守护天使、饮血剑。 奥瑞利安·索尔：兰德里的折磨、瑞莱的冰晶节杖、灭世者的死亡之帽、虚空之杖、影焰、星界驱驰。
+  - 每个英雄的推荐出装（OP.GG，16.21 版本）：出现概率为三倍，并标记为“推荐”。伊泽瑞尔：三相之力、魔宗、朔极之矛、赛瑞尔达的怨恨、无穷饥渴、守护天使。莎弥拉：收集者、无尽之刃、多米尼克领主的致意、不朽盾弓、饮血剑、守护天使。布兰德：黑焰火炬、瑞莱的冰晶节杖、兰德里的折磨、影焰、灭世者的死亡之帽、虚空之杖。厄斐琉斯：收集者、无尽之刃、多米尼克领主的致意、卢安娜的飓风、守护天使、饮血剑。 奥瑞利安·索尔：兰德里的折磨、瑞莱的冰晶节杖、灭世者的死亡之帽、虚空之杖、影焰、星界驱驰。 提莫：纳什之牙、兰德里的折磨、裂隙制造者、灭世者的死亡之帽、虚空之杖、影焰。
   - 出装完成（6 件装备均为 5 级）：升级时提供生命药水或法力药水（恢复 5% 最大值），每次击杀有 1% 概率掉落图纸（蓝色卷轴，每局 1 张），使随机一件装备变为传说（属性 +50%；该格获得动态金色光环与“传说”标签）。
   - 鞋子：六格之外的第 7 格。5:00 获得鞋子（+25 移动速度）；击杀峡谷迅捷蟹后可选择一双二级鞋（镀甲之靴带镀层：物理攻击造成的伤害降低 10%）；击杀小龙后升级为三级鞋（仅属性）。
   - 节奏：整局游戏从 0:00 的 x1 逐渐加速到 5:00 的 x2，之后保持 x2。

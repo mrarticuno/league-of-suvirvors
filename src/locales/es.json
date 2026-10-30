@@ -562,5 +562,21 @@
  "champion.aurelionsol.Q.desc": "Lanza una estrella que crece mientras Aurelion Sol permanece a menos de 650 unidades. Estalla cuando él se aleja, tras 5 s o al llegar a su tamaño máximo, e inflige daño mágico y Aturdimiento de 0,55–1,1 s a los enemigos del área. Cuanto más creció, más daño inflige (hasta +50%).",
  "champion.aurelionsol.W.desc": "Pasiva: cada golpe de las estrellas inflige más daño. Activa: las estrellas se alejan hasta 650 unidades, giran el doble de rápido e infligen un 40% más de daño, consumiendo maná cada segundo.",
  "champion.aurelionsol.E.desc": "Alza el vuelo durante 3 s, pasando por encima de muros y unidades con un 60–100% de Velocidad de Movimiento adicional. No puede atacar mientras vuela.",
- "champion.aurelionsol.R.desc": "Hace caer un meteorito en el área objetivo. Tras 1 s impacta, inflige daño mágico a los enemigos a menos de 450 unidades y los lanza por los aires durante 1 s."
+ "champion.aurelionsol.R.desc": "Hace caer un meteorito en el área objetivo. Tras 1 s impacta, inflige daño mágico a los enemigos a menos de 450 unidades y los lanza por los aires durante 1 s.",
+ "champion.teemo.name": "Teemo",
+ "champion.teemo.title": "el Explorador Veloz",
+ "champion.teemo.passive": "Tácticas de Guerrilla",
+ "champion.teemo.Q": "Dardo Cegador",
+ "champion.teemo.W": "Movimiento Rápido",
+ "champion.teemo.E": "Tiro Tóxico",
+ "champion.teemo.R": "Trampa Nociva",
+ "champion.teemo.hud.on": "Elemento sorpresa: +{n} % VA",
+ "champion.teemo.hud.off": "Quieto 2 s: +{n} % VA",
+ "champion.teemo.blind": "Ceguera (s)",
+ "champion.teemo.poison": "Daño del veneno",
+ "champion.teemo.Q.desc": "Dispara un dardo al enemigo objetivo que inflige daño mágico y lo ciega durante 4–6 s: sus ataques básicos fallan.",
+ "champion.teemo.W.desc": "Pasiva: Teemo obtiene un 12–28 % de Velocidad de Movimiento adicional. Activa: la duplica durante 3 s.",
+ "champion.teemo.E.desc": "Pasiva: los ataques básicos de Teemo infligen daño mágico adicional al impactar y envenenan al objetivo, que recibe daño mágico cada segundo durante 4 s (145 % contra monstruos).",
+ "champion.teemo.R.desc": "Lanza un hongo a la zona objetivo (hasta 3 cargas). Se arma tras 1 s y dura 5 min; cuando un enemigo lo pisa, explota, infligiendo daño mágico a los enemigos a 400 unidades y una ralentización del 30–50 % durante 4 s. Un hongo que cae sobre otro rebota hacia adelante.",
+ "champion.teemo.recharge": "Recarga de carga (s)"
 }

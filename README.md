@@ -70,7 +70,7 @@ The models are **not in the repository** (they are Riot assets). Generate them l
 2. Hash list (the game's `.bin` files reference textures/animations by xxh64 hash):
    ```bash
    curl -s https://raw.communitydragon.org/data/hashes/lol/hashes.game.txt \
-     | grep -E "assets/characters/(ezreal|samira|brand|aphelios|aurelionsol|sru_|turret|inhibitor|nexus)" > assets-raw/hashes.filtered.txt
+     | grep -E "assets/characters/(ezreal|samira|brand|aphelios|aurelionsol|teemo|sru_|turret|inhibitor|nexus)" > assets-raw/hashes.filtered.txt
    ```
 3. Extract from the WADs (`tools/extract_lol.py`) and convert to `.glb` (`tools/build_models.py`):
    ```bash
@@ -79,6 +79,8 @@ The models are **not in the repository** (they are Riot assets). Generate them l
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt samira assets-raw/samira "$G/Champions/Samira.wad.client"
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt brand assets-raw/brand "$G/Champions/Brand.wad.client"
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt aurelionsol assets-raw/aurelionsol "$G/Champions/AurelionSol.wad.client"
+   .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt teemo assets-raw/teemo "$G/Champions/Teemo.wad.client"
+   .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt teemomushroom assets-raw/teemomushroom "$G/Champions/Teemo.wad.client"
    # Aphelios and Crescendum's sentry (a character of its own in the same WAD)
    for c in aphelios apheliosturret; do .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt $c assets-raw/$c "$G/Champions/Aphelios.wad.client"; done
    for c in sru_chaosminion{melee,ranged,siege,super} sru_orderminionmelee sru_krug sru_murkwolf sru_razorbeak sru_razorbeakmini sru_gromp sru_blue sru_red sru_riftherald sru_baron sru_crab sru_dragon sru_dragon_{air,fire,earth,water,hextech,chemtech}; do
@@ -102,7 +104,7 @@ The models are **not in the repository** (they are Riot assets). Generate them l
    `pieces` is a limited `.mapgeo` v14 parser: if it is skipped or fails (different format version, missing WAD), the runtime draws dark boxes/cylinders from the layout obstacles. Nothing breaks.
 5. Ability VFX: Ezreal's particle systems read from the skin `.bin`, with every texture and mesh they use. Uses the hash lists downloaded in step 4:
    ```bash
-   for c in ezreal samira brand aphelios aurelionsol; do (cd tools && ../.venv-tools/bin/python build_vfx.py ../assets-raw/hashes $c ../public/assets/vfx/$c "$G"); done
+   for c in ezreal samira brand aphelios aurelionsol teemo; do (cd tools && ../.venv-tools/bin/python build_vfx.py ../assets-raw/hashes $c ../public/assets/vfx/$c "$G"); done
    ```
    Generates `systems.json` (effects indexed by `ResourceResolver` keys, e.g. `Ezreal_Q_mis`), `spells.json` (missile speed/width/range) and the asset PNG/JSON files. `tools/read_bin.py` alone converts any `.bin` into JSON. The emitter runtime lives in `src/particles.ts`; `src/vfx.ts` only picks which system to play and where.
 
@@ -179,6 +181,13 @@ WASD is not used because it clashes with Q/W/E.
   - **E (Comet of Legend)**: 3 s flight over walls and units with +60–100% Move Speed, no attacks.
   - **R (Falling Star)**: a meteor lands on the target area after 1 s: 200/325/450 + 75% AP within 450 and a 1 s knock-up.
   - Not from LoL: costs Q 50–70, R 100, W has no activation cost; E is steerable and on a 20–12 s cooldown (was a long locked line on 80–60 s); the star mana restore; Starsurge wears today's Singularity vortex (E), growing with its radius, and blasts with Falling Star's impact particles (today's kit has no growing star).
+- **Teemo** (LoL stats; Guerrilla Warfare without invisibility): 500 range, ability power items.
+  - **Passive (Guerrilla Warfare)**: standing still for 2 s camouflages Teemo (stealth idle pose, no invisibility): +20/40/60/80% attack speed (levels 1/5/10/15) while he stays still and for 5 s after he moves. The gauge fills while he stands still.
+  - **Q (Blinding Dart)**: a dart at the target enemy (680 range) for 80–260 + 70% AP and a 4–6 s blind (its basic attacks miss).
+  - **W (Move Quick)**: passive +12–28% Move Speed; active doubles it for 3 s.
+  - **E (Toxic Shot)**: passive. Basic attacks deal 9–65 + 30% AP on-hit magic damage and poison for 6–30 + 10% AP per second over 4 s (145% against monsters).
+  - **R (Noxious Trap)**: up to 3 charges, recharged one after the other (30/25/20 s, shortened by ability haste). Tosses a mushroom (600/750/900 range) that arms after 1 s and lasts 5 min; an enemy stepping on it (135) sets it off: 200/325/450 + 50% AP within 400 and a 30–50% slow for 4 s. A mushroom landing on another bounces 350/450/550 further, again while it keeps landing on mushrooms.
+  - Not from LoL: no invisibility; Q costs 40–60 (was 70–90) and always blinds for the doubled minion/monster duration; W's passive is never lost (no enemy champions nor turrets); R keeps 3 charges at every rank (was 3/4/5) and deals its damage at once (was a 4 s poison).
 - **Two-step level-up**:
   1. One ability rank, by LoL's rule: basic abilities at levels 1/3/5/7/9, R at levels 6/11/16 (Aphelios: stat points, see above). The step is skipped when no rank is available.
   2. One item out of 3 rolled (or a potion, once the build is complete).
@@ -187,7 +196,7 @@ WASD is not used because it clashes with Q/W/E.
   - Every item has 5 levels. Stats grow from 40% (level 1) to 100% (level 5); the passive unlocks at level 3 at 60% strength, 80% at level 4, 100% at level 5. Manamune, Archangel's Staff and Winter's Approach gain their transformed passive (Muramana, Seraph's Embrace, Fimbulwinter) at level 5.
   - Pool: every Summoner's Rift legendary except items with an active (Zhonya's, Youmuu's, the Hydras...), support items, anti-heal items (Mortal Reminder, Chempunk, Morellonomicon; Thornmail keeps only its reflect) and passives that need vision or champion shields (Umbral Glaive, Serpent's Fang). AD champions get attack items, AP champions ability power items, both get tanks and hybrids.
   - Passives adapted to hordes: "champion" triggers become elite/epic monster kills; spell shields block the next damage taken.
-  - Recommended build per champion (OP.GG, patch 16.21): offered three times as often and tagged "Recommended". Ezreal: Trinity Force, Manamune, Spear of Shojin, Serylda's Grudge, Endless Hunger, Guardian Angel. Samira: The Collector, Infinity Edge, Lord Dominik's Regards, Immortal Shieldbow, Bloodthirster, Guardian Angel. Brand: Blackfire Torch, Rylai's, Liandry's, Shadowflame, Rabadon's, Void Staff. Aphelios: The Collector, Infinity Edge, Lord Dominik's Regards, Runaan's Hurricane, Guardian Angel, Bloodthirster. Aurelion Sol: Liandry's, Rylai's, Rabadon's, Void Staff, Shadowflame, Cosmic Drive.
+  - Recommended build per champion (OP.GG, patch 16.21): offered three times as often and tagged "Recommended". Ezreal: Trinity Force, Manamune, Spear of Shojin, Serylda's Grudge, Endless Hunger, Guardian Angel. Samira: The Collector, Infinity Edge, Lord Dominik's Regards, Immortal Shieldbow, Bloodthirster, Guardian Angel. Brand: Blackfire Torch, Rylai's, Liandry's, Shadowflame, Rabadon's, Void Staff. Aphelios: The Collector, Infinity Edge, Lord Dominik's Regards, Runaan's Hurricane, Guardian Angel, Bloodthirster. Aurelion Sol: Liandry's, Rylai's, Rabadon's, Void Staff, Shadowflame, Cosmic Drive. Teemo: Nashor's Tooth, Liandry's Torment, Riftmaker, Rabadon's Deathcap, Void Staff, Shadowflame.
   - Complete build (6 items at level 5): level-ups offer a Health or Mana Potion (5% of max), and each kill has a 1% chance to drop a blueprint (blue scroll, 1 per run) that makes a random item Legendary (+50% stats; its slot gets an animated gold ring and a "Legendary" ribbon).
   - Boots: a 7th slot outside the six. Boots (+25 Move Speed) at 5:00; killing the Rift Scuttler offers a pick of Berserker's Greaves, Boots of Swiftness, Sorcerer's Shoes, Plated Steelcaps (Plating: physical hits deal 10% less), Mercury's Treads or Ionian Boots of Lucidity; killing the dragon turns them into their tier 3 (Gunmetal Greaves, Swiftmarch, Spellslinger's Shoes, Armored Advance, Chainlaced Crushers, Crimson Lucidity: stats only).
   - Pace: the whole game speeds up from x1 at 0:00 to x2 at 5:00, then stays at x2.

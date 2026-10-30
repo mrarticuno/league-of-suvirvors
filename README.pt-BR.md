@@ -70,7 +70,7 @@ Os modelos **não estão no repositório** (são assets da Riot). Gere-os localm
 2. Lista de hashes (os `.bin` do jogo referenciam texturas/animações por hash xxh64):
    ```bash
    curl -s https://raw.communitydragon.org/data/hashes/lol/hashes.game.txt \
-     | grep -E "assets/characters/(ezreal|samira|brand|aphelios|aurelionsol|sru_|turret|inhibitor|nexus)" > assets-raw/hashes.filtered.txt
+     | grep -E "assets/characters/(ezreal|samira|brand|aphelios|aurelionsol|teemo|sru_|turret|inhibitor|nexus)" > assets-raw/hashes.filtered.txt
    ```
 3. Extrair dos WADs (`tools/extract_lol.py`) e converter para `.glb` (`tools/build_models.py`):
    ```bash
@@ -79,6 +79,8 @@ Os modelos **não estão no repositório** (são assets da Riot). Gere-os localm
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt samira assets-raw/samira "$G/Champions/Samira.wad.client"
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt brand assets-raw/brand "$G/Champions/Brand.wad.client"
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt aurelionsol assets-raw/aurelionsol "$G/Champions/AurelionSol.wad.client"
+   .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt teemo assets-raw/teemo "$G/Champions/Teemo.wad.client"
+   .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt teemomushroom assets-raw/teemomushroom "$G/Champions/Teemo.wad.client"
    # Aphelios e a atalaia do Crescendum (um personagem próprio no mesmo WAD)
    for c in aphelios apheliosturret; do .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt $c assets-raw/$c "$G/Champions/Aphelios.wad.client"; done
    for c in sru_chaosminion{melee,ranged,siege,super} sru_orderminionmelee sru_krug sru_murkwolf sru_razorbeak sru_razorbeakmini sru_gromp sru_blue sru_red sru_riftherald sru_baron sru_crab sru_dragon sru_dragon_{air,fire,earth,water,hextech,chemtech}; do
@@ -102,7 +104,7 @@ Os modelos **não estão no repositório** (são assets da Riot). Gere-os localm
    O `pieces` é um parser limitado do `.mapgeo` v14: se for pulado ou falhar (versão diferente do formato, WAD ausente), o runtime desenha caixas/cilindros escuros a partir dos obstáculos do layout — nada quebra.
 5. VFX das habilidades: sistemas de partículas do Ezreal lidos do `.bin` da skin, com todas as texturas e malhas que eles usam. Usa as listas de hashes baixadas no passo 4:
    ```bash
-   for c in ezreal samira brand aphelios aurelionsol; do (cd tools && ../.venv-tools/bin/python build_vfx.py ../assets-raw/hashes $c ../public/assets/vfx/$c "$G"); done
+   for c in ezreal samira brand aphelios aurelionsol teemo; do (cd tools && ../.venv-tools/bin/python build_vfx.py ../assets-raw/hashes $c ../public/assets/vfx/$c "$G"); done
    ```
    Gera `systems.json` (efeitos indexados pelas chaves do `ResourceResolver`, ex. `Ezreal_Q_mis`), `spells.json` (velocidade/largura/alcance dos mísseis) e os PNG/JSON dos assets. `tools/read_bin.py` sozinho converte qualquer `.bin` em JSON. O runtime dos emissores fica em `src/particles.ts`; `src/vfx.ts` só escolhe qual sistema tocar e onde.
 
@@ -179,6 +181,13 @@ WASD não é usado porque colide com Q/W/E.
   - **E (Cometa Lendário)**: voo de 3 s por cima de paredes e unidades com +60–100% de Velocidade de Movimento, sem atacar.
   - **R (Estrela Cadente)**: um meteoro cai na área alvo após 1 s: 200/325/450 + 75% PdH em 450 e arremesso ao ar de 1 s.
   - Fora do LoL: custos Q 50–70, R 100, W sem custo de ativação; o E é dirigível e tem recarga de 20–12 s (era uma linha longa e travada com 80–60 s); a mana das estrelas; a Oscilação Estelar usa o vórtice da Singularidade atual (E), crescendo com o raio, e explode com as partículas do impacto da Estrela Cadente (o kit atual não tem estrela que cresce).
+- **Teemo** (stats do LoL; Técnicas de Guerrilha sem invisibilidade): alcance 500, itens de poder de habilidade.
+  - **Passiva (Técnicas de Guerrilha)**: ficar parado por 2 s camufla o Teemo (pose de furtividade, sem invisibilidade): +20/40/60/80% de Velocidade de Ataque (níveis 1/5/10/15) enquanto ele fica parado e por 5 s depois que ele se move. O medidor enche enquanto ele está parado.
+  - **Q (Dardo Ofuscante)**: um dardo no inimigo alvo (alcance 680) que causa 80–260 + 70% PdH e cega por 4–6 s (os ataques básicos dele erram).
+  - **W (Mover Depressa)**: passivo +12–28% de Velocidade de Movimento; o ativo dobra esse bônus por 3 s.
+  - **E (Tiro Tóxico)**: passivo. Ataques básicos causam 9–65 + 30% PdH de dano mágico ao atingir e envenenam por 6–30 + 10% PdH por segundo durante 4 s (145% contra monstros).
+  - **R (Armadilha Venenosa)**: até 3 cargas, recarregadas uma após a outra (30/25/20 s, reduzidas pela Aceleração de Habilidade). Arremessa um cogumelo (alcance 600/750/900) que se arma após 1 s e dura 5 min; um inimigo que pisa nele (135) o detona: 200/325/450 + 50% PdH em 400 e Lentidão de 30–50% por 4 s. Um cogumelo que cai sobre outro quica 350/450/550 para frente, de novo enquanto continuar caindo sobre cogumelos.
+  - Fora do LoL: sem invisibilidade; o Q custa 40–60 (era 70–90) e sempre cega pela duração dobrada contra tropas/monstros; o passivo do W nunca se perde (sem campeões nem torres inimigas); o R tem 3 cargas em todos os ranks (era 3/4/5) e causa o dano de uma vez (era um veneno de 4 s).
 - **Level-up em duas etapas**:
   1. Um rank de habilidade, pela regra do LoL: básicas nos níveis 1/3/5/7/9, R nos níveis 6/11/16 (Aphelios: pontos de atributo, ver acima). A etapa é pulada quando não há rank disponível.
   2. Um item entre 3 sorteados (ou uma poção, com a build completa).
@@ -187,7 +196,7 @@ WASD não é usado porque colide com Q/W/E.
   - Cada item tem 5 níveis. Os atributos crescem de 40% (nível 1) a 100% (nível 5); a passiva é liberada no nível 3 com 60% da força, 80% no nível 4 e 100% no nível 5. Manamune, Cajado do Arcanjo e Aproximação do Inverno ganham a passiva transformada (Muramana, Abraço do Serafim, Fimbulwinter) no nível 5.
   - Catálogo: todos os lendários do Summoner's Rift, menos itens com ativa (Zhonya, Youmuu, as Hidras...), itens de suporte, itens de corta-cura (Lembrete Mortal, Serrespada Quimtec, Morellonomicon; a Armadura de Espinhos fica só com o reflexo) e passivas que dependem de visão ou de escudos de campeão (Glaive Umbral, Presa da Serpente). Campeões AD recebem itens de ataque, campeões AP itens de poder de habilidade, e os dois recebem tanques e híbridos.
   - Passivas adaptadas às hordas: gatilhos de "campeão" viram abates de monstro elite/épico; escudos de feitiço bloqueiam o próximo dano sofrido.
-  - Build recomendada por campeão (OP.GG, patch 16.21): ofertada três vezes mais e marcada como "Recomendado". Ezreal: Força da Trindade, Manamune, Lança de Shojin, Rancor de Serylda, Fome Eterna, Anjo Guardião. Samira: O Coletor, Gume do Infinito, Lembranças do Lorde Dominik, Arco-escudo Imortal, Sanguinária, Anjo Guardião. Brand: Tocha de Fogo Negro, Rylai, Liandry, Chama Sombria, Rabadon, Cajado do Vazio. Aphelios: A Coletora, Gume do Infinito, Lembranças do Lorde Dominik, Furacão de Runaan, Anjo Guardião, Sedenta por Sangue. Aurelion Sol: Liandry, Rylai, Rabadon, Cajado do Vazio, Chama Sombria, Ímpeto Cósmico.
+  - Build recomendada por campeão (OP.GG, patch 16.21): ofertada três vezes mais e marcada como "Recomendado". Ezreal: Força da Trindade, Manamune, Lança de Shojin, Rancor de Serylda, Fome Eterna, Anjo Guardião. Samira: O Coletor, Gume do Infinito, Lembranças do Lorde Dominik, Arco-escudo Imortal, Sanguinária, Anjo Guardião. Brand: Tocha de Fogo Negro, Rylai, Liandry, Chama Sombria, Rabadon, Cajado do Vazio. Aphelios: A Coletora, Gume do Infinito, Lembranças do Lorde Dominik, Furacão de Runaan, Anjo Guardião, Sedenta por Sangue. Aurelion Sol: Liandry, Rylai, Rabadon, Cajado do Vazio, Chama Sombria, Ímpeto Cósmico. Teemo: Dente de Na'Shor, Tormento de Liandry, Criafendas, Capuz da Morte de Rabadon, Cajado do Vazio, Chama Sombria.
   - Build completa (6 itens no nível 5): o level-up oferece Poção de Vida ou de Mana (5% do máximo), e cada abate tem 1% de chance de derrubar um blueprint (pergaminho azul, 1 por run) que torna um item aleatório Lendário (+50% dos atributos; o slot ganha um anel dourado animado e a faixa "Lendário").
   - Botas: um 7º slot fora dos seis. Botas (+25 de Velocidade de Movimento) aos 5:00; abater o Aronguejo oferece Grevas do Berserker, Botas da Rapidez, Sapatos do Feiticeiro, Botas Galvanizadas de Aço (Blindagem: golpes físicos causam 10% menos dano), Passos de Mercúrio ou Botas Ionianas da Lucidez; abater o dragão as transforma no nível 3 (só atributos).
   - Ritmo: o jogo inteiro acelera de x1 aos 0:00 até x2 aos 5:00 e fica em x2.

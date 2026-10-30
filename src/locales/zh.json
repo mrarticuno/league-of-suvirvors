@@ -562,5 +562,21 @@
  "champion.aurelionsol.Q.desc": "发射一颗星星，奥瑞利安·索尔位于650码内时它会不断变大。当他远离、5秒后或达到最大尺寸时，星星爆炸，对区域内的敌人造成魔法伤害并眩晕0.55–1.1秒。星星越大，伤害越高（最多+50%）。",
  "champion.aurelionsol.W.desc": "被动：星辰的每次命中造成更多伤害。开启：星辰向外扩张至650码，环绕速度翻倍，伤害提升40%，同时每秒消耗法力值。",
  "champion.aurelionsol.E.desc": "起飞3秒，越过墙体和单位，获得60–100%额外移动速度。飞行期间无法攻击。",
- "champion.aurelionsol.R.desc": "召唤一颗陨星坠落在目标区域。1秒后落地，对450码内的敌人造成魔法伤害并击飞1秒。"
+ "champion.aurelionsol.R.desc": "召唤一颗陨星坠落在目标区域。1秒后落地，对450码内的敌人造成魔法伤害并击飞1秒。",
+ "champion.teemo.name": "提莫",
+ "champion.teemo.title": "迅捷斥候",
+ "champion.teemo.passive": "游击队军备",
+ "champion.teemo.Q": "致盲吹箭",
+ "champion.teemo.W": "小莫快跑",
+ "champion.teemo.E": "毒性射击",
+ "champion.teemo.R": "种蘑菇",
+ "champion.teemo.hud.on": "出其不意：+{n}%攻速",
+ "champion.teemo.hud.off": "静止2秒：+{n}%攻速",
+ "champion.teemo.blind": "致盲（秒）",
+ "champion.teemo.poison": "毒性伤害",
+ "champion.teemo.Q.desc": "向目标敌人射出一支吹箭，造成魔法伤害并致盲其4–6秒：其普通攻击会落空。",
+ "champion.teemo.W.desc": "被动：提莫获得12–28%额外移动速度。主动：使该加成翻倍，持续3秒。",
+ "champion.teemo.E.desc": "被动：提莫的普通攻击在命中时造成额外魔法伤害并使目标中毒，在4秒内每秒造成魔法伤害（对野怪145%）。",
+ "champion.teemo.R.desc": "向目标区域投掷一个蘑菇（最多3层充能）。蘑菇在1秒后布置完毕，持续5分钟；敌人踩到时爆炸，对400码内的敌人造成魔法伤害，并使其减速30–50%，持续4秒。落在另一个蘑菇上的蘑菇会向前弹跳。",
+ "champion.teemo.recharge": "充能时间（秒）"
 }
