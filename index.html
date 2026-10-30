@@ -62,7 +62,7 @@
       /* ---------- in-run HUD ---------- */
       #hud { position: fixed; inset: 0; pointer-events: none; transition: opacity 0.6s; }
       #hud button { pointer-events: auto; }
-      body.menus #hud, body.menus #touch { display: none; }
+      body.menus #hud, body.menus #touch, body.menus #floaters { display: none; }
       body.cine #hud, body.cine #touch, body.cine #floaters { opacity: 0; transition: opacity 0.6s; }
       #hud-tl { position: fixed; left: 24px; top: 20px; display: flex; flex-direction: column; gap: 14px; }
       #kills-plate .in { display: flex; align-items: center; gap: 12px; padding: 9px 18px 9px 14px; }
@@ -173,6 +173,15 @@
 
       /* floating combat text */
       #floaters { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
+      #overhead { position: absolute; left: 0; top: 0; display: flex; align-items: stretch; gap: 2px; padding: 2px; background: #05080f; border: 1px solid #000; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.8); }
+      #oh-level { min-width: 16px; display: grid; place-items: center; padding: 0 2px; font: 700 12px var(--ui); color: #fff; background: #1a1f2b; }
+      #overhead .bars { width: 104px; display: grid; grid-template-rows: 9px 3px; gap: 1px; }
+      #overhead .bars div { position: relative; background: #1b1b1b; overflow: hidden; }
+      #overhead .bars i { position: absolute; top: 0; bottom: 0; left: 0; }
+      #oh-hp { background: linear-gradient(#5fe36b, #229c32); }
+      #oh-shield { background: #e8e8e8; }
+      #oh-ticks { right: 0; background: linear-gradient(90deg, transparent calc(100% - 1px), rgba(0, 0, 0, 0.7) 0) repeat-x; }
+      #oh-mana { background: linear-gradient(#5aa7ff, #2563c9); }
       .floater { position: absolute; left: 0; top: 0; font: 700 17px var(--ui); text-shadow: 0 2px 0 #000, 0 0 6px rgba(0, 0, 0, 0.8); white-space: nowrap; }
       .floater.physical { color: #fff; }
       .floater.magic { color: #7dbbff; }
@@ -297,6 +306,8 @@
       #choices button.skill-choice div { display: flex; flex-direction: column; gap: 3px; }
       #choices button.skill-choice:hover, #continue:hover, #menu button:hover { border-color: var(--gold); }
       #menu button { width: min(280px, 80vw); }
+      #menu .vol { width: min(280px, 80vw); display: grid; gap: 6px; font-size: 14px; color: var(--gold-hi); }
+      #menu .vol input { width: 100%; accent-color: var(--gold); cursor: pointer; }
       #menu #stats { display: grid; border: 0; padding: 0; }
       #help { font-size: 12px; color: var(--muted); max-width: min(520px, 90vw); text-align: center; }
       .passive { color: #9fd8ff; }
@@ -710,7 +721,7 @@
   </head>
   <body class="menus">
     <div id="app"></div>
-    <div id="floaters"></div>
+    <div id="floaters"><div id="overhead"><b id="oh-level"></b><div class="bars"><div><i id="oh-hp"></i><i id="oh-shield"></i><i id="oh-ticks"></i></div><div><i id="oh-mana"></i></div></div></div></div>
     <div id="loading" data-i18n="static.loading"></div>
     <div id="hud">
       <div id="hud-tl">
@@ -766,8 +777,8 @@
     <div id="menu" class="overlay">
       <h2 data-i18n="static.paused"></h2>
       <button id="menu-resume" data-i18n="static.continue"></button>
-      <button id="menu-music"></button>
-      <button id="menu-sfx"></button>
+      <label class="vol"><span data-i18n="menu.music"></span><input id="menu-music" type="range" min="0" max="100" step="5"></label>
+      <label class="vol"><span data-i18n="menu.sfx"></span><input id="menu-sfx" type="range" min="0" max="100" step="5"></label>
       <div id="help" data-i18n="static.help"></div>
     </div>
     <div id="end" class="overlay">

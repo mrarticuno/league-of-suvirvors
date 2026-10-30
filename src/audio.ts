@@ -21,19 +21,21 @@ class GameAudio {
   private music = new Audio();
   private tracks: string[] = [];
   private paused = false;
-  musicOn = true;
-  sfxOn = true;
+  /** Player volume sliders, 0..1 (0 = off). */
+  musicVolume = 1;
+  sfxVolume = 1;
 
   constructor() {
-    this.out.gain.value = 0.6;
     this.out.connect(this.ctx.destination);
-    this.music.volume = 0.35;
     this.music.onended = () => this.nextTrack();
     try {
       const s = JSON.parse(localStorage.getItem(SETTINGS) ?? '{}');
-      this.musicOn = s.music ?? true;
-      this.sfxOn = s.sfx ?? true;
+      // older saves stored on/off booleans
+      const vol = (v: unknown) => (typeof v === 'number' ? v : v === false ? 0 : 1);
+      this.musicVolume = vol(s.music);
+      this.sfxVolume = vol(s.sfx);
     } catch { /* storage blocked: keep defaults */ }
+    this.applyVolumes();
     // browsers keep audio locked until the first user gesture
     const unlock = () => {
       this.ctx.resume();
@@ -75,7 +77,7 @@ class GameAudio {
 
   play(key: string, volume = 1) {
     const takes = this.buffers.get(key);
-    if (!this.sfxOn || !takes?.length || volume <= 0.02 || this.voices >= MAX_VOICES) return;
+    if (!this.sfxVolume || !takes?.length || volume <= 0.02 || this.voices >= MAX_VOICES) return;
     const now = this.ctx.currentTime;
     if (now - (this.lastPlayed.get(key) ?? -1) < MIN_REPEAT) return;
     this.lastPlayed.set(key, now);
@@ -99,23 +101,29 @@ class GameAudio {
     this.syncMusic();
   }
 
-  setMusic(on: boolean) {
-    this.musicOn = on;
+  setMusicVolume(v: number) {
+    this.musicVolume = v;
     this.save();
     this.syncMusic();
   }
 
-  setSfx(on: boolean) {
-    this.sfxOn = on;
+  setSfxVolume(v: number) {
+    this.sfxVolume = v;
     this.save();
   }
 
+  private applyVolumes() {
+    this.music.volume = 0.35 * this.musicVolume;
+    this.out.gain.value = 0.6 * this.sfxVolume;
+  }
+
   private save() {
-    try { localStorage.setItem(SETTINGS, JSON.stringify({ music: this.musicOn, sfx: this.sfxOn })); } catch { /* not persisted */ }
+    this.applyVolumes();
+    try { localStorage.setItem(SETTINGS, JSON.stringify({ music: this.musicVolume, sfx: this.sfxVolume })); } catch { /* not persisted */ }
   }
 
   private syncMusic() {
-    if (!this.musicOn || this.paused || !this.tracks.length) return this.music.pause();
+    if (!this.musicVolume || this.paused || !this.tracks.length) return this.music.pause();
     if (!this.music.src) return this.nextTrack();
     this.music.play().catch(() => {}); // rejected until the first gesture; unlock retries
   }

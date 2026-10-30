@@ -33,6 +33,7 @@ export const num = (v: number, digits = 0) => {
   return f.format(v);
 };
 const pct = (v: number) => `${(Math.max(0, Math.min(1, v)) * 100).toFixed(1)}%`;
+const OVERHEAD_Y = 230; // world height of the bars above the champion (just under the 260 of XP floaters)
 const XP_RING = 289; // circumference of the portrait's XP ring (r = 46)
 const STATS = [
   ['ad', '#ff8a4e'], ['ap', '#c08cff'], ['as', '#ffd257'], ['armor', '#d9b56a'], ['ms', '#7fe0c2'], ['ah', '#9cc8ff'], ['crit', '#ff5a4e'],
@@ -56,8 +57,14 @@ export class Hud {
   /** `onAuto`: the auto attack chip (desktop), same as the T key. */
   constructor(champ: ChampionDef, onAuto: () => void) {
     $('menu-resume').onclick = () => this.toggleMenu();
-    $('menu-music').onclick = () => { audio.setMusic(!audio.musicOn); this.menuLabels(); };
-    $('menu-sfx').onclick = () => { audio.setSfx(!audio.sfxOn); this.menuLabels(); };
+    const slider = (id: string, value: number, set: (v: number) => void) => {
+      const el = $(id) as HTMLInputElement;
+      el.value = String(Math.round(value * 100));
+      el.oninput = () => set(+el.value / 100);
+      return el;
+    };
+    slider('menu-music', audio.musicVolume, (v) => audio.setMusicVolume(v));
+    slider('menu-sfx', audio.sfxVolume, (v) => audio.setSfxVolume(v)).onchange = () => audio.play('hud_open'); // preview on release
     $('pause-btn').onclick = () => this.toggleMenu();
     $('pause-btn').setAttribute('aria-label', t('hud.pause'));
     $('auto').onclick = onAuto;
@@ -201,10 +208,26 @@ export class Hud {
 
   key(n: number) { this.keyActions[n - 1]?.(); }
 
+  /** LoL-style level + HP/mana bars above the champion; HP ticks every 100 HP. */
+  private overhead(g: Game, camera: THREE.Camera) {
+    this.projected.copy(g.pos).setY(OVERHEAD_Y).project(camera);
+    const x = Math.round((this.projected.x * 0.5 + 0.5) * innerWidth);
+    const y = Math.round((-this.projected.y * 0.5 + 0.5) * innerHeight);
+    if (changed('oh.pos', `${x},${y}`)) $('overhead').style.transform = `translate(${x}px, ${y}px) translate(-50%, -100%)`;
+    text('oh-level', String(g.level));
+    const hp = g.hp / g.maxHp;
+    style('oh-hp', 'width', pct(hp));
+    const shield = Math.min(g.shield, g.maxHp - g.hp) / g.maxHp;
+    if (changed('oh.shield', `${hp}|${shield.toFixed(3)}`)) Object.assign($('oh-shield').style, { left: pct(hp), width: pct(shield) });
+    if (changed('oh.ticks', String(Math.round(g.maxHp)))) $('oh-ticks').style.backgroundSize = `${(100 * 100) / g.maxHp}% 100%`;
+    style('oh-mana', 'width', pct(g.mana / g.maxMana));
+  }
+
   /** Floating combat text: pooled DOM labels projected from world positions, rising and fading. */
   private floatPool: HTMLDivElement[] = [];
   private projected = new THREE.Vector3();
   floaters(g: Game, camera: THREE.Camera) {
+    this.overhead(g, camera);
     const layer = $('floaters');
     while (this.floatPool.length < g.floaters.length) {
       const el = document.createElement('div');
@@ -226,18 +249,12 @@ export class Hud {
     });
   }
 
-  /** ESC menu: pauses the game and toggles music / sound effects. */
+  /** ESC menu: pauses the game; music / sound effect volume sliders. */
   toggleMenu() {
     this.menuOpen = !this.menuOpen;
     $('menu').style.display = this.menuOpen ? 'flex' : 'none';
     audio.setPaused(this.menuOpen);
     audio.play(this.menuOpen ? 'hud_open' : 'hud_close');
-    this.menuLabels();
-  }
-
-  private menuLabels() {
-    $('menu-music').textContent = t(audio.musicOn ? 'menu.musicOn' : 'menu.musicOff');
-    $('menu-sfx').textContent = t(audio.sfxOn ? 'menu.sfxOn' : 'menu.sfxOff');
   }
 
   /** Level-up: pick a skill rank (when one is available), then an item (or a potion once the build is complete). */
