@@ -562,5 +562,18 @@
  "champion.aurelionsol.Q.desc": "Lanza una estrella que crece mientras Aurelion Sol permanece a menos de 650 unidades. Estalla cuando él se aleja, tras 5 s o al llegar a su tamaño máximo, e inflige daño mágico y Aturdimiento de 0,55–1,1 s a los enemigos del área. Cuanto más creció, más daño inflige (hasta +50%).",
  "champion.aurelionsol.W.desc": "Pasiva: cada golpe de las estrellas inflige más daño. Activa: las estrellas se alejan hasta 650 unidades, giran el doble de rápido e infligen un 40% más de daño, consumiendo maná cada segundo.",
  "champion.aurelionsol.E.desc": "Alza el vuelo durante 3 s, pasando por encima de muros y unidades con un 60–100% de Velocidad de Movimiento adicional. No puede atacar mientras vuela.",
- "champion.aurelionsol.R.desc": "Hace caer un meteorito en el área objetivo. Tras 1 s impacta, inflige daño mágico a los enemigos a menos de 450 unidades y los lanza por los aires durante 1 s."
+ "champion.aurelionsol.R.desc": "Hace caer un meteorito en el área objetivo. Tras 1 s impacta, inflige daño mágico a los enemigos a menos de 450 unidades y los lanza por los aires durante 1 s.",
+ "champion.lux.name": "Lux",
+ "champion.lux.title": "la Dama Luminosa",
+ "champion.lux.passive": "Iluminación",
+ "champion.lux.Q": "Hechizo Luminoso",
+ "champion.lux.W": "Barrera Prismática",
+ "champion.lux.E": "Singularidad Brillante",
+ "champion.lux.R": "Chispa Final",
+ "champion.lux.hud": "Iluminados: {n}",
+ "champion.lux.shield": "Escudo",
+ "champion.lux.Q.desc": "Dispara una esfera de luz que inflige daño mágico a los dos primeros enemigos alcanzados y los inmoviliza durante 2 s.",
+ "champion.lux.W.desc": "Lanza su varita hasta 1175 unidades y vuelve volando hacia ella. Lux obtiene un Escudo durante 2,5 s al lanzarla y otro cuando regresa (se acumulan).",
+ "champion.lux.E.desc": "Envía una singularidad a la zona objetivo que ralentiza un 25–45 % a los enemigos dentro (la Ralentización dura 1 s más tras salir). Pulsa de nuevo para detonarla e infligir daño mágico; detona sola tras 5 s.",
+ "champion.lux.R.desc": "Tras 1 s, dispara un láser gigante de 3340 unidades que inflige daño mágico a todos los enemigos en la línea. Detona la Iluminación de los enemigos alcanzados y vuelve a iluminarlos."
 }

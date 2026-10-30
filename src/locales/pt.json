@@ -562,5 +562,18 @@
  "champion.aurelionsol.Q.desc": "Lança uma estrela que cresce enquanto Aurelion Sol fica a até 650 unidades. Ela explode quando ele se afasta, após 5s ou no tamanho máximo, causando dano mágico e Atordoamento de 0,55–1,1s nos inimigos da área. Quanto maior ficou, mais dano causa (até +50%).",
  "champion.aurelionsol.W.desc": "Passiva: cada acerto das estrelas causa mais dano. Ativa: as estrelas se afastam até 650 unidades, giram duas vezes mais rápido e causam 40% a mais de dano, gastando mana a cada segundo.",
  "champion.aurelionsol.E.desc": "Levanta voo por 3s, passando por cima de paredes e unidades com 60–100% de Velocidade de Movimento adicional. Não pode atacar enquanto voa.",
- "champion.aurelionsol.R.desc": "Faz um meteoro cair na área alvo. Após 1s ele atinge o chão, causando dano mágico aos inimigos em até 450 unidades e arremessando-os ao ar por 1s."
+ "champion.aurelionsol.R.desc": "Faz um meteoro cair na área alvo. Após 1s ele atinge o chão, causando dano mágico aos inimigos em até 450 unidades e arremessando-os ao ar por 1s.",
+ "champion.lux.name": "Lux",
+ "champion.lux.title": "a Dama da Luz",
+ "champion.lux.passive": "Iluminação",
+ "champion.lux.Q": "Ligação da Luz",
+ "champion.lux.W": "Barreira Prismática",
+ "champion.lux.E": "Singularidade Lucente",
+ "champion.lux.R": "Centelha Final",
+ "champion.lux.hud": "Iluminados: {n}",
+ "champion.lux.shield": "Escudo",
+ "champion.lux.Q.desc": "Dispara uma esfera de luz que causa dano mágico aos dois primeiros inimigos atingidos e os enraíza por 2s.",
+ "champion.lux.W.desc": "Arremessa sua varinha a até 1175 unidades e ela volta voando. Lux ganha um Escudo por 2,5s ao arremessá-la e outro quando ela retorna (os dois se acumulam).",
+ "champion.lux.E.desc": "Envia uma singularidade à área alvo que aplica 25–45% de Lentidão aos inimigos dentro dela (a Lentidão dura mais 1s depois que saem). Aperte de novo para detoná-la e causar dano mágico; ela detona sozinha após 5s.",
+ "champion.lux.R.desc": "Após 1s, dispara um laser gigante de 3340 unidades que causa dano mágico a todos os inimigos na linha. Detona a Iluminação dos inimigos atingidos e os ilumina de novo."
 }

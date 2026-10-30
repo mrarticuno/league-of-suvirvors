@@ -29,6 +29,7 @@ BR = "Play_sfx_Brand_Brand"
 BP = "Play_sfx_Brand_P_"
 AP = "Play_sfx_Aphelios_Aphelios"
 AS = "Play_sfx_AurelionSol_AurelionSol"
+LX = "Play_sfx_Lux_Lux"
 
 # bank path (without _events/_audio) -> {sound key: event name candidates (first match wins) or an event id}
 BANKS: dict[str, dict[str, list[str] | int]] = {
@@ -164,6 +165,29 @@ BANKS: dict[str, dict[str, list[str] | int]] = {
         "aurelionsol_R_hit": [AS + "R2Missile_hit_super"],
         "aurelionsol_death": ["Play_sfx_AurelionSol_Death3D_cast"],
     },
+    SFX + "characters/lux/skins/base/lux_base_sfx": {
+        "lux_auto": [LX + "BasicAttack_OnCast"],
+        "lux_auto2": [LX + "BasicAttack2_OnCast"],
+        "lux_crit": [LX + "CritAttack_OnCast"],
+        "lux_auto_hit": [LX + "BasicAttack_OnHit"],
+        "lux_crit_hit": [LX + "CritAttack_OnHit"],
+        "lux_passive": [LX + "IlluminationPassive_hit"],
+        "lux_Q": [LX + "LightBinding_OnCast"],
+        "lux_Q_launch": [LX + "LightBindingDummy_OnMissileLaunch"],
+        "lux_Q_hit": [LX + "LightBindingMis_OnBuffActivate", LX + "LightBinding_OnBuffActivate"],
+        "lux_Q_end": [LX + "LightBindingMis_OnBuffDeactivate", LX + "LightBinding_OnBuffDeactivate"],
+        "lux_W": [LX + "PrismaticWave_OnCast"],
+        "lux_W_launch": [LX + "PrismaticWaveMissile_OnMissileLaunch"],
+        "lux_W_shield": [LX + "PrismaticWaveShieldSelf_buffactivate", LX + "PrismaticWaveShield_buffactivate"],
+        "lux_E": [LX + "LightStrikeKugel_OnCast"],
+        "lux_E_launch": [LX + "LightStrikeKugel_OnMissileLaunch"],
+        "lux_E_land": [LX + "LightStrikeKugel_buffactivate"],
+        "lux_E_hit": [LX + "LightStrikeKugel_hit"],
+        "lux_R": [LX + "R_OnCast"],
+        "lux_R_beam": [LX + "RBeam_beammiddle"],
+        "lux_R_end": [LX + "RBeam_beamend"],
+        "lux_death": ["Play_sfx_Lux_Death3D_cast"],
+    },
     SHARED + "hud_global": {
         "hud_levelup": ["Play_sfx_hud_base_spell_levelup"],
         "hud_item": ["Play_sfx_hud_base_store_item_buy_basic"],
@@ -259,7 +283,7 @@ def render(txtp_path, mp3, music):
 
 def main(wwiser, out_dir, final_dir):
     final = Path(final_dir)
-    wads = [Wad(final / w) for w in ("Champions/Ezreal.wad.client", "Champions/Samira.wad.client", "Champions/Brand.wad.client", "Champions/Aphelios.wad.client", "Champions/AurelionSol.wad.client", "Maps/Shipping/Map11.wad.client", "Maps/Shipping/Common.wad.client")]
+    wads = [Wad(final / w) for w in ("Champions/Ezreal.wad.client", "Champions/Samira.wad.client", "Champions/Brand.wad.client", "Champions/Aphelios.wad.client", "Champions/AurelionSol.wad.client", "Champions/Lux.wad.client", "Maps/Shipping/Map11.wad.client", "Maps/Shipping/Common.wad.client")]
     read = lambda p: next((d for d in (w.read(p) for w in wads) if d is not None), None)
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)

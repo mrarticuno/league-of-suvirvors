@@ -81,8 +81,8 @@ const DEG = Math.PI / 180;
 // ---- materials ----
 
 const vertexShader = /* glsl */ `
-attribute vec4 aColor; attribute float aLife; attribute float aErode;
-varying vec2 vUv; varying vec4 vColor; varying float vLife; varying float vErode;
+attribute vec4 aColor; attribute vec2 aLife; attribute float aErode;
+varying vec2 vUv; varying vec4 vColor; varying vec2 vLife; varying float vErode;
 void main() {
   vUv = uv; vColor = aColor; vLife = aLife; vErode = aErode;
   gl_Position = projectionMatrix * viewMatrix * vec4(position, 1.0);
@@ -90,14 +90,14 @@ void main() {
 const fragmentShader = /* glsl */ `
 uniform sampler2D map; uniform sampler2D colorTex; uniform sampler2D erosionTex; uniform sampler2D multTex;
 uniform float alphaRef; uniform float slice;
-varying vec2 vUv; varying vec4 vColor; varying float vLife; varying float vErode;
+varying vec2 vUv; varying vec4 vColor; varying vec2 vLife; varying float vErode;
 void main() {
 #ifdef USE_CLAMP
   if (vUv.x < 0.0 || vUv.x > 1.0 || vUv.y < 0.0 || vUv.y > 1.0) discard;
 #endif
   vec4 c = texture2D(map, vUv) * vColor;
 #ifdef USE_COLORTEX
-  c *= texture2D(colorTex, vec2(vLife, 0.5));
+  c *= texture2D(colorTex, vLife); // x: particle life, y: its row
 #endif
 #ifdef USE_MULT
   c *= texture2D(multTex, vUv);
@@ -165,6 +165,8 @@ class Buffers {
   private cap = 0;
   private icap = 0;
 
+  look = 0.5; // colour texture row of the particle being written (see Particle.look)
+
   begin() { this.nv = 0; this.ni = 0; }
 
   reserve(verts: number, idx: number) {
@@ -172,11 +174,11 @@ class Buffers {
       this.cap = Math.max(256, (this.nv + verts) * 2);
       const grow = (a: Float32Array | undefined, n: number) => { const b = new Float32Array(this.cap * n); if (a) b.set(a.subarray(0, Math.min(a.length, b.length))); return b; };
       this.pos = grow(this.pos, 3); this.uv = grow(this.uv, 2); this.col = grow(this.col, 4);
-      this.life = grow(this.life, 1); this.erode = grow(this.erode, 1);
+      this.life = grow(this.life, 2); this.erode = grow(this.erode, 1);
       this.geo.setAttribute('position', new THREE.BufferAttribute(this.pos, 3));
       this.geo.setAttribute('uv', new THREE.BufferAttribute(this.uv, 2));
       this.geo.setAttribute('aColor', new THREE.BufferAttribute(this.col, 4));
-      this.geo.setAttribute('aLife', new THREE.BufferAttribute(this.life, 1));
+      this.geo.setAttribute('aLife', new THREE.BufferAttribute(this.life, 2));
       this.geo.setAttribute('aErode', new THREE.BufferAttribute(this.erode, 1));
     }
     if (this.ni + idx > this.icap) {
@@ -193,7 +195,7 @@ class Buffers {
     this.pos[i * 3] = p.x; this.pos[i * 3 + 1] = p.y; this.pos[i * 3 + 2] = p.z;
     this.uv[i * 2] = u; this.uv[i * 2 + 1] = v;
     this.col.set(c, i * 4);
-    this.life[i] = life; this.erode[i] = erode;
+    this.life[i * 2] = life; this.life[i * 2 + 1] = this.look; this.erode[i] = erode;
     return i;
   }
 
@@ -212,6 +214,7 @@ interface Particle {
   quat: THREE.Quaternion; // frame of the system at birth (bound particles follow the current one)
   color: number[]; scale: THREE.Vector3; rot: THREE.Vector3; rotVel: THREE.Vector3; orbit: THREE.Vector3;
   frame: number; uvOff: [number, number]; uvRate: [number, number];
+  look: number; // particleColorTexture row: random per particle for colorLookUpTypeY 3 (e.g. Lux's rainbow rings), else the middle
   overlay?: THREE.ShaderMaterial; // attached-mesh particles: the material shared by their skinned meshes
   children?: { sys: ParticleSystem; at: THREE.Vector3 }[]; // child systems riding the particle (at: offset in its frame)
 }
@@ -220,6 +223,7 @@ const PRIMITIVES = new Set([undefined, 'VfxPrimitiveArbitraryQuad', 'VfxPrimitiv
   'VfxPrimitiveRay', 'VfxPrimitiveAttachedMesh', 'VfxPrimitiveBeam']);
 /** Simple (.scb/.sco) or skinned (.skn) particle mesh. */
 const meshName = (e: Bin): string | undefined => e.primitive?.mMesh?.mSimpleMeshName ?? e.primitive?.mMesh?.mMeshName;
+// particle rotations (degrees): yaw last, around the world up (Lux's rune rings lie flat, then spin)
 const _v = new THREE.Vector3(), _w = new THREE.Vector3(), _q = new THREE.Quaternion(), _q2 = new THREE.Quaternion(), _e = new THREE.Euler();
 const _right = new THREE.Vector3(), _up = new THREE.Vector3(), _fwd = new THREE.Vector3();
 const _cs = new THREE.Vector3(), _cq = new THREE.Quaternion();
@@ -317,7 +321,7 @@ class Emitter {
       if (p.orbit.lengthSq() > 0) {
         // orbital velocity (deg/s) spins the particle around the system origin, in the system's frame
         _w.copy(p.pos).sub(this.sys.pos).applyQuaternion(_q.copy(p.quat).invert());
-        _w.applyEuler(_e.set(p.orbit.x * dt * DEG, p.orbit.y * dt * DEG, p.orbit.z * dt * DEG));
+        _w.applyEuler(_e.set(p.orbit.x * dt * DEG, p.orbit.y * dt * DEG, p.orbit.z * dt * DEG, 'XYZ'));
         p.pos.copy(_w.applyQuaternion(p.quat).add(this.sys.pos));
       }
       return true;
@@ -334,7 +338,7 @@ class Emitter {
     if (e.isUniformScale) sc.set(sc.x, sc.x, sc.x);
     s.copy(sc.multiply(p.scale)).multiplyScalar(this.sys.scale);
     const r = _v.copy(p.rot).addScaledVector(p.rotVel, p.age).add(vec3(val(e.rotation0, pt)));
-    return q.copy(p.quat).multiply(_q2.setFromEuler(_e.set(r.x * DEG, r.y * DEG, r.z * DEG)));
+    return q.copy(p.quat).multiply(_q2.setFromEuler(_e.set(r.x * DEG, r.y * DEG, r.z * DEG, 'YXZ')));
   }
 
   private moveChildren(p: Particle, dt: number) {
@@ -436,6 +440,7 @@ class Emitter {
       frame: (e.startFrame ?? 0) + (e.isRandomStartFrame ? Math.floor(Math.random() * frames) : 0),
       uvOff: (birth(e.birthUVOffset, et) ?? [0, 0]).slice(0, 2),
       uvRate: (birth(e.birthUvScrollRate, et) ?? [0, 0]).slice(0, 2),
+      look: e.colorLookUpTypeY === 3 ? Math.random() : 0.5,
       overlay: this.kind === 'attached' ? this.overlay() : undefined,
     });
     this.spawnChildren(this.particles[this.particles.length - 1]);
@@ -491,6 +496,7 @@ class Emitter {
     }
 
     for (const p of this.particles) {
+      b.look = p.look;
       const pt = p.age / p.life;
       const cc = val(e.Color, pt) ?? [1, 1, 1, 1];
       const c = [p.color[0] * cc[0], p.color[1] * cc[1], p.color[2] * cc[2], p.color[3] * cc[3]];
@@ -520,7 +526,7 @@ class Emitter {
         const m = this.meshData!;
         const n = m.pos.length / 3;
         b.reserve(n, n);
-        _q.copy(p.quat).multiply(new THREE.Quaternion().setFromEuler(_e.set(r.x * DEG, r.y * DEG, r.z * DEG)));
+        _q.copy(p.quat).multiply(new THREE.Quaternion().setFromEuler(_e.set(r.x * DEG, r.y * DEG, r.z * DEG, 'YXZ')));
         for (let i = 0; i < n; i++) {
           _w.set(m.pos[i * 3], m.pos[i * 3 + 1], m.pos[i * 3 + 2]).multiply(s).applyQuaternion(_q).add(p.pos);
           const [u, v] = uv(m.uv[i * 2], m.uv[i * 2 + 1]);
@@ -535,13 +541,13 @@ class Emitter {
       let base = p.pos;
       if (this.kind === 'ray') {
         if (!camera) continue;
-        _q.copy(p.quat).multiply(_q2.setFromEuler(_e.set(r.x * DEG, r.y * DEG, r.z * DEG)));
+        _q.copy(p.quat).multiply(_q2.setFromEuler(_e.set(r.x * DEG, r.y * DEG, r.z * DEG, 'YXZ')));
         ay = new THREE.Vector3(0, 0, s.z / 2).applyQuaternion(_q);
         if (ay.lengthSq() < 1e-6) continue;
         base = ay.clone().add(p.pos);
         ax = ay.clone().cross(_w.setFromMatrixPosition(camera.matrixWorld).sub(base)).normalize().multiplyScalar(s.x);
       } else if (this.kind === 'quad') {
-        _q.copy(p.quat).multiply(new THREE.Quaternion().setFromEuler(_e.set(r.x * DEG, r.y * DEG, r.z * DEG)));
+        _q.copy(p.quat).multiply(new THREE.Quaternion().setFromEuler(_e.set(r.x * DEG, r.y * DEG, r.z * DEG, 'YXZ')));
         ax = new THREE.Vector3(s.x, 0, 0).applyQuaternion(_q);
         ay = new THREE.Vector3(0, s.y, 0).applyQuaternion(_q);
       } else {
@@ -612,14 +618,17 @@ class Emitter {
       return;
     }
     if (!camera && !ground) return;
-    const side = ground ? _w.crossVectors(along, UP).normalize().multiplyScalar(s.x)
-      : _w.setFromMatrixPosition(camera!.matrixWorld).sub(src).cross(along).normalize().multiplyScalar(s.x);
+    // scale.x is the beam's full width (Final Spark's 190 wide warning line is authored at 190)
+    const side = ground ? _w.crossVectors(along, UP).normalize().multiplyScalar(s.x / 2)
+      : _w.setFromMatrixPosition(camera!.matrixWorld).sub(src).cross(along).normalize().multiplyScalar(s.x / 2);
+    // U runs across the beam (its textures are cross-section profiles, e.g. 256x4), V along it, repeating every
+    // mBirthTilingSize.y units (zero or negative: stretched once)
     const tile = val(beam.mBirthTilingSize, 0)?.[1];
-    const uLen = tile ? len / tile : 1;
+    const vLen = tile > 0 ? len / tile : 1;
     b.reserve(4, 6);
     const i0 = b.nv;
     for (const [end, k] of [[0, -1], [1, -1], [1, 1], [0, 1]]) {
-      const [u, v] = uv(end * uLen, (k + 1) / 2);
+      const [u, v] = uv((k + 1) / 2, end * vLen);
       b.vert(_v.copy(src).addScaledVector(along, end * len).addScaledVector(side, k), u, v, c, pt, erode);
     }
     b.idx.set([i0, i0 + 1, i0 + 2, i0, i0 + 2, i0 + 3], b.ni);
@@ -641,6 +650,7 @@ class Emitter {
     let dist = 0;
     for (let i = 0; i < points.length; i++) {
       const { p, c, w, pt, erode } = points[i];
+      b.look = p.look;
       if (i > 0) dist += p.pos.distanceTo(points[i - 1].p.pos);
       let sv = side;
       if (this.kind === 'camtrail' && camera) {
