@@ -175,10 +175,10 @@ pnpm dev        # http://localhost:5173（在第一个界面选择英雄）
   - **R（清辉夜凝）**：0.5 秒后一团月光（速度 2050，1300 码，武器拖出一道月光光束）在第一个敌人处停下，对周围 300 码造成 125/175/225 + 20% 额外攻击力 + 100% 法术强度的伤害，随后厄斐琉斯用主手武器攻击每个目标：通碧施加 50/80/110 的标记，断魄回复 250/350/450，坠明造成 99% 减速（地霜暗蚀禁锢 1.35 秒），荧焰 +50/100/150 + 25% 额外攻击力和一圈弹丸，折镜 +5 个飞轮刃并每个目标再加一个。
   - 非英雄联盟原版：针对英雄的效果对任何敌人生效（R 的光束在第一个敌人处停下、断魄 R 的治疗、飞轮刃的刷新）；敌人不会攻击驻灵（持续到时间结束）。
 - **奥瑞利安·索尔**（当前模型、特效和音效；重做前的技能组与属性，来自 Data Dragon 13.1.1；R 是当前的陨星）：射程 550。
-  - **被动（星原之准）**：3 颗星辰环绕他（250 码，每 3 秒一圈），对经过的每个敌人造成 20–120（随等级）+ W 等级加成 + 25% 法术强度的魔法伤害（每颗星辰每次经过一次）。星辰击杀回复 4–12 点法力值（对小兵和小型野怪有 0.5 秒冷却）。
+  - **被动（星原之准）**：3 颗星辰环绕他（250 码，每 6 秒一圈），对经过的每个敌人造成 20–120（随等级）+ W 等级加成 + 25% 法术强度的魔法伤害（每颗星辰每次经过一次）。星辰击杀回复 4–12 点法力值（对小兵和小型野怪有 0.5 秒冷却）。
   - **Q（星河急涌）**：一颗星星向前飞行（速度 600），奥瑞利安·索尔位于 650 码内时半径从 150 增长到 450；他离开、5 秒后或达到最大尺寸时爆炸：70–230 + 65% 法术强度（尺寸最多 +50%）并眩晕 0.55–1.1 秒。
-  - **W（星穹暴涨）**：被动每次星辰命中 +5–25 伤害。开启：星辰扩张到 650 码，环绕速度翻倍，伤害提升 40%，每秒消耗 6–10 点法力值（法力耗尽时关闭）。
-  - **E（星流横溢）**：飞行 3 秒，越过墙体和单位，+60–100% 移动速度，无法攻击。
+  - **W（星穹暴涨）**：被动每次星辰命中 +5–25 伤害。开启：星辰扩张到 650 码，环绕速度提升至三倍（每 2 秒一圈），伤害提升 40%，每秒消耗 6–10 点法力值（法力耗尽时关闭）。
+  - **E（星流横溢）**：朝施放方向飞行 3 秒，越过墙体和单位，+60–100% 移动速度，无法攻击；移动指令（点击或方向键）会结束飞行。
   - **R（星天落瀑）**：1 秒后陨星落在目标区域：450 码内 200/325/450 + 75% 法术强度并击飞 1 秒。
   - 非英雄联盟原版：Q 消耗 50–70，R 100，W 无开启消耗；E 可转向，冷却 20–12 秒（原为 80–60 秒的长距离固定直线）；星辰回复法力；星河急涌使用当前奇点（E）的漩涡特效并随半径变大，爆炸使用星天落瀑的命中粒子（当前技能组没有会变大的星星）。
 - **提莫**（英雄联盟属性；游击队军备不隐身）：射程 500，法术强度装备。
@@ -237,8 +237,8 @@ pnpm dev        # http://localhost:5173（在第一个界面选择英雄）
 
 - **英雄**（`src/champion.ts`、`src/champions/`）：一个英雄由 `ChampionDef`（基础属性、技能的等级/消耗/冷却/动画/图标、动画、普攻特效）加一个每局创建的 `kit` 组成，`kit` 负责处理技能及其特殊机制（层数、标记等）。`Game` 负责通用部分：移动、普攻、冷却、法力、装备和伤害管线。
   - 新英雄：创建 `src/champions/<name>.ts`（模板：`ezreal.ts`；法术强度法师、持续伤害和逐敌标记参考 `brand.ts`），并在 `src/champions/index.ts` 中注册。音效命名遵循 `<id>_auto`、`<id>_Q`、`<id>_death`……分步指南：`.claude/skills/creating-champions/SKILL.md`。
-  - kit 钩子：`cast`（必需）、`castStart`、`castAnim`、`canCast`、`attackSpeedBonus`/`moveSpeedBonus`、`disarmed`、`ghost`（不与墙体和单位碰撞，例如星流横溢）、`meleeAuto`、`onDamage`（减免前的额外魔法伤害，例如引爆 W 的标记）、`onKill`（例如炽热之焰的击杀回蓝）、`onDealt`（减免后的伤害，例如断魄的治疗）、`update`、`dispose`、`hud`、`gauge`。有多种形态的英雄（厄斐琉斯的武器）：`stat`（自身属性，例如购买的属性点）、`attackTarget`/`attackStart`/`basicAttack`（普攻的目标、动画、音效、前摇以及发射）、`moveAnims`、`cooldownBase`/`castTime`（按形态）、`skillView`（技能栏图标、名称和角标）和 `tray`（技能栏上方的小图标）。
-  - `ChampionDef` 扩展：`idleVfx`（整局附着在骨骼上的系统，例如布兰德的火焰）、`vfx.death`、`scale`（模型大小）、法师使用 `itemPool: 'ap'`（技能用 `apRatio` 缩放）、`build`（出装网站推荐的 6 件传说装备，升级时出现概率更高并带标记）、`rankLevels`（每个技能等级的解锁等级）、`autoRank`（无需技能点自动升级的技能）和 `SkillDef.unlockLevel`（从某个等级起可施放，与技能等级无关）。
+  - kit 钩子：`cast`（必需）、`castStart`、`castAnim`、`canCast`、`attackSpeedBonus`/`moveSpeedBonus`、`disarmed`、`ghost`（不与墙体和单位碰撞，例如星流横溢）、`steer`/`onMoveOrder`（英雄自行移动直到移动指令，例如星流横溢的航向）、`meleeAuto`、`onDamage`（减免前的额外魔法伤害，例如引爆 W 的标记）、`onKill`（例如炽热之焰的击杀回蓝）、`onDealt`（减免后的伤害，例如断魄的治疗）、`update`、`dispose`、`hud`、`gauge`。有多种形态的英雄（厄斐琉斯的武器）：`stat`（自身属性，例如购买的属性点）、`attackTarget`/`attackStart`/`basicAttack`（普攻的目标、动画、音效、前摇以及发射）、`moveAnims`、`cooldownBase`/`castTime`（按形态）、`skillView`（技能栏图标、名称和角标）和 `tray`（技能栏上方的小图标）。
+  - `ChampionDef` 扩展：`idleVfx`（整局附着在骨骼上的系统，例如布兰德的火焰）、`vfx.death`、`scale`（模型大小）、`sequences`（首尾相接的动画片段，即 bin 的 SequencerClipData，例如奥瑞利安·索尔的奔跑）、`translucent`（按贴图 alpha 混合而非裁剪的子网格，例如他的尾巴）、`conformPath`（沿移动路径弯曲的关节链，即 bin 的 ConformToPathRigPoseModifierData）、法师使用 `itemPool: 'ap'`（技能用 `apRatio` 缩放）、`build`（出装网站推荐的 6 件传说装备，升级时出现概率更高并带标记）、`rankLevels`（每个技能等级的解锁等级）、`autoRank`（无需技能点自动升级的技能）和 `SkillDef.unlockLevel`（从某个等级起可施放，与技能等级无关）。
   - 对敌人的控制：`game.slow(e, pct, s)`、`game.stunEnemy(e, s)` 和 `game.rootEnemy(e, s)`（不能移动，仍可攻击）（仅通用循环；首领 AI 忽略后两者）。 `game.knockUp(e, s)` 是把模型抛向空中的眩晕（星天落瀑）。
   - 投射物：`game.spawnMissile(vfx, from, to, { hit, target | pierce, onHit, ... })`。没有 `onHit` 时，默认命中效果会应用特效、音效和伤害。
 - **装备被动**（钩子在 `src/itemEffects.ts`，条目在 `src/itemPassives/ad.ts`、`ap.ts`、`tank.ts`）：每个条目包含描述（最高等级的数值）和钩子工厂 `effect(g, power)`（`onHit`、`onHitMagic`、`onAttack`、`onCast`、`onDealt`、`onKill`、`onHurt`、`onStruck`、`onOverheal`、`tick`、`onLethal`、`stat`、`damageMult`……）。`power()` 是被动在装备当前等级的强度（0.6/0.8/1）：效果的数值乘以它，全有或全无的效果（复活、法术护盾）则延长冷却。通用机制在 `src/itemPassives/shared.ts`：咒刃、救主灵刃、法术护盾、灼烧、充能。`unique` + `rank` 复现英雄联盟的唯一被动（只有最强的一个生效）。属性仍在 `items.json` 中。

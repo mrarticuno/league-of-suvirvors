@@ -3,7 +3,7 @@
 // Adapted for hordes: each star hits an enemy once per pass over it; star kills restore a bit of
 // mana (0.5s cooldown against minions and small monsters, always from elite and epic ones) because Celestial
 // Expansion drains mana per second (6-10/s, no activation cost) and the old kit had no other mana source.
-// Comet of Legend is a steerable 3s flight (+60-100% Move Speed, through walls and units, no attacks) on a 20-12s
+// Comet of Legend is a 3s flight along the cast direction, ended by a move order (+60-100% Move Speed, through walls and units, no attacks) on a 20-12s
 // cooldown instead of a long locked line on 80-60s. Starsurge grows while Aurelion stays within 650 units and
 // detonates past that, after 5s or at its full size; the bigger it got, the more it deals (+50%) and stuns (0.55-1.1s).
 // It wears today's Singularity vortex, scaled to its radius.
@@ -21,7 +21,7 @@ const VORTEX_RADIUS = 450;
 
 const STARS = {
   count: 3, radius: 250, expandedRadius: 650, hitRadius: 80,
-  period: 3, expandedPeriod: 1.5, // seconds per revolution
+  period: 6, expandedPeriod: 2, // seconds per revolution
   reach: 1400, // units per second the orbit widens and shrinks
   damage: [20, 120], apRatio: 0.25, expandedMult: 1.4, // base damage by level, Celestial Expansion multiplier
   passGap: 0.25, // seconds out of a star's contact that end its pass over an enemy (one hit per pass)
@@ -49,7 +49,7 @@ const SKILLS = {
     cooldown: [20, 18, 16, 14, 12], cost: [60, 60, 60, 60, 60],
     damage: [0, 0, 0, 0, 0], duration: 3,
     speed: [0.6, 0.7, 0.8, 0.9, 1], extra: { label: t('stat.ms'), values: [0.6, 0.7, 0.8, 0.9, 1], percent: true },
-    aim: 'none', castTime: 0.05,
+    aim: 'move', castTime: 0.05,
   },
   R: {
     name: t('champion.aurelionsol.R'), desc: t('champion.aurelionsol.R.desc'), damageType: 'magic', maxRank: 3, anim: 'aurelionsol_spell4_base', icon: `${ICON}/spell/AurelionSolR.png`,
@@ -70,6 +70,8 @@ export const AURELIONSOL: ChampionDef = {
   title: t('champion.aurelionsol.title'), splash: 'https://ddragon.leagueoflegends.com/cdn/img/champion/splash/AurelionSol_0.jpg',
   roles: ['mage'], difficulty: 7,
   hide: ['AurelionSolFX'],
+  conformPath: ['Neck1_Ground', 'Tail11'], // his tail snakes along the path he travelled
+  translucent: ['AurelionSol_BodyLower'], // the see-through tail: its low texel alpha is opacity, which the cut-out would discard
   itemPool: 'ap',
   // OP.GG mid 16.21: Liandry's, Rylai's, Rabadon's, Void Staff, Shadowflame, Cosmic Drive
   build: ['6653', '3116', '3089', '3135', '4645', '4629'],
@@ -91,14 +93,16 @@ export const AURELIONSOL: ChampionDef = {
   skills: SKILLS,
   passive: { name: t('champion.aurelionsol.passive'), icon: `${OLD_ICON}/passive/AurelionSol_Passive.png` },
   anims: {
-    idle: 'aurelionsol_idle1', run: 'aurelionsol_runa', death: 'aurelionsol_death',
+    idle: 'aurelionsol_idle1', run: 'aurelionsol_run', death: 'aurelionsol_death',
     attacks: ['aurelionsol_attack1', 'aurelionsol_attack2'], crit: 'aurelionsol_attack2',
   },
+  // Run_Base is a SequencerClipData: one cycle is these four clips in a row
+  sequences: { aurelionsol_run: ['aurelionsol_runb', 'aurelionsol_runc', 'aurelionsol_rund', 'aurelionsol_runa'] },
   vfx: {
     auto: 'AurelionSol_BA_Mis', crit: 'AurelionSol_BA_Mis', autoHit: 'AurelionSol_BA_tar', critHit: 'AurelionSol_BA_Crit_Tar',
     death: [['AurelionSol_Death', 'C_Buffbone_Glb_Layout_Loc']],
   },
-  // the skin's idleParticlesEffects (its body beams need a second bone, which BoneVfx does not carry)
+  // the skin's idleParticlesEffects (its body beams need a second bone and tiled beam UVs, which are not supported)
   idleVfx: [['AurelionSol_P_SkinOverride', 'spine']],
   animVfx: true,
   kit: aurelionSolKit,
@@ -121,6 +125,7 @@ function aurelionSolKit(g: Game): ChampionKit {
   let expanded = false;
   let expandFx: THREE.Object3D | null = null;
   let flightUntil = -1;
+  const flightDir = new THREE.Vector3(); // Comet of Legend keeps this course until a move order
   let flightFx: THREE.Object3D | null = null;
   let manaReady = 0;
 
@@ -206,6 +211,8 @@ function aurelionSolKit(g: Game): ChampionKit {
     canCast: (key) => key !== 'R' || g.nearestEnemy(g.pos, SKILLS.R.range) !== null,
     ghost: flying,
     disarmed: flying,
+    steer: () => (flying() ? flightDir : undefined),
+    onMoveOrder() { if (flying()) flightUntil = g.time; }, // walking ends the flight
     moveSpeedBonus: () => (flying() ? SKILLS.E.speed[Math.max(0, g.ranks.E - 1)] : 0),
     moveAnims: () => (flying() ? { idle: 'aurelionsol_dashing02', run: 'aurelionsol_dashing02' } : undefined),
 
@@ -230,6 +237,7 @@ function aurelionSolKit(g: Game): ChampionKit {
         setExpanded(!expanded);
       } else if (key === 'E') {
         flightUntil = g.time + SKILLS.E.duration;
+        flightDir.copy(toward(point));
         flightFx?.removeFromParent();
         flightFx = follow('AurelionSol_W_FlightTarget');
       } else {

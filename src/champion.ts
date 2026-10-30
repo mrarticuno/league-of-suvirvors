@@ -120,6 +120,10 @@ export interface ChampionDef {
   hide?: readonly string[];
   /** Submeshes with their own texture (the skin bin's materialOverride): submesh name -> texture file stem. */
   textures?: Readonly<Record<string, string>>;
+  /** Joint chain bent along the travelled path (the skin bin's ConformToPathRigPoseModifierData): start and end joints. */
+  conformPath?: readonly [from: string, to: string];
+  /** Submeshes blended by their texture alpha instead of cut out by it (e.g. a see-through tail). */
+  translucent?: readonly string[];
   base: BaseStats;
   skills: Readonly<Record<SkillKey, SkillDef>>;
   /** Champion level that unlocks each rank of a skill (default LoL: basic 1/3/5/7/9, R 6/11/16). */
@@ -128,6 +132,8 @@ export interface ChampionDef {
   autoRank?: readonly SkillKey[];
   passive: { name: string; icon: string };
   anims: { idle: string; run: string; death: string; attacks: readonly string[]; crit: string };
+  /** Clips built at load by joining others end to end (the animation graph's SequencerClipData, e.g. a run cycle in parts). */
+  sequences?: Readonly<Record<string, readonly string[]>>;
   /** Particle systems of the basic attack (missile and impact, normal and crit) and of the death animation. */
   vfx: { auto: string; crit: string; autoHit: string; critHit: string; death?: readonly BoneVfx[] };
   /** Systems riding bones for the whole run (the skin's idleParticlesEffects, e.g. a body of flames); stop on death. */
@@ -174,6 +180,10 @@ export interface ChampionKit {
   attackStart?(target: Enemy, crit: boolean): { anim?: string; sound?: string; windupPercent?: number } | undefined;
   /** Fires the ranged basic attack (also secondary `bolt`s) instead of the default missile; false keeps the default. */
   basicAttack?(target: Enemy, damage: number, crit: boolean, bolt: boolean): boolean;
+  /** Direction the champion walks on its own, overriding move input (e.g. a flight that keeps its course). */
+  steer?(): THREE.Vector3 | undefined;
+  /** The player gave a new move order (click on the ground, arrow key, joystick), e.g. to end a `steer`. */
+  onMoveOrder?(): void;
   /** Idle and run animations right now, when they change (e.g. per weapon); default `ChampionDef.anims`. */
   moveAnims?(): { idle: string; run: string } | undefined;
   /** Base cooldown of the next cast (before ability haste) when it is not `SkillDef.cooldown` (e.g. per weapon). */

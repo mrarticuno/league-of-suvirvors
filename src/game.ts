@@ -216,7 +216,7 @@ export class Game {
   async setChampion(c: ChampionDef) {
     // the particle systems are one champion's at a time (loadVfx replaces them)
     const vfx = this.vfxFor === c.id ? null : loadVfx(`assets/vfx/${c.id}/`);
-    await Promise.all([vfx, loadModel(c.model, c.hide, c.model, c.textures), audio.loadPrefix(c.id)]);
+    await Promise.all([vfx, loadModel(c.model, c.hide, c.model, { textures: c.textures, sequences: c.sequences, translucent: c.translucent }), audio.loadPrefix(c.id)]);
     this.vfxFor = c.id;
     this.champ = c;
   }
@@ -300,6 +300,7 @@ export class Game {
     this.cooldowns = { Q: 0, W: 0, E: 0, R: 0 };
     this.pos.set(0, 0, 0);
     this.player = new Actor(this.champ.model, this.champ.scale);
+    if (this.champ.conformPath) this.player.conformToPath(...this.champ.conformPath);
     this.scene.add(this.player.root);
     this.kit = this.champ.kit(this);
     this.idleFx = (this.champ.idleVfx ?? []).flatMap((v) => this.boneVfx(v, true) ?? []);
@@ -532,6 +533,12 @@ export class Game {
     this.animLock = Math.min(this.player.duration(anim), castTime + 0.6);
   }
 
+  /** The player gave a new move order (main.ts: click on the ground, arrow key or joystick pressed). */
+  moveOrder() { this.kit.onMoveOrder?.(); }
+
+  /** True while the kit walks the champion on its own (`ChampionKit.steer`): main.ts drops the old click target. */
+  get steering() { return this.kit.steer?.() !== undefined; }
+
   /**
    * Cast point while moving with the arrow keys (SkillDef.aim): the auto-aimed enemy, else `moveDir` from the champion
    * (at the aim range, or AIM_FAR for 'move' so the kit's own range caps it). Null for 'none': keep the cursor.
@@ -705,6 +712,7 @@ export class Game {
       return;
     }
 
+    move = this.kit.steer?.() ?? move;
     const moving = move.lengthSq() > 0;
     // Survivors rule: the champion attacks while moving. During the windup it turns to the target; after it, back to running.
     this.tryAttack(dt);
