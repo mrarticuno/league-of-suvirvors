@@ -22,9 +22,17 @@ const HUD = 'https://raw.communitydragon.org/latest/game/assets/characters/aphel
 
 export type Weapon = 'calibrum' | 'severum' | 'gravitum' | 'infernum' | 'crescendum';
 const WEAPONS: readonly Weapon[] = ['calibrum', 'severum', 'gravitum', 'infernum', 'crescendum'];
-const CLIP: Record<Weapon, string> = { severum: 'a', calibrum: 'b', gravitum: 'c', infernum: 'd', crescendum: 'e' }; // clip set per weapon
+// clip set per weapon; written out because tools/optimize.mjs keeps only the clips named literally in the bundle
+type ClipName = 'idle1' | 'run1' | 'attack1' | 'attack2' | 'spell1' | 'spell2';
+const CLIPS: Record<Weapon, Record<ClipName, string>> = {
+  severum: { idle1: 'aphelios_a_idle1', run1: 'aphelios_a_run1', attack1: 'aphelios_a_attack1', attack2: 'aphelios_a_attack2', spell1: 'aphelios_a_spell1', spell2: 'aphelios_a_spell2' },
+  calibrum: { idle1: 'aphelios_b_idle1', run1: 'aphelios_b_run1', attack1: 'aphelios_b_attack1', attack2: 'aphelios_b_attack2', spell1: 'aphelios_b_spell1', spell2: 'aphelios_b_spell2' },
+  gravitum: { idle1: 'aphelios_c_idle1', run1: 'aphelios_c_run1', attack1: 'aphelios_c_attack1', attack2: 'aphelios_c_attack2', spell1: 'aphelios_c_spell1', spell2: 'aphelios_c_spell2' },
+  infernum: { idle1: 'aphelios_d_idle1', run1: 'aphelios_d_run1', attack1: 'aphelios_d_attack1', attack2: 'aphelios_d_attack2', spell1: 'aphelios_d_spell1', spell2: 'aphelios_d_spell2' },
+  crescendum: { idle1: 'aphelios_e_idle1', run1: 'aphelios_e_run1', attack1: 'aphelios_e_attack1', attack2: 'aphelios_e_attack2', spell1: 'aphelios_e_spell1', spell2: 'aphelios_e_spell2' },
+};
 const BONE: Record<Weapon, string> = { calibrum: 'Calibrum', severum: 'Severum', gravitum: 'Gravitum', infernum: 'Infernum', crescendum: 'Crescendum' };
-const clip = (w: Weapon, name: string) => `aphelios_${CLIP[w]}_${name}`;
+const clip = (w: Weapon, name: ClipName) => CLIPS[w][name];
 // Duskwave hands the off-hand weapon over with its own systems; some keys are only hashes in the skin bin
 const DUSK_SWAP: Record<Weapon, readonly string[]> = {
   calibrum: ['Aphelios_Q_infernum_swapTo_calibrum', 'Aphelios_Q_infernum_swipeTo_calibrum'],
@@ -671,7 +679,7 @@ function apheliosKit(g: Game): ChampionKit {
       const weapon = mark ? (off === 'calibrum' ? main : off) : main;
       attack = { weapon, mark };
       const swing = attackSwing++ % 2 === 0 ? 'attack1' : 'attack2';
-      const anim = mark && main === 'calibrum' ? `aphelios_b_spell1_${swing === 'attack1' ? 'attack' : 'attack2'}` : clip(main, swing);
+      const anim = mark && main === 'calibrum' ? (swing === 'attack1' ? 'aphelios_b_spell1_attack' : 'aphelios_b_spell1_attack2') : clip(main, swing);
       return {
         anim, sound: mark ? 'aphelios_mark_attack' : `aphelios_${weapon}_auto`,
         windupPercent: weapon === 'crescendum' ? (crit ? PASSIVE.critWindup : PASSIVE.windup) : undefined,
