@@ -208,10 +208,10 @@ pnpm dev        # http://localhost:5173（在第一个界面选择英雄）
 - **英雄**（`src/champion.ts`、`src/champions/`）：一个英雄由 `ChampionDef`（基础属性、技能的等级/消耗/冷却/动画/图标、动画、普攻特效）加一个每局创建的 `kit` 组成，`kit` 负责处理技能及其特殊机制（层数、标记等）。`Game` 负责通用部分：移动、普攻、冷却、法力、装备和伤害管线。
   - 新英雄：创建 `src/champions/<name>.ts`（模板：`ezreal.ts`；法术强度法师、持续伤害和逐敌标记参考 `brand.ts`），并在 `src/champions/index.ts` 中注册。音效命名遵循 `<id>_auto`、`<id>_Q`、`<id>_death`……分步指南：`.claude/skills/creating-champions/SKILL.md`。
   - kit 钩子：`cast`（必需）、`castStart`、`castAnim`、`canCast`、`attackSpeedBonus`/`moveSpeedBonus`、`disarmed`、`meleeAuto`、`onDamage`（减免前的额外魔法伤害，例如引爆 W 的标记）、`onKill`（例如炽热之焰的击杀回蓝）、`update`、`dispose`、`hud`、`gauge`。
-  - `ChampionDef` 扩展：`idleVfx`（整局附着在骨骼上的系统，例如布兰德的火焰）、`vfx.death`、`scale`（模型大小）、法师使用法术强度装备（技能用 `apRatio` 缩放）。
+  - `ChampionDef` 扩展：`idleVfx`（整局附着在骨骼上的系统，例如布兰德的火焰）、`vfx.death`、`scale`（模型大小）、法师使用 `itemPool: 'ap'`（技能用 `apRatio` 缩放）、`build`（出装网站推荐的 6 件传说装备，升级时出现概率更高并带标记）。
   - 对敌人的控制：`game.slow(e, pct, s)` 和 `game.stunEnemy(e, s)`（仅通用循环；首领 AI 忽略眩晕）。
   - 投射物：`game.spawnMissile(vfx, from, to, { hit, target | pierce, onHit, ... })`。没有 `onHit` 时，默认命中效果会应用特效、音效和伤害。
-- **装备被动**（`src/itemEffects.ts`）：每个条目包含描述，若已实现，还有一个钩子工厂（`onHit`、`onAttack`、`onCast`、`onPhysical`、`tick`、`onLethal`、`bonusAd`、`enemyAttackCooldown`）。`unique` + `rank` 复现英雄联盟的唯一被动（例如咒刃：只有最强的一个生效）。属性仍在 `items.json` 中。
+- **装备被动**（钩子在 `src/itemEffects.ts`，条目在 `src/itemPassives/ad.ts`、`ap.ts`、`tank.ts`）：每个条目包含描述（最高等级的数值）和钩子工厂 `effect(g, power)`（`onHit`、`onHitMagic`、`onAttack`、`onCast`、`onDealt`、`onKill`、`onHurt`、`onStruck`、`onOverheal`、`tick`、`onLethal`、`stat`、`damageMult`……）。`power()` 是被动在装备当前等级的强度（0.6/0.8/1）：效果的数值乘以它，全有或全无的效果（复活、法术护盾）则延长冷却。通用机制在 `src/itemPassives/shared.ts`：咒刃、救主灵刃、法术护盾、灼烧、充能。`unique` + `rank` 复现英雄联盟的唯一被动（只有最强的一个生效）。属性仍在 `items.json` 中。
 - **敌人**（`src/data.ts` + `src/enemies/`）：普通敌人只需要一个 `EnemyDef`。自定义行为在 `AI` 中注册；有特殊规则的时间线事件（随机亚龙、男爵竞技场）在 `SPAWNERS` 中注册生成器。`src/hazards.ts` 包含首领用的地面标记和喷发效果。
 - **性能**：敌人存放在空间网格中（`src/spatial.ts`），因此单位碰撞、目标选择、投射物和光环只查询邻近单位（以前的碰撞是 O(n²)）。每帧列表原地过滤（`compact`），刷怪/击杀窗口为均摊 O(1)，玩家停留在同一区块时地图不做任何重建，HUD 只在数值变化时写入 DOM。远离英雄的敌人每 3 帧更新一次动画。
 

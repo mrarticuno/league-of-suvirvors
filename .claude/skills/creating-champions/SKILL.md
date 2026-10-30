@@ -67,9 +67,10 @@ function luxKit(g: Game): ChampionKit { /* estado da run aqui, em closures */ re
 - Bloquear projéteis inimigos: `g.blockMissiles(p, r)` (retorna quantos).
 - Objetos de chão do campeão (armadilhas, zonas): meshes do kit em `g.scene`, checados no `update` com `g.enemiesNear`, removidos em `dispose`. `g.hazards` só fere o campeão (é dos chefes).
 
-API pública do `Game` para o kit: `pos`, `facing`, `time`, `level`, `ranks`, `cooldowns`, `hp`/`maxHp`, `mana`/`maxMana`, `ad`/`baseAd`/`bonusAd`, `ap`, `attackSpeed`, `critChance`, `items`, `costOf`, `spawnMissile`, `basicAttack`, `impact`, `hurtEnemy`, `float`, `enemyAt`, `nearestEnemy`, `enemiesNear`, `inAttackRange`, `collidePlayer`, `dash`/`dashing`, `blockMissiles`, `slow(e, pct, s)`/`isSlowed`, `stunEnemy(e, s)`, `player.bone(nome)`, `vfx` (`play`, `playAt`, `playOn`, `hit`, `attach`), `scene`.
+API pública do `Game` para o kit: `pos`, `facing`, `time`, `level`, `ranks`, `cooldowns`, `hp`/`maxHp`, `mana`/`maxMana`, `ad`/`baseAd`/`bonusAd`, `ap`, `attackSpeed`, `critChance`, `items`, `slots` (`{ id, level }` dos itens), `costOf`, `spawnMissile`, `basicAttack`, `impact`, `hurtEnemy`, `float`, `enemyAt`, `nearestEnemy`, `enemiesNear`, `inAttackRange`, `collidePlayer`, `dash`/`dashing`, `blockMissiles`, `slow(e, pct, s)`/`isSlowed`, `stunEnemy(e, s)`, `player.bone(nome)`, `vfx` (`play`, `playAt`, `playOn`, `hit`, `attach`), `scene`.
 
 - Dano contínuo (queimadura, veneno) e explosões de passiva: `Hit` com `source: 'item'`, para não disparar runas/itens de "acerto de habilidade" a cada tick. Aplique os acúmulos do próprio kit à mão.
+- Itens reagem ao `Hit`: `source: 'ability'` + `skill` dispara Liandry, Rylai, Shojin, Luden, Serylda, Voltaic etc.; `onHit: true` aplica on-hit (Kraken, BotRK, Guinsoo, Nashor). Dano mágico é reduzido pela RM do inimigo e físico pela armadura; `type: 'true'` ignora os dois (procs de item).
 - Ticks de dano: conte os ticks restantes (`ticks--`), não compare `g.time < fim`; o erro de ponto flutuante perde o último tick.
 - Marca que segue inimigo: `g.vfx.attach(key)` + `g.scene.add(o)`, posição copiada no `update`, `removeFromParent()` ao acabar (o sistema morre junto).
 
@@ -142,6 +143,7 @@ Dump de um bin para consulta: `read_linked(Names('../assets-raw/hashes'), [Wad(.
 | `build_audio.py` quebra no wwiser | Caminho relativo do `wwiser.py`: use absoluto (o script roda o wwiser com `cwd` temporário) |
 | Último tick de dano some | Contar ticks, não comparar tempo |
 | Mana infinita em horda | Recarga interna na mana por abate |
+| Item da `build` nunca aparece | Id fora de `src/items.json` (itens com ativa, suporte e corta-cura não existem no jogo): troque pelo próximo item do site de builds |
 
 ## Verificação
 
@@ -149,4 +151,5 @@ Dump de um bin para consulta: `read_linked(Names('../assets-raw/hashes'), [Wad(.
 2. `npm run dev`, console do navegador: `game` está em `window` (dev). Dê ranks (`game.ranks = {Q:5,W:5,E:5,R:3}`), feche o level-up e conjure cada skill com `game.cast('Q', alvo.pos)`. Confira dano, VFX, som, HUD da passiva e o console sem erros.
 3. `game.reset()` não pode deixar meshes do kit na cena (conte os `Group` vazios em `game.scene.children` antes e depois).
 4. Teste de altura: `game.player.bone('head').getWorldPosition(new THREE.Vector3()).y` perto dos outros campeões.
-5. Contra horda: `game.hurtPlayer = () => {}`, spawne ~30 `minion_melee` com vida alta e confira mana gasta por skill, marcas e FPS.
+5. Itens: `game.takeItem('<id>')` e `game.levelItem(slot)` até o nível 5 nos itens da `build`; confira que as passivas reagem às skills (queimadura, lentidão, on-hit) e que o card de level-up marca a build como recomendada.
+6. Contra horda: `game.hurtPlayer = () => {}`, spawne ~30 `minion_melee` com vida alta e confira mana gasta por skill, marcas e FPS.
