@@ -207,7 +207,7 @@ function frame(now = last) {
   last = now;
   requestAnimationFrame(frame);
   if (inMenu) return renderer.clear(); // black behind champion select and the rune page
-  if (!hud.menuOpen) game.update(dt * (cine?.timeScale ?? 1), moveInput()); // the ESC menu pauses the simulation
+  if (!hud.menuOpen) game.update(dt * (cine?.timeScale ?? 1) * game.pace, moveInput()); // the ESC menu pauses the simulation
   checkPrompts();
   if (cine) cine.update();
   else {

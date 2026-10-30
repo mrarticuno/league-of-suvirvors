@@ -111,6 +111,20 @@ it('Crescendum: no attacks until the blade is caught, then the timer resets; onl
   expect(r.kit.hud!()).toBe(''); // catching Crescendum itself adds no chakram
 });
 
+it("Crescendum: Runaan's Hurricane bolts come back without stacking chakrams (no extra throws, no extra Moonlight)", () => {
+  const r = rig();
+  const e = enemy(300);
+  while (!icon(r.kit).includes('q_crescendum')) { attack(r, e); r.land(); r.kit.update!(0.5); }
+  r.kit.update!(5);
+  const before = r.kit.skillView!('Q')!.badge;
+  r.kit.basicAttack!(e, 50, false, true);
+  r.kit.basicAttack!(e, 50, false, true);
+  r.land();
+  for (let i = 0; i < 40; i++) r.kit.update!(0.05);
+  expect(r.kit.hud!()).toBe('');
+  expect(r.kit.skillView!('Q')!.badge).toBe(before);
+});
+
 it('Crescendum with chakrams: one throw per blade in hand, waiting only when all are out', () => {
   const r = rig();
   const e = enemy(300);

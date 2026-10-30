@@ -53,13 +53,13 @@ describe('keys used by the code exist', () => {
   it('keys built from ids: catalogs never show a raw key', async () => {
     vi.resetModules();
     vi.stubGlobal('navigator', { languages: ['en-US'] });
-    const [{ RUNES, SHARDS, TREES }, { ITEMS }, { PASSIVES }, { CHAMPIONS }, { ENEMIES }, { BUFF }] = await Promise.all([
+    const [{ RUNES, SHARDS, TREES }, { ITEMS, BOOTS }, { PASSIVES }, { CHAMPIONS }, { ENEMIES }, { BUFF }] = await Promise.all([
       import('../src/runes'), import('../src/items'), import('../src/itemEffects'),
       import('../src/champions'), import('../src/data'), import('../src/buffs'),
     ]);
     const texts = [
       ...Object.values(RUNES).flatMap((r) => [r.name, r.desc]), ...Object.values(TREES).map((x) => x.name),
-      ...SHARDS.flat().map((s) => s.name), ...Object.values(ITEMS).map((i) => i.name), ...Object.values(PASSIVES),
+      ...SHARDS.flat().map((s) => s.name), ...Object.values(ITEMS).map((i) => i.name), ...Object.values(BOOTS).map((i) => i.name), ...Object.values(PASSIVES),
       ...Object.values(CHAMPIONS).flatMap((c) => [c.name, c.title, c.passive.name, ...Object.values(c.skills).flatMap((s) => [s.name, s.desc])]),
       ...Object.values(ENEMIES).flatMap((e) => (e.name ? [e.name] : [])), ...Object.values(BUFF.names),
     ];

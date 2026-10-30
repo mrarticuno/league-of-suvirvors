@@ -2,7 +2,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { PASSIVES } from '../src/itemEffects';
 import {
-  buildComplete, ITEMS, MAX_ITEMS, MAX_LEVEL, offerScore, PASSIVE_POWER, rollOffers, STAT_SCALE, sumStats, type Slot,
+  BOOT_UPGRADES, BOOTS, BOOTS_FIRST, buildComplete, ITEMS, MAX_ITEMS, MAX_LEVEL, offerScore, PASSIVE_POWER, rollOffers, STAT_SCALE, sumStats, type Slot,
 } from '../src/items';
 
 vi.mock('../src/audio', () => ({ audio: {} }));
@@ -77,4 +77,10 @@ it('the build is complete with every slot at max level', () => {
 
 it('every item has a passive text', () => {
   for (const id of Object.keys(ITEMS)) expect(PASSIVES[id], id).toBeTruthy();
+});
+
+it('boots add their stats outside the six slots; every tier 2 has a tier 3', () => {
+  expect(sumStats([], -1, BOOTS_FIRST).ms).toBe(25);
+  expect(sumStats([{ id: '3031', level: MAX_LEVEL }], -1, '3006')).toMatchObject({ ad: 75, as: 0.3, ms: 45 });
+  for (const [t2, t3] of Object.entries(BOOT_UPGRADES)) expect([BOOTS[t2], BOOTS[t3]]).not.toContain(undefined);
 });

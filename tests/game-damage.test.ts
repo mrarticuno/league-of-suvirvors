@@ -34,3 +34,23 @@ it('a proc after the killing blow neither kills again nor heals a negative amoun
   expect(g.killEnemy).toHaveBeenCalledTimes(1);
   for (const [v] of g.heal.mock.calls) expect(v).toBeGreaterThanOrEqual(0);
 });
+
+/** hurtPlayer on a stand-in `this`: armor 100 halves the hit before the standing-still multiplier and Plating. */
+function player(stillFor: number, boots: string | null = null) {
+  const desc = Object.getOwnPropertyDescriptor(Game.prototype, 'campingMult')!;
+  const g = {
+    alive: true, stasis: 0, armor: 100, mr: 0, itemFx: [], shield: 0, hp: 10000, time: 0, lastHurtAt: 0, stillFor, boots,
+    float: () => {}, hurtPlayer: Game.prototype.hurtPlayer,
+  };
+  Object.defineProperty(g, 'campingMult', { get: desc.get });
+  return g;
+}
+
+it('standing still multiplies damage taken (after armor) up to x5 after 5 seconds', () => {
+  const taken = (g: ReturnType<typeof player>) => { g.hurtPlayer(100); return 10000 - g.hp; };
+  expect(taken(player(0))).toBeCloseTo(50);
+  expect(taken(player(2.5))).toBeCloseTo(150);
+  expect(taken(player(5))).toBeCloseTo(250);
+  expect(taken(player(30))).toBeCloseTo(250);
+  expect(taken(player(0, '3047'))).toBeCloseTo(45); // Plating: physical hits deal 10% less
+});

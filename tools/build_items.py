@@ -2,6 +2,8 @@
 to every src/locales/<lang>.json as `item.<id>` (stale `item.<id>` names are dropped; other keys, passives included, are
 kept). Stats are parsed from the en_US description's <stats> block.
 
+BOOTS are the boots of the boot slot (flat Move Speed: `ms`).
+
 Usage: python tools/build_items.py <ddragon version>
 
 ITEMS is every Summoner's Rift legendary except: items with an active (Zhonya's, Youmuu's, the Hydras, Randuin's,
@@ -27,11 +29,13 @@ ITEMS = [
     "2502", "3068", "6664", "3742", "6333", "4401", "3110", "3084", "6665", "2504", "2525", "3065", "3075", "3083", "3119",
     "6662",
 ]
+# Boots: their own slot outside the six (src/items.ts BOOT_UPGRADES): Boots, the tier 2 picks, then each one's tier 3
+BOOTS = ["1001", "3006", "3020", "3047", "3111", "3158", "3009", "3172", "3175", "3174", "3173", "3171", "3170"]
 # <stats> line name -> src/items.ts ItemStats key (percent values become fractions); unlisted lines (regen, heal power) are ignored
 STAT_NAMES = {
     "Attack Damage": "ad", "Ability Power": "ap", "Attack Speed": "as", "Health": "hp", "Mana": "mana",
     "Critical Strike Chance": "crit", "Critical Strike Damage": "critDamage", "Armor": "armor", "Magic Resist": "mr",
-    "Move Speed": "msPct", "Life Steal": "lifesteal", "Omnivamp": "omnivamp", "Ability Haste": "ah", "Armor Penetration": "armorPen",
+    "Move Speed": "ms", "Move Speed%": "msPct", "Life Steal": "lifesteal", "Omnivamp": "omnivamp", "Ability Haste": "ah", "Armor Penetration": "armorPen",
     "Lethality": "lethality", "Magic Penetration": "magicPenFlat", "Magic Penetration%": "magicPen", "Tenacity": "tenacity",
 }
 # src/locales file -> Data Dragon locale (new game language: add it here and rerun)
@@ -56,19 +60,20 @@ def main(version):
     url = "https://ddragon.leagueoflegends.com/cdn/{}/data/{}/item.json"
     names = {lang: json.load(urllib.request.urlopen(url.format(version, loc)))["data"] for lang, loc in LOCALES.items()}
     items = {i: {"id": i, "stats": parse_stats(names["en"][i]["description"])} for i in ITEMS}
+    boots = {i: {"id": i, "stats": parse_stats(names["en"][i]["description"])} for i in BOOTS}
     for lang, d in names.items():
         path = f"src/locales/{lang}.json"
         with open(path) as f:
             texts = json.load(f)
         texts = {k: v for k, v in texts.items() if not re.fullmatch(r"item\.\d+", k)}
-        texts.update({f"item.{i}": d[i]["name"] for i in items})
+        texts.update({f"item.{i}": d[i]["name"] for i in [*items, *boots]})
         with open(path, "w") as f:
             json.dump(texts, f, ensure_ascii=False, indent=1)
             f.write("\n")
-    out = {"version": version, "items": items}
+    out = {"version": version, "items": items, "boots": boots}
     with open("src/items.json", "w") as f:
         json.dump(out, f, ensure_ascii=False, indent=1)
-    print(f"{len(items)} items -> src/items.json")
+    print(f"{len(items)} items, {len(boots)} boots -> src/items.json")
 
 
 if __name__ == "__main__":

@@ -157,7 +157,7 @@ const qName = (main: Weapon, off: Weapon) => t((main === 'gravitum' ? 'champion.
 interface Mark { until: number; bonus: number; fx: THREE.Object3D | null }
 interface Gravity { until: number; decayAt: number; enhanced: boolean; fx: THREE.Object3D | null }
 /** A Crescendum blade on its way: the weapon itself, a chakram from the orbit (a basic attack) or a spectral one (an ability). */
-type BladeKind = 'main' | 'orbit' | 'spectral';
+type BladeKind = 'main' | 'orbit' | 'spectral' | 'bolt'; // bolt: a Runaan's Hurricane chakram, back without stacking
 interface Blade { fx: THREE.Object3D; wait: number; kind: BladeKind } // flying back to Aphelios
 interface Flight { target: Enemy; kind: BladeKind; landed: boolean } // thrown by a basic attack, not landed yet
 interface Sentry {
@@ -380,7 +380,7 @@ function apheliosKit(g: Game): ChampionKit {
         break;
       }
       case 'crescendum': {
-        const kind: BladeKind = s.flight?.kind ?? 'spectral', big = kind === 'main';
+        const kind: BladeKind = s.flight?.kind ?? (h.bolt ? 'bolt' : 'spectral'), big = kind === 'main';
         if (s.flight) s.flight.landed = true;
         g.vfx.hit(big ? 'Aphelios_BA_crescendum_hit_tar' : 'Aphelios_BA_crescendum_hit_tar_mini', e.pos, facing, size);
         audio.play(crit ? 'aphelios_crit_hit' : 'aphelios_crescendum_hit');

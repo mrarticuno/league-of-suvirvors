@@ -11,7 +11,10 @@ import {
 import { AI, SPAWNERS, type EnemyAI } from './enemies';
 import { Hazards } from './hazards';
 import { ITEM_PASSIVES, type FxStat, type ItemEffect } from './itemEffects';
-import { BLUEPRINT_CHANCE, buildComplete, MAX_ITEMS, MAX_LEVEL, PASSIVE_POWER, POTION, sumStats, type Slot } from './items';
+import {
+  BLUEPRINT_CHANCE, BOOT_UPGRADES, BOOTS, BOOTS_AT, BOOTS_FIRST, buildComplete, describeStats, itemIcon, MAX_ITEMS, MAX_LEVEL, PASSIVE_POWER, PLATING, POTION,
+  sumStats, type Slot,
+} from './items';
 import { loadMapPieces, loadMapTextures, WorldMap } from './map';
 import { emptyPage, type Page } from './progress';
 import { runeEffects } from './runes';
@@ -24,6 +27,8 @@ import { loadVfx, Vfx, type MissileFx } from './vfx';
 const SPAWN_RADIUS = 1800;
 const BASIC_LEVELS = [1, 3, 5, 7, 9], ULT_LEVELS = [6, 11, 16]; // LoL skill point rules (ChampionDef.rankLevels)
 const FLASH = { range: 400, cooldown: 120 };
+const PACE = { ramp: 300, max: 2 }; // the whole simulation speeds up from x1 at 0:00 to x2 at 5:00, then stays
+const CAMPING = { ramp: 5, max: 5 }; // standing still: damage taken grows to x5 (after armor) over 5 s
 const BASE_MR = 30, BASE_MR_PER_LEVEL = 1.3; // LoL marksmen and mages: no champion file lists MR
 const DESPAWN_RADIUS = 3600;
 const AIM_FAR = 5000; // 'move' aim: farther than any dash or blink
@@ -129,6 +134,8 @@ export class Game {
   slots: Slot[] = [];
   inventory: string[] = []; // item id of each slot
   legendary = -1; // slot upgraded by the blueprint
+  boots: string | null = null; // the boot slot (BOOTS), outside the six
+  private dragonSlain = false; // tier 3 boots: given when the tier 2 pick comes after the dragon
   items = sumStats([]);
   private owned = new Set<string>();
   private itemFx: ItemEffect[] = []; // hooks of the owned items and equipped runes
@@ -138,6 +145,7 @@ export class Game {
   buffs: Record<BuffKey, number> = { blue: 0, red: 0 }; // run time each jungle buff ends
   private buffSpawnAt: Record<BuffKey, number> = { blue: BUFF.firstSpawn, red: BUFF.firstSpawn }; // Infinity while alive
   lastHurtAt = -Infinity; // run time of the last damage taken (red buff regen)
+  stillFor = 0; // seconds the champion has stood still (CAMPING)
   private crowd = 0; // enemies in contact with the champion last frame (enemyDamageScale)
   private buffDrops: { key: BuffKey; mesh: THREE.Object3D; until: number }[] = []; // dropped buffs waiting to be picked up
   shield = 0;
@@ -270,10 +278,10 @@ export class Game {
       focus: null, manualTarget: null, pendingLevelUps: 1,
       attackTimer: 0, windup: -1, windupTarget: null, castLock: 0, animLock: 0, pendingCast: null, dashMove: null,
       enemies: [], aliveCount: 0, epics: [], nextId: 0, missiles: [], floaters: [], nextEvent: 0, spawnBudget: 0,
-      nextHordeAt: HORDE.every, legendary: -1, blueprintDropped: false,
+      nextHordeAt: HORDE.every, legendary: -1, boots: null, dragonSlain: false, blueprintDropped: false,
       stasis: 0, stasisEnd: null, stunned: 0, stunLength: 0, airborne: true, arena: null,
       page, shield: 0, shieldUntil: 0, choices: [], bonusRunePoints: 0, flashReady: 0,
-      buffs: { blue: 0, red: 0 }, buffDrops: [], crowd: 0, lastHurtAt: -Infinity,
+      buffs: { blue: 0, red: 0 }, buffDrops: [], crowd: 0, lastHurtAt: -Infinity, stillFor: 0,
       buffSpawnAt: { blue: BUFF.firstSpawn, red: BUFF.firstSpawn },
       dragon: DRAGONS[Math.floor(Math.random() * DRAGONS.length)].model,
     });
@@ -335,7 +343,7 @@ export class Game {
     const bonus = grow(0, B.attackSpeedPerLevel, this.level) + this.items.as + this.fxStat('as') + (this.kit.attackSpeedBonus?.() ?? 0);
     return Math.min(2.5, B.attackSpeed * (1 + bonus));
   }
-  get moveSpeed() { return Math.round(this.champ.base.moveSpeed * (1 + this.items.msPct + this.fxStat('msPct') + (this.kit.moveSpeedBonus?.() ?? 0))); }
+  get moveSpeed() { return Math.round((this.champ.base.moveSpeed + this.items.ms) * (1 + this.items.msPct + this.fxStat('msPct') + (this.kit.moveSpeedBonus?.() ?? 0))); }
   get critChance() { return Math.min(1, this.items.crit + this.fxStat('crit')); }
   get armor() { const B = this.champ.base; return grow(B.armor, B.armorPerLevel, this.level) + this.items.armor + this.fxStat('armor'); }
   get mr() { return grow(BASE_MR, BASE_MR_PER_LEVEL, this.level) + this.items.mr + this.fxStat('mr'); }
@@ -380,7 +388,7 @@ export class Game {
     this.slots = slots;
     this.inventory = slots.map((s) => s.id);
     this.owned = new Set(this.inventory);
-    this.items = sumStats(slots, this.legendary);
+    this.items = sumStats(slots, this.legendary, this.boots);
     this.itemFx = this.activeEffects();
     this.hp = Math.max(1, Math.min(this.maxHp, this.hp + this.maxHp - hpBefore));
     this.mana = Math.max(0, Math.min(this.maxMana, this.mana + this.maxMana - manaBefore));
@@ -554,6 +562,7 @@ export class Game {
     this.kit.update?.(dt);
     this.hazards.update(dt, this.alive && this.stasis <= 0);
     this.updateBlueprint(dt);
+    if (!this.boots && this.time >= BOOTS_AT) this.setBoots(BOOTS_FIRST);
     this.updateBuffDrops(dt);
     this.map.update(dt);
     this.vfx.update(dt);
@@ -565,6 +574,29 @@ export class Game {
       this.focusRing.position.set(this.focus.pos.x, 3, this.focus.pos.z);
       this.focusRing.scale.setScalar(this.focus.def.radius + 25);
     }
+  }
+
+  /** Simulation speed (main.ts scales the frame time by it): x1 at the start, PACE.max from PACE.ramp seconds on. */
+  get pace() { return 1 + (PACE.max - 1) * Math.min(1, this.time / PACE.ramp); }
+
+  /** Puts `id` in the boot slot (BOOTS), keeping HP/mana in step like an item. */
+  setBoots(id: string) {
+    this.boots = id;
+    this.setSlots(this.slots);
+    this.float(this.pos, t('float.boots', { item: BOOTS[id].name }), 'crit');
+    audio.play('hud_item');
+  }
+
+  /** Rift Scuttler slain: pick the tier 2 boots (straight to its tier 3 when the dragon already fell). */
+  private offerBoots() {
+    this.choices.push({
+      title: t('boots.choose', { monster: ENEMIES.scuttle.name ?? '' }),
+      options: Object.keys(BOOT_UPGRADES).map((id) => ({
+        name: BOOTS[id].name, icon: itemIcon(id),
+        text: [describeStats(BOOTS[id].stats), PLATING.has(id) ? t('boots.plating') : ''].filter(Boolean).join(' · '),
+        run: () => this.setBoots(this.dragonSlain ? BOOT_UPGRADES[id] : id),
+      })),
+    });
   }
 
   /** Blueprint scroll: bobs on the ground until the champion walks over it, then a random max-level item turns legendary. */
@@ -636,6 +668,7 @@ export class Game {
       this.clampToArena();
       this.collidePlayer();
       this.facing = Math.atan2(d.dir.x, d.dir.z);
+      this.stillFor = 0;
       if ((d.left -= step) <= 0) this.dashMove = null;
       this.player.root.position.copy(this.pos);
       this.player.root.rotation.y = this.facing;
@@ -662,6 +695,7 @@ export class Game {
     const moving = move.lengthSq() > 0;
     // Survivors rule: the champion attacks while moving. During the windup it turns to the target; after it, back to running.
     this.tryAttack(dt);
+    this.stillFor = moving ? 0 : this.stillFor + dt;
     if (moving) {
       this.pos.addScaledVector(move, this.moveSpeed * dt);
       this.clampToArena();
@@ -899,9 +933,13 @@ export class Game {
   }
 
   /** `nonLethal` damage leaves the champion at 1 HP at worst (Baron's whip); `magic` is reduced by MR instead of armor. */
+  /** Damage taken multiplier for standing still: x1 while walking, up to x5 after CAMPING.ramp seconds. */
+  get campingMult() { return 1 + (CAMPING.max - 1) * Math.min(1, this.stillFor / CAMPING.ramp); }
+
   hurtPlayer(amount: number, nonLethal = false, magic = false) {
     if (!this.alive || this.stasis > 0) return;
-    let taken = amount * (100 / (100 + Math.max(0, magic ? this.mr : this.armor)));
+    let taken = amount * (100 / (100 + Math.max(0, magic ? this.mr : this.armor))) * this.campingMult;
+    if (!magic && this.boots && PLATING.has(this.boots)) taken *= 0.9;
     for (const fx of this.itemFx) if (fx.onHurt) taken = fx.onHurt(taken);
     const absorbed = Math.min(this.shield, taken);
     this.shield -= absorbed;
@@ -962,6 +1000,14 @@ export class Game {
       this.blueprint = makeBlueprint();
       this.blueprint.position.set(e.pos.x, 0, e.pos.z);
       this.scene.add(this.blueprint);
+    }
+    if (e.def.model === 'scuttle' && (!this.boots || this.boots === BOOTS_FIRST)) {
+      if (!this.boots) this.setBoots(BOOTS_FIRST);
+      this.offerBoots();
+    }
+    if (e.def.model.startsWith('dragon_')) {
+      this.dragonSlain = true;
+      if (this.boots && BOOT_UPGRADES[this.boots]) this.setBoots(BOOT_UPGRADES[this.boots]);
     }
     if (isBuffMonster(e.def.model)) {
       this.buffSpawnAt[e.def.model] = this.time + BUFF.respawn;

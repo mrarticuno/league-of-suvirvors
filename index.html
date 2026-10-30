@@ -165,11 +165,14 @@
       #mana-bar { grid-area: mp; height: 13px; }
       #mana-bar span { font-size: 10px; }
       #mana-fill { background: linear-gradient(180deg, #6daaff, #2558b8); }
-      #inventory { grid-area: iv; display: grid; grid-template-columns: repeat(3, 42px); gap: 5px; padding-left: 14px; border-left: 1px solid var(--line); align-self: stretch; align-content: center; }
+      #inventory { grid-area: iv; display: grid; grid-template-columns: repeat(3, 42px) 42px; gap: 5px; padding-left: 14px; border-left: 1px solid var(--line); align-self: stretch; align-content: center; }
       #inventory b, #inventory span { width: 42px; height: 42px; border: 1px solid var(--gold-dim); display: block; background: #070b14; }
       #inventory span { border-color: var(--line); }
+      /* boot slot: its own column, outside the six */
+      #inventory .boots { grid-column: -2; grid-row: 1 / span 2; align-self: center; margin-left: 4px; border-color: #7fe0c2; }
+      #inventory span.boots { border-style: dashed; border-color: var(--line); }
       #inventory b { position: relative; } #inventory b img { display: block; width: 100%; height: 100%; }
-      @media (max-width: 1240px) { :root { --slot: 56px; } #portrait { width: 84px; height: 84px; } #inventory { grid-template-columns: repeat(3, 36px); } #inventory b, #inventory span { width: 36px; height: 36px; } }
+      @media (max-width: 1240px) { :root { --slot: 56px; } #portrait { width: 84px; height: 84px; } #inventory { grid-template-columns: repeat(3, 36px) 36px; } #inventory b, #inventory span { width: 36px; height: 36px; } }
       @media (max-width: 1080px) {
         #stats { display: none; }
         #dock { grid-template-columns: auto auto 1px auto 1px auto auto; grid-template-areas: 'po ga s1 sk s2 fl iv' 'po hp hp hp hp hp iv' 'po mp mp mp mp mp iv'; }
@@ -211,7 +214,19 @@
       /* item level badge (HUD and strip); slot states: max level, legendary (blueprint) */
       #inv-edit .lv, #inventory .lv { position: absolute; right: 1px; bottom: 1px; min-width: 13px; padding: 0 2px; background: rgba(3, 6, 12, 0.85); font: 700 10px/13px var(--ui); font-style: normal; color: var(--gold-hi); text-align: center; }
       #inv-edit .final, #inventory .final { border-color: #ffd257; }
-      #inv-edit .legendary, #inventory .legendary { border-color: #ff9a2e; box-shadow: 0 0 8px #ff9a2e; }
+      #inv-edit .legendary, #inventory .legendary, .mi-icon.legendary { border-color: #ff9a2e; box-shadow: 0 0 8px #ff9a2e; }
+      /* legendary: a spinning gold-orange ring, a pulsing glow and a ribbon over the icon */
+      @property --leg-a { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+      #inv-edit .legendary, #inventory .legendary, .mi-icon.legendary { z-index: 1; animation: leg-glow 1.6s ease-in-out infinite; }
+      #inv-edit .legendary::before, #inventory .legendary::before, .mi-icon.legendary::before { content: ''; position: absolute; inset: -3px; padding: 2px; pointer-events: none;
+        background: conic-gradient(from var(--leg-a), #ff9a2e, #fff2b0, #ff5a1f, #ffd257, #ff9a2e);
+        -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; animation: leg-spin 2.4s linear infinite; }
+      #inv-edit .leg, #inventory .leg, .mi-icon .leg { position: absolute; left: 50%; top: -8px; transform: translateX(-50%); padding: 0 3px; white-space: nowrap; pointer-events: none;
+        background: linear-gradient(90deg, #ff5a1f, #ffb03a); color: #1a0a00; font: 800 8px/11px var(--ui); font-style: normal; letter-spacing: 0.04em; text-transform: uppercase; }
+      body.touch #inventory .leg { display: none; }
+      @keyframes leg-spin { to { --leg-a: 360deg; } }
+      @keyframes leg-glow { 50% { box-shadow: 0 0 16px 2px #ff9a2e; } }
+      @media (prefers-reduced-motion: reduce) { #inv-edit .legendary, #inventory .legendary, #inv-edit .legendary::before, #inventory .legendary::before, .mi-icon.legendary, .mi-icon.legendary::before { animation: none; } }
       #offers { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr)); gap: 18px; width: min(1180px, 100%); align-items: start; }
       #offers:empty { display: none; }
       .ioffer { position: relative; min-width: 0; display: flex; flex-direction: column; gap: 12px; padding: 18px; background: linear-gradient(180deg, rgba(16, 24, 40, 0.96), rgba(6, 10, 18, 0.96)); box-shadow: inset 0 0 0 1px var(--gold-dim);
@@ -315,6 +330,19 @@
       #menu .vol { width: min(280px, 80vw); display: grid; gap: 6px; font-size: 14px; color: var(--gold-hi); }
       #menu .vol input { width: 100%; accent-color: var(--gold); cursor: pointer; }
       #menu #stats { display: grid; border: 0; padding: 0; }
+      #menu { overflow-y: auto; justify-content: flex-start; padding: max(18px, env(safe-area-inset-top)) 16px max(18px, env(safe-area-inset-bottom)); }
+      #menu-info { display: grid; grid-template-columns: minmax(0, 260px) minmax(0, 520px); gap: 18px; width: min(820px, 100%); }
+      @media (max-width: 700px) { #menu-info { grid-template-columns: minmax(0, 1fr); } }
+      #menu-info section { display: flex; flex-direction: column; gap: 8px; padding: 14px; background: var(--panel); box-shadow: inset 0 0 0 1px var(--gold-dim); }
+      #menu-info h3 { margin: 0; color: var(--gold-hi); font: 700 14px var(--display); letter-spacing: 0.06em; text-transform: uppercase; }
+      .mi-stats { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; font-size: 13px; }
+      .mi-stats b { color: var(--gold-hi); text-align: right; font-variant-numeric: tabular-nums; }
+      .mi-item { display: flex; gap: 10px; align-items: flex-start; font-size: 12px; }
+      .mi-item b { color: var(--gold-hi); font-size: 13px; } .mi-item small { margin-left: 6px; opacity: 0.7; }
+      .mi-item p { margin: 3px 0 0; line-height: 1.35; } .mi-passive { opacity: 0.85; } .mi-passive.locked { opacity: 0.5; } .mi-passive em { color: var(--gold); font-style: normal; }
+      .mi-icon { position: relative; flex: none; width: 40px; height: 40px; border: 1px solid var(--gold-dim); } .mi-icon img { display: block; width: 100%; height: 100%; }
+      .mi-icon.final { border-color: #ffd257; }
+      .mi-empty { margin: 0; opacity: 0.6; font-size: 13px; }
       #help { font-size: 12px; color: var(--muted); max-width: min(520px, 90vw); text-align: center; }
       .passive { color: #9fd8ff; }
 
@@ -623,15 +651,16 @@
       body.touch #level { min-width: 22px; height: 18px; font-size: 11px; bottom: -5px; }
       body.touch #hp-bar { width: 170px; height: 15px; } body.touch #hp-bar span { font-size: 10px; }
       body.touch #mana-bar { height: 7px; } body.touch #mana-bar span { display: none; }
-      body.touch #inventory { grid-template-columns: repeat(6, 22px); gap: 3px; padding: 0; border: 0; }
+      body.touch #inventory { grid-template-columns: repeat(6, 22px) 22px; gap: 3px; padding: 0; border: 0; }
       body.touch #inventory b, body.touch #inventory span { width: 22px; height: 22px; }
+      body.touch #inventory .boots { grid-row: 1; margin-left: 2px; }
       body.touch #gauge { width: 24px; height: 24px; margin: 0; padding: 1px; justify-self: end; }
       body.touch #gauge-label { font-size: 12px; }
       body.touch #lvl-toast { bottom: auto; top: 34%; } body.touch #lvl-toast b { font-size: 28px; }
-      body.touch #menu #stats { font-size: 13px; }
+      body.touch #menu #stats .st { display: none; } /* the menu's own stat list replaces them */
       @media (min-width: 900px) and (min-height: 600px) {
         body.touch #portrait { width: 80px; height: 80px; } body.touch #hp-bar { width: 240px; height: 20px; } body.touch #mana-bar { height: 11px; }
-        body.touch #inventory { grid-template-columns: repeat(6, 32px); } body.touch #inventory b, body.touch #inventory span { width: 32px; height: 32px; }
+        body.touch #inventory { grid-template-columns: repeat(6, 32px) 32px; } body.touch #inventory b, body.touch #inventory span { width: 32px; height: 32px; }
         body.touch #gauge { width: 34px; height: 34px; } body.touch #hud-tl { top: calc(170px + env(safe-area-inset-top)); }
         body.touch #timer { font-size: 30px; } body.touch #hud-top { width: min(460px, 40vw); }
       }
@@ -786,6 +815,7 @@
       <button id="menu-resume" data-i18n="static.continue"></button>
       <label class="vol"><span data-i18n="menu.music"></span><input id="menu-music" type="range" min="0" max="100" step="5"></label>
       <label class="vol"><span data-i18n="menu.sfx"></span><input id="menu-sfx" type="range" min="0" max="100" step="5"></label>
+      <div id="menu-info"></div>
       <div id="help" data-i18n="static.help"></div>
     </div>
     <div id="end" class="overlay">

@@ -7,7 +7,7 @@ import data from './items.json';
 export interface ItemStats {
   ad?: number; ap?: number; as?: number; hp?: number; mana?: number; crit?: number; armor?: number; mr?: number; msPct?: number;
   lifesteal?: number; omnivamp?: number; ah?: number; armorPen?: number; lethality?: number; magicPen?: number; magicPenFlat?: number;
-  critDamage?: number; tenacity?: number;
+  critDamage?: number; tenacity?: number; ms?: number; // ms: flat Move Speed (boots)
 }
 export type ItemPool = 'ad' | 'ap';
 export interface Item {
@@ -27,12 +27,24 @@ function poolsOf(s: ItemStats): ItemPool[] {
 
 // names live in src/locales (`item.<id>`, written by tools/build_items.py)
 const VAMP_MULT = 0.01; // item Life Steal / Omnivamp sustain too much against hordes: 10% in LoL gives 0.1% here
-export const ITEMS: Record<string, Item> = Object.fromEntries(Object.entries(data.items).map(([id, it]) => {
+const toItems = (src: Record<string, { stats: ItemStats }>): Record<string, Item> => Object.fromEntries(Object.entries(src).map(([id, it]) => {
   const stats: ItemStats = { ...it.stats };
   if (stats.lifesteal) stats.lifesteal *= VAMP_MULT;
   if (stats.omnivamp) stats.omnivamp *= VAMP_MULT;
   return [id, { id, stats, pools: poolsOf(stats), name: t(`item.${id}` as Key) }];
 }));
+export const ITEMS = toItems(data.items);
+
+/**
+ * Boots: their own slot, outside the six. Boots at BOOTS_AT; killing the Rift Scuttler offers the tier 2 boots (the
+ * keys), killing the dragon turns them into their tier 3 (the values). Their stats don't level up.
+ */
+export const BOOTS = toItems(data.boots);
+export const BOOTS_FIRST = '1001';
+export const BOOTS_AT = 300;
+export const BOOT_UPGRADES: Record<string, string> = { '3006': '3172', '3020': '3175', '3047': '3174', '3111': '3173', '3158': '3171', '3009': '3170' };
+/** Plating (Plated Steelcaps, Armored Advance): physical hits deal 10% less. */
+export const PLATING = new Set(['3047', '3174']);
 export const MAX_ITEMS = 6;
 export const MAX_LEVEL = 5;
 /** Fraction of the item's stats at each level (index = level - 1). */
@@ -103,18 +115,18 @@ export function statsAt(id: string, level: number, mult = 1): ItemStats {
 }
 
 const STAT_KEYS: (keyof ItemStats)[] = ['ad', 'ap', 'as', 'hp', 'mana', 'crit', 'armor', 'mr', 'msPct', 'lifesteal', 'omnivamp', 'ah',
-  'armorPen', 'lethality', 'magicPen', 'magicPenFlat', 'critDamage', 'tenacity'];
+  'armorPen', 'lethality', 'magicPen', 'magicPenFlat', 'critDamage', 'tenacity', 'ms'];
 // penetration doesn't stack additively in LoL; keep the best source
 const BEST_OF = new Set<keyof ItemStats>(['armorPen', 'magicPen']);
 
-/** Stats of the current slots; `legendary` is the slot upgraded by the blueprint (-1 for none). */
-export function sumStats(slots: Slot[], legendary = -1): Required<ItemStats> {
+/** Stats of the current slots plus the boots; `legendary` is the slot upgraded by the blueprint (-1 for none). */
+export function sumStats(slots: Slot[], legendary = -1, boots: string | null = null): Required<ItemStats> {
   const s = Object.fromEntries(STAT_KEYS.map((k) => [k, 0])) as Required<ItemStats>;
-  slots.forEach((slot, i) => {
-    for (const [k, v] of Object.entries(statsAt(slot.id, slot.level, i === legendary ? 1 + LEGENDARY_BONUS : 1)) as [keyof ItemStats, number][]) {
-      s[k] = BEST_OF.has(k) ? Math.max(s[k], v) : s[k] + v;
-    }
-  });
+  const all = slots.map((slot, i) => statsAt(slot.id, slot.level, i === legendary ? 1 + LEGENDARY_BONUS : 1));
+  if (boots) all.push(BOOTS[boots].stats);
+  for (const stats of all) {
+    for (const [k, v] of Object.entries(stats) as [keyof ItemStats, number][]) s[k] = BEST_OF.has(k) ? Math.max(s[k], v) : s[k] + v;
+  }
   return s;
 }
 

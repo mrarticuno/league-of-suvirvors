@@ -6,9 +6,9 @@ import { ENEMIES, HORDE, xpToNext } from './data';
 import { t, type Key } from './i18n';
 import type { Choice, Game } from './game';
 import { KILLS_PER_POINT, nodeCost, type Progress } from './progress';
-import { PASSIVES } from './itemEffects';
+import { PASSIVES, type FxStat } from './itemEffects';
 import {
-  buildComplete, itemIcon, ITEMS, MAX_ITEMS, MAX_LEVEL, offerScore, PASSIVE_LEVEL, PASSIVE_POWER, POTIONS, rollOffers, statsAt, statValue,
+  BOOTS, BOOTS_AT, buildComplete, describeStats, itemIcon, ITEMS, LEGENDARY_BONUS, MAX_ITEMS, PLATING, MAX_LEVEL, offerScore, PASSIVE_LEVEL, PASSIVE_POWER, POTIONS, rollOffers, statsAt, statValue,
   type ItemStats, type Offer,
 } from './items';
 import { RUNES, TREES } from './runes';
@@ -46,6 +46,7 @@ const BUFF_GLYPH: Record<'blue' | 'red', string> = {
 type SkillEls = { root: HTMLElement; img: HTMLImageElement; sweep: HTMLElement; cdText: HTMLElement; pips: HTMLElement; cost: HTMLElement; badge: HTMLElement; cooling: boolean };
 
 export class Hud {
+  private game?: Game; // the last one drawn (the ESC menu shows its stats)
   /** Number-key handlers for the open level-up step (index 0 = key 1). */
   private keyActions: (() => void)[] = [];
   choosing = false;
@@ -94,6 +95,7 @@ export class Hud {
   }
 
   update(g: Game) {
+    this.game = g;
     text('timer', fmt(g.time));
     text('kills', num(g.kills));
     text('kills-touch', t('hud.kills', { n: num(g.kills) }));
@@ -188,9 +190,10 @@ export class Hud {
         $('flash-slot').classList.toggle('cooling', fcd > 0);
       }
     }
-    if (changed('inventory', `${g.slots.map((s) => `${s.id}:${s.level}`).join(',')}|${g.legendary}`)) {
+    if (changed('inventory', `${g.slots.map((s) => `${s.id}:${s.level}`).join(',')}|${g.legendary}|${g.boots}`)) {
       $('inventory').innerHTML = slotsHtml(g, (i, cls, title) =>
-        `<b class="${cls}" title="${title}"><img src="${itemIcon(g.slots[i].id)}" alt="">${lvBadge(g.slots[i].level)}</b>`, '<span></span>');
+        `<b class="${cls}" title="${title}"><img src="${itemIcon(g.slots[i].id)}" alt="">${lvBadge(g.slots[i].level)}${legTag(g, i)}</b>`, '<span></span>')
+        + (g.boots ? `<b class="boots" title="${bootsTitle(g.boots)}"><img src="${itemIcon(g.boots)}" alt=""></b>` : `<span class="boots" title="${t('boots.empty', { time: fmt(BOOTS_AT) })}"></span>`);
     }
     const hordeIn = g.nextHordeAt - g.time;
     style('horde', 'display', hordeIn <= HORDE.warning ? 'block' : 'none');
@@ -268,6 +271,7 @@ export class Hud {
   /** ESC menu: pauses the game; music / sound effect volume sliders. */
   toggleMenu() {
     this.menuOpen = !this.menuOpen;
+    if (this.menuOpen && this.game) $('menu-info').innerHTML = menuInfo(this.game);
     $('menu').style.display = this.menuOpen ? 'flex' : 'none';
     audio.setPaused(this.menuOpen);
     audio.play(this.menuOpen ? 'hud_open' : 'hud_close');
@@ -355,7 +359,7 @@ export class Hud {
       const s = g.slots[i];
       if (!s) return `<div class="slot empty" data-cell="${i}"></div>`;
       const state = slotState(g, i);
-      return `<div class="slot ${state} ${burst === i ? 'burst' : ''}" data-cell="${i}" title="${slotTitle(g, i)}"><img src="${itemIcon(s.id)}" alt="">${lvBadge(s.level)}
+      return `<div class="slot ${state} ${burst === i ? 'burst' : ''}" data-cell="${i}" title="${slotTitle(g, i)}"><img src="${itemIcon(s.id)}" alt="">${lvBadge(s.level)}${legTag(g, i)}
         ${burst === i ? '<i class="ring"></i><i class="ring r2"></i>' : ''}</div>`;
     }).join('');
   }
@@ -525,7 +529,41 @@ function slotTitle(g: Game, i: number) {
   const state = slotState(g, i);
   return state ? t(`slot.${state}`, { item: ITEMS[id].name }) : t('slot.level', { item: ITEMS[id].name, level, max: MAX_LEVEL });
 }
+/** ESC menu: every champion stat, then each item with its stats and passive at its level. */
+function menuInfo(g: Game) {
+  const it = g.items;
+  const pct = (v: number) => `${num(v * 100)}%`;
+  const extra = (k: FxStat) => (k in it ? it[k as keyof ItemStats]! : 0) + g.fxStat(k);
+  const rows: [string, string][] = [
+    [t('stat.hp'), `${num(Math.round(g.hp))} / ${num(Math.round(g.maxHp))}`],
+    [t('stat.mana'), `${num(Math.round(g.mana))} / ${num(Math.round(g.maxMana))}`],
+    [t('stat.ad'), num(Math.round(g.ad))], [t('stat.ap'), num(Math.round(g.ap))], [t('stat.as'), num(g.attackSpeed, 2)],
+    [t('stat.armor'), num(Math.round(g.armor))], [t('stat.mr'), num(Math.round(g.mr))], [t('stat.msPct'), num(g.moveSpeed)],
+    [t('stat.ah'), num(Math.round(g.abilityHaste))], [t('stat.crit'), pct(g.critChance)],
+    [t('stat.critDamage'), pct(g.champ.base.critDamage + it.critDamage)],
+    ...(['lifesteal', 'omnivamp', 'armorPen', 'magicPen', 'tenacity'] as const).filter((k) => extra(k) > 0).map((k): [string, string] => [t(`stat.${k}`), statValue(k, extra(k))]),
+    ...(['lethality', 'magicPenFlat'] as const).filter((k) => extra(k) > 0).map((k): [string, string] => [t(`stat.${k}`), num(Math.round(extra(k)))]),
+  ];
+  const boots = g.boots ? `<div class="mi-item"><span class="mi-icon"><img src="${itemIcon(g.boots)}" alt=""></span><div>
+      <b>${BOOTS[g.boots].name}</b><p>${bootsText(g.boots)}</p></div></div>` : '';
+  const items = g.slots.map(({ id, level }, i) => {
+    const stats = statsAt(id, level, i === g.legendary ? 1 + LEGENDARY_BONUS : 1);
+    const passive = PASSIVES[id];
+    return `<div class="mi-item ${slotState(g, i)}"><span class="mi-icon ${slotState(g, i)}"><img src="${itemIcon(id)}" alt="">${legTag(g, i)}</span><div>
+      <b>${ITEMS[id].name}</b><small>${t('menu.itemLevel', { level, max: MAX_LEVEL })}</small>
+      <p>${Object.entries(stats).map(([k, v]) => `+${statValue(k as keyof ItemStats, v)} ${t(`stat.${k as keyof ItemStats}`)}`).join(' · ')}</p>
+      ${passive ? `<p class="mi-passive ${level < PASSIVE_LEVEL ? 'locked' : ''}">${passive}${level < PASSIVE_LEVEL ? ` <em>${t('itemsel.unlocksAt', { level: PASSIVE_LEVEL })}</em>` : ` <em>${pct(PASSIVE_POWER[level - 1])}</em>`}</p>` : ''}
+    </div></div>`;
+  }).join('');
+  return `<section><h3>${t('menu.champion')}</h3><div class="mi-stats">${rows.map(([k, v]) => `<span>${k}</span><b>${v}</b>`).join('')}</div></section>
+    <section><h3>${t('menu.items')}</h3>${items + boots || `<p class="mi-empty">${t('menu.noItems')}</p>`}</section>`;
+}
+
+const bootsText = (id: string) => [describeStats(BOOTS[id].stats), PLATING.has(id) ? t('boots.plating') : ''].filter(Boolean).join(' · ');
+const bootsTitle = (id: string) => `${BOOTS[id].name}: ${bootsText(id)}`;
 const lvBadge = (level: number) => `<i class="lv">${level}</i>`;
+/** Animated "Legendary" ribbon over the slot the blueprint upgraded. */
+const legTag = (g: Game, i: number) => (g.legendary === i ? `<em class="leg">${t('slot.legendaryTag')}</em>` : '');
 
 const wait = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 const ARROW = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6"/></svg>';
