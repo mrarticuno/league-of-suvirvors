@@ -26,7 +26,8 @@ Contrato completo e comentado: `src/champion.ts`. Exemplos de referência: `src/
 | `src/main.ts` | Nada a fazer: a tela de seleção lista `CHAMPIONS` e troca com `game.setChampion`. `?champ=<id>` na URL só escolhe o campeão carregado de início |
 | `src/locales/{en,pt,es,zh}.json` | `champion.<id>.*` nos 4 idiomas (ver Textos) |
 | `tests/<id>.test.ts` | Teste da passiva com um `Game` stub (modelo: `tests/brand.test.ts`) |
-| `README.md`, `README.pt-BR.md`, `README.zh-CN.md` | "Regras implementadas" (kit) e "Pipeline de assets" (regex de hashes e comandos de extração/VFX citam os campeões: acrescente o novo) nos 3 READMEs |
+| `README.md`, `README.pt-BR.md`, `README.zh-CN.md` | "Regras implementadas" (kit) e "Pipeline de assets" (regex de hashes e comandos de extração/VFX citam os campeões: acrescente o novo), "Campeões" (linha na tabela), "Balanceamento" (custos de mana adaptados) e "Galeria" (GIF) nos 3 READMEs |
+| `docs/media/<id>.gif` | GIF da galeria: vídeo do `record_showcase.mjs` acelerado 2x, 720 px, 10 fps, ~7 s, paleta própria (`palettegen`/`paletteuse`), até ~6 MB |
 
 Assets (`assets-raw/`, `public/assets/`) não vão para o git.
 
@@ -45,6 +46,9 @@ Assets (`assets-raw/`, `public/assets/`) não vão para o git.
 - `sequences`: clip feito de outros em sequência (`SequencerClipData` do `animations/skin0.bin`; ex.: `Run_Base` do Aurelion Sol = 4 clips). Cheque se `run`/`idle` não são sequências antes de usar um clip só.
 - `translucent`: submeshes cujo alfa da textura é opacidade (misturados, não recortados pelo `alphaTest`); ex.: a cauda do Aurelion Sol. Compare o alfa médio nos UVs de cada submesh.
 - `conformPath`: `[início, fim]` do `ConformToPathRigPoseModifierData` em `skinMeshProperties`: a cadeia segue o caminho percorrido (cauda que curva).
+- Antes de fechar o modelo, liste os submeshes do `.glb` e o tamanho de cada um. Parte que falta, fica preta/sólida ou some de longe costuma ser um submesh separado (a cauda do Aurelion Sol é `AurelionSol_BodyLower`, translúcida). Animação "cortada na metade" costuma ser um `SequencerClipData`.
+- `scale` só quando o export sai menor que o campeão no LoL: Teemo é pequeno de propósito (a 1.6 ficou grande demais; ficou sem `scale`).
+- `SKIP_CLIPS` em `tools/build_models.py` corta clips por regex na extração: confira que não pega clips usados (o `spell4` do Teemo sumiu com um regex largo demais; ficou `spell4_(-|[1-9])`).
 - `idleVfx`: pares `[sistema, osso]` que ficam ligados a run toda (o `idleParticlesEffects` do `skin0.bin`, ex.: as chamas do Brand); param na morte. O bin às vezes omite o prefixo do osso (`BUFFBONE_GLB_CENTER_LOC` vs `C_BUFFBONE_GLB_CENTER_LOC`): confira no `.glb`.
 - Mago: ratio de AP da skill em `apRatio` (o card mostra) e `g.ap` no kit; `itemPool: 'ap'` no `ChampionDef` para receber itens AP no level up.
 - `build` (obrigatório): os 6 itens lendários recomendados, na ordem de compra de um site de builds (OP.GG/u.gg, patch atual), só ids que existem em `src/items.json` (sem ativas/suporte); o level up oferece esses itens com mais frequência e marca como recomendado.
@@ -70,7 +74,7 @@ function luxKit(g: Game): ChampionKit { /* estado da run aqui, em closures */ re
 - `onDamage(e, hit)`: roda em **todo** dano do campeão, antes da mitigação; retorna dano **mágico** extra. Ignore `hit.source === 'item'` se a passiva não deve reagir a queimaduras de item.
 - `dispose`: remova da cena tudo que o kit criou (meshes de marca etc.). `update` roda todo frame depois dos inimigos.
 - Cada hit declara um `Hit` (`type`, `source`, `skill`, `onHit`). Defina como constantes. `onHit: true` só se a skill aplica efeitos ao acertar no LoL. Sempre preencha `skill` em `source: 'ability'` (o tipo não obriga, mas reembolsos usam `g.costOf(hit.skill)`).
-- Blink: altere `g.pos` e chame `g.collidePlayer()` (sem clamp de arena). Voo por cima de paredes e unidades (Cometa Lendário): `ghost()` true no kit desliga a colisão do campeão enquanto durar. Dash: `g.dash(dir, dist, speed)` (respeita arena e colisão, sem andar/atacar; CC interrompe); `g.dashing` diz se ainda corre (dano no caminho: cheque no `update`).
+- Blink: altere `g.pos` e chame `g.collidePlayer()` (sem clamp de arena). Voo por cima de paredes e unidades (Cometa Lendário): `ghost()` true no kit desliga a colisão do campeão enquanto durar. Andar sozinho até uma ordem de movimento (rumo do Cometa Lendário): `steer()` devolve a direção (ou `undefined` quando acabou) e `onMoveOrder()` é chamado quando o jogador clica no chão ou aperta uma seta: encerre o efeito ali. A skill usa `aim: 'move'`. Dash: `g.dash(dir, dist, speed)` (respeita arena e colisão, sem andar/atacar; CC interrompe); `g.dashing` diz se ainda corre (dano no caminho: cheque no `update`).
 - Bloquear projéteis inimigos: `g.blockMissiles(p, r)` (retorna quantos).
 - Objetos de chão do campeão (armadilhas, zonas): meshes do kit em `g.scene`, checados no `update` com `g.enemiesNear`, removidos em `dispose`. `g.hazards` só fere o campeão (é dos chefes).
 
@@ -129,7 +133,16 @@ Dump de um bin para consulta: `read_linked(Names('../assets-raw/hashes'), [Wad(.
 - `MissileOpts.arc`: altura do pico para míssil com alvo lançado em parábola.
 - Efeito de área que o kit move ou faz crescer (ex. Oscilação Estelar com o vórtice da Singularidade): `g.vfx.attach(key, { bind: true })` faz todas as partículas seguirem o objeto, e `scale` do objeto escala o efeito.
 - Sistema que o jogo atual não usa (sobra de versão antiga) pode virar feedback (ex. `Brand_PHguardian_tar` no atordoamento do Q). Comente no kit.
-- Orçamento: marcas por inimigo em horda custam caro. Limite as simultâneas (Brand: 40 marcas, 12 anéis); acima disso a mecânica roda sem o visual.
+- **Altura do sistema**: a origem do sistema nem sempre é o chão. Leia o `EmitterPosition` dos emissores no `systems.json` antes de escolher onde tocar: o escudo do W da Lux é centrado no corpo (brilho de chão a y −95: tocado a 95), a zona e a explosão do E são autoradas 100 acima do chão (anel e onda a y −100: tocadas a 100). Tocado no chão, o efeito fica enterrado e "não aparece".
+- **Beams**: o U atravessa o feixe (as texturas são perfis de seção, ex. 256x4) e o V corre ao longo, repetindo a cada `mBirthTilingSize.y`; `scale.x` é a largura **total**. Caixa translúcida gigante = UV ou largura errada no runtime, não no kit. Confira também onde o feixe começa: os do Fulgor Final saem 150–240 atrás da origem do sistema, então o sistema vai à frente do campeão (`SPARK` em `lux.ts`).
+- **Osso que balança**: VFX de cast preso a um osso que a animação joga para trás (o cajado da Lux no `lux_spell4`) sai no lugar errado. Toque com `playAt` numa posição fixa à frente do campeão.
+- **Textura de cor 2D**: `particleColorTexture` tem uma cor por linha. `colorLookUpTypeY` 3 = linha aleatória por partícula (anéis arco-íris da Lux); o runtime já faz. Rotações de partícula usam a ordem Euler YXZ (anéis deitados que giram); se um anel aparece em pé, desconfie da ordem.
+- **Alvo com tamanho**: impacto/marca em inimigo usa `{ size: boundSize(e) }` (FlexShape escala pelo tamanho do alvo; monstro grande, efeito grande).
+- **Canalização**: sistema de cast que dura a canalização (linhas de aviso do R da Lux) toca uma vez e termina sozinho; atordoamento cancela o cast sem avisar o kit.
+- **Marcas que expiram**: emissores de marca duram uma aplicação. Marca reaplicada precisa renovar o sistema (Lux: a cada 1 s, `renewFx`).
+- **Não suportado** (não gaste tempo forçando; deixe de fora e comente no kit): partículas de malha com `uvMode` 2 e textura de multiplicação com rolagem (anéis de constelação da Lux ficam fracos); beams entre dois ossos com UV repetido (os `BodyBeam` do Aurelion Sol viraram retângulos azuis chapados e foram tirados); campos orbitais/ruído; distorção. Quads de chão (`isGroundLayer`) ficam a `GROUND = 2`: a plataforma elevada do spawn os corta, então confira efeitos de chão longe do spawn.
+- Nunca entregue VFX que você não comparou com o jogo: pegue uma referência (vídeo/screenshot do LoL) de cada skill e compare com o seu screenshot. O usuário compara.
+- Orçamento: marcas por inimigo em horda custam caro. Limite as simultâneas (Brand: 40 marcas, 12 anéis); acima disso a mecânica roda sem o visual. Impactos por cast numa multidão também (Lux: 30 por cast, `maxHitFx`).
 
 ## Desempenho (obrigatório)
 
@@ -153,6 +166,15 @@ Dump de um bin para consulta: `read_linked(Names('../assets-raw/hashes'), [Wad(.
 | `build_audio.py` quebra no wwiser | Caminho relativo do `wwiser.py`: use absoluto (o script roda o wwiser com `cwd` temporário) |
 | Último tick de dano some | Contar ticks, não comparar tempo |
 | Mana infinita em horda | Recarga interna na mana por abate |
+| Efeito de skill some ou fica enterrado | Origem do sistema acima do chão: leia o `EmitterPosition` e toque na altura autorada |
+| Laser/beam vira uma caixa gigante | UV de beam (U atravessa, V ao longo) e `scale.x` = largura total; posicione o sistema pelo início do feixe |
+| Anel de partícula em pé em vez de deitado | Ordem Euler YXZ nas rotações de partícula |
+| Efeito idle vira retângulo chapado | Recurso não suportado (`uvMode` 2, beam entre ossos): tire e comente, não force |
+| Parte do modelo preta/sólida ou faltando | Submesh separado translúcido: `translucent`; submesh de FX escondido: `hide` |
+| Corrida cortada na metade | `Run_Base` é `SequencerClipData`: `sequences` |
+| Clip some na extração | Regex de `SKIP_CLIPS` pegou o clip |
+| Teste quebra com vetor mudando sozinho | Mock de `vfx.playAt`/`play` guarda a referência: passe `clone()` do vetor que o kit ainda vai mexer |
+| Texto do `gauge` estoura o slot | `label` curto ("80%", não "+80%") |
 | Item da `build` nunca aparece | Id fora de `src/items.json` (itens com ativa, suporte e corta-cura não existem no jogo): troque pelo próximo item do site de builds |
 
 ## Verificação
@@ -162,4 +184,5 @@ Dump de um bin para consulta: `read_linked(Names('../assets-raw/hashes'), [Wad(.
 3. `game.reset()` não pode deixar meshes do kit na cena (conte os `Group` vazios em `game.scene.children` antes e depois).
 4. Teste de altura: `game.player.bone('head').getWorldPosition(new THREE.Vector3()).y` perto dos outros campeões.
 5. Itens: `game.takeItem('<id>')` e `game.levelItem(slot)` até o nível 5 nos itens da `build`; confira que as passivas reagem às skills (queimadura, lentidão, on-hit) e que o card de level-up marca a build como recomendada.
-6. Contra horda: `game.hurtPlayer = () => {}`, spawne ~30 `minion_melee` com vida alta e confira mana gasta por skill, marcas e FPS.
+6. Vídeo de todas as skills e ataques: `node tools/record_showcase.mjs --champ <id> --out /tmp/x.mp4 --url http://localhost:<porta> --scenario <cenário.mjs>` (Playwright em `~/.cache/los-recorder`). No cenário, feche o level-up apertando `1` enquanto `#levelup` estiver com `display: flex`, desligue o XP (`game.gainXp = () => {}`) e use o ataque básico de verdade (`game.focus = alvo`): `g.basicAttack` direto pula windup e animação. O Chromium headless roda a ~0,5x: acelere o vídeo 2x para avaliar. Extraia quadros (`ffmpeg -ss <t> -frames:v 1`) e compare com a referência do LoL.
+7. Contra horda: `game.hurtPlayer = () => {}`, spawne ~30 `minion_melee` com vida alta e confira mana gasta por skill, marcas e FPS.

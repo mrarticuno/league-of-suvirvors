@@ -28,20 +28,45 @@
 
 > The game is in English, Portuguese, Spanish and Simplified Chinese, picked from the browser language.
 
+## Champions
+
+Seven playable champions, each with a full kit ported from LoL (details in [Implemented rules](#implemented-rules)):
+
+| Champion | Roles | Style |
+|---|---|---|
+| Ezreal | Marksman · Mage | Skillshots; Q hits cut every cooldown, Arcane Shift blink |
+| Samira | Marksman · Assassin | Melee/ranged mix that raises a Style grade up to S for her ultimate |
+| Brand | Mage · Support | Ablaze burns that detonate and spread through the horde |
+| Aphelios | Marksman | Five weapons with Moonlight ammo, each with its own attack and Q |
+| Aurelion Sol | Mage | Stars orbiting him, a flight over walls, a falling meteor |
+| Teemo | Marksman · Mage | Stand still for attack speed, poison on hit, bouncing mushroom traps |
+| Lux | Mage · Support | Illumination marks, roots, a shield and the Final Spark laser |
+
 ## Gallery
 
 | Champion select | Rune page |
 |---|---|
-| ![Champion select with Ezreal's splash art and kit](docs/media/champion-select.jpg) | ![Rune page: Precision + Sorcery with shards](docs/media/rune-page.jpg) |
+| ![Champion select with Lux's splash art and the seven champions](docs/media/champion-select.jpg) | ![Rune page: Precision + Sorcery with shards](docs/media/rune-page.jpg) |
 
 | Level-up: abilities | Level-up: items |
 |---|---|
 | ![Ability cards with damage, cooldown and a recommendation](docs/media/skill-pick.jpg) | ![Item cards with the level, stats now and after the pick, and the passive](docs/media/item-shop.jpg) |
 
-| Samira | Baron Nashor (20:00) |
+| Lux | Aurelion Sol |
 |---|---|
-| ![Samira fighting a horde around the Rift Scuttler](docs/media/samira.gif) | ![Baron arena with telegraphed attacks](docs/media/baron.gif) |
-| ![Samira with the Style gauge against the Rift Scuttler](docs/media/samira.jpg) | ![Ezreal dodging Baron's whip](docs/media/baron.jpg) |
+| ![Lux: Light Binding, Lucent Singularity and Final Spark through a horde](docs/media/lux.gif) | ![Aurelion Sol: orbiting stars, Starsurge and Falling Star](docs/media/aurelionsol.gif) |
+
+| Teemo | Brand |
+|---|---|
+| ![Teemo: blinding darts, poison and Noxious Traps](docs/media/teemo.gif) | ![Brand: Ablaze burns and chained detonations](docs/media/brand.gif) |
+
+| Aphelios | Samira |
+|---|---|
+| ![Aphelios: weapon abilities, Phase and Moonlight Vigil](docs/media/aphelios.gif) | ![Samira fighting a horde around the Rift Scuttler](docs/media/samira.gif) |
+
+| Baron Nashor (20:00) | Pause menu: stats, items and boots |
+|---|---|
+| ![Baron arena with telegraphed attacks](docs/media/baron.gif) | ![Pause menu with every champion stat and each item's stats and passive](docs/media/stats-menu.jpg) |
 
 | Victory | Phone (touch controls) |
 |---|---|
@@ -241,13 +266,35 @@ WASD is not used because it clashes with Q/W/E.
   - Near the Baron: 33% chance of a bite (swallows, instant, cannot be dodged). Otherwise, a cone whip: 75% of max health, never kills.
   - Tune in `BARON` (`src/data.ts`); behavior in `src/enemies/baron.ts`.
 
+## Balance
+
+Current tuning, in one place (the full rules are above):
+
+| What | Value | Where |
+|---|---|---|
+| Game pace | x1 at 0:00 to x2 at 5:00, then x2 | `PACE` (`src/game.ts`) |
+| Standing still | damage taken up to x5 after 5 s without moving | `CAMPING` (`src/game.ts`) |
+| Baron Nashor | 70k health (fixed, no time scaling) | `ENEMIES.baron` (`src/data.ts`) |
+| Potions (complete build) | 5% of max health or mana | `POTION` (`src/items.ts`) |
+| Boots | at 5:00, tier 2 from the Rift Scuttler, tier 3 from the dragon | `BOOTS_AT`, `BOOT_UPGRADES` (`src/items.ts`) |
+| Enemy health / damage | `× (1 + 0.08 × (level − 1)) × (1 + time / 900 s)` / `× (1 + time / 600 s)` | `enemyHpScale` / `enemyDamageScale` (`src/data.ts`) |
+| Spawns | `0.45 + 0.04 × (level − 1) + time / 450` per second, ×0.6–1.3 by kill rate, cap `12 + 2 × level + time / 8` | `DIRECTOR` (`src/data.ts`) |
+
+Mages cast nonstop against hordes, so their LoL mana costs are lowered and their mana on kills has an internal cooldown against minions (1 s; 0.5 s for Aurelion Sol's stars):
+
+| Champion | Costs (LoL in brackets) | Mana on kills |
+|---|---|---|
+| Brand | Q 40, W/E 45–65, R 80 | 20–40 on kills by an ability or of an ablazed enemy |
+| Aurelion Sol | Q 50–70, R 100, W no activation cost (drains 6–10/s) | 4–12 per star kill |
+| Teemo | Q 40–60 (70–90) | none |
+| Lux | Q 40, W 40–60, E 50–70, R 80 | 10–30 when an illuminated enemy dies |
+
 ## Architecture (where to add content)
 
 - **Champions** (`src/champion.ts`, `src/champions/`): a champion is a `ChampionDef` (base stats, skills with ranks/costs/cooldowns/animation/icon, animations, basic attack VFX) plus a `kit`, created each run, which resolves the skills and keeps their quirks (stacks, marks...). `Game` handles the generic parts: movement, basic attack, cooldowns, mana, items and the damage pipeline.
   - New champion: create `src/champions/<name>.ts` (templates: `ezreal.ts`; `brand.ts` for an AP mage with damage over time and per-enemy marks) and register it in `src/champions/index.ts`. Sounds follow `<id>_auto`, `<id>_Q`, `<id>_death`... Step-by-step guide: `.claude/skills/creating-champions/SKILL.md`.
-  - Kit hooks: `cast` (required), `castStart`, `castAnim`, `canCast`, `attackSpeedBonus`/`moveSpeedBonus`, `disarmed`, `ghost` (no wall nor unit collision, e.g. Comet of Legend), `steer`/`onMoveOrder` (walks the champion on its own until a move order, e.g. Comet of Legend's course), `meleeAuto`, `onDamage` (extra magic damage before mitigation, e.g. detonating the W mark), `onKill` (e.g. Blaze's mana on kills), `onDealt` (damage after mitigation, e.g. Severum's heal), `update`, `dispose`, `hud`, `gauge`. Champions with more than one form (Aphelios' weapons): `stat` (own stats, e.g. points bought), `attackTarget`/`attackStart`/`basicAttack` (target, clip, sound and windup of the basic attack, firing it), `moveAnims`, `cooldownBase`/`castTime` (per form), `skillView` (slot icon, name and badge) and `tray` (small icons above the slots).
+  - Kit hooks: `cast` (required), `castStart`, `castAnim`, `canCast`, `recast` (the skill pressed while on cooldown, e.g. detonating Lucent Singularity), `attackSpeedBonus`/`moveSpeedBonus`, `disarmed`, `ghost` (no wall nor unit collision, e.g. Comet of Legend), `steer`/`onMoveOrder` (walks the champion on its own until a move order, e.g. Comet of Legend's course), `meleeAuto`, `onDamage` (extra magic damage before mitigation, e.g. detonating the W mark), `onKill` (e.g. Blaze's mana on kills), `onDealt` (damage after mitigation, e.g. Severum's heal), `update`, `dispose`, `hud`, `gauge`. Champions with more than one form (Aphelios' weapons): `stat` (own stats, e.g. points bought), `attackTarget`/`attackStart`/`basicAttack` (target, clip, sound and windup of the basic attack, firing it), `moveAnims`, `cooldownBase`/`castTime` (per form), `skillView` (slot icon, name and badge) and `tray` (small icons above the slots).
   - `ChampionDef` extras: `idleVfx` (systems riding bones all run long, e.g. Brand's flames), `vfx.death`, `scale` (model size), `sequences` (clips joined end to end, the bin's SequencerClipData, e.g. Aurelion Sol's run), `translucent` (submeshes blended by texture alpha instead of cut out, e.g. his tail), `conformPath` (joint chain bent along the travelled path, the bin's ConformToPathRigPoseModifierData), `itemPool: 'ap'` for mages (skills scale with `apRatio`), `build` (the 6 recommended legendaries from a build site, offered more often and tagged on level up), `rankLevels` (level of each rank), `autoRank` (skills ranked without a point) and `SkillDef.unlockLevel` (castable from a level, whatever its ranks).
-  - Kit hooks: `cast` (required), `castStart`, `castAnim`, `canCast`, `recast` (the skill pressed while on cooldown, e.g. detonating Lucent Singularity), `attackSpeedBonus`/`moveSpeedBonus`, `disarmed`, `ghost` (no wall nor unit collision, e.g. Comet of Legend), `meleeAuto`, `onDamage` (extra magic damage before mitigation, e.g. detonating the W mark), `onKill` (e.g. Blaze's mana on kills), `onDealt` (damage after mitigation, e.g. Severum's heal), `update`, `dispose`, `hud`, `gauge`. Champions with more than one form (Aphelios' weapons): `stat` (own stats, e.g. points bought), `attackTarget`/`attackStart`/`basicAttack` (target, clip, sound and windup of the basic attack, firing it), `moveAnims`, `cooldownBase`/`castTime` (per form), `skillView` (slot icon, name and badge) and `tray` (small icons above the slots).
   - Crowd control on enemies: `game.slow(e, pct, s)`, `game.stunEnemy(e, s)` and `game.rootEnemy(e, s)` (no moving, still attacks) (generic loop only; boss AIs ignore them). `game.knockUp(e, s)` is a stun that throws the model into the air (Falling Star).
   - Projectiles: `game.spawnMissile(vfx, from, to, { hit, target | pierce, onHit, ... })`. Without `onHit`, the default impact applies VFX, sound and damage.
 - **Item passives** (`src/itemEffects.ts` hooks, entries in `src/itemPassives/ad.ts`, `ap.ts`, `tank.ts`): each entry has the description (max-level numbers) and a hook factory `effect(g, power)` (`onHit`, `onHitMagic`, `onAttack`, `onCast`, `onDealt`, `onKill`, `onHurt`, `onStruck`, `onOverheal`, `tick`, `onLethal`, `stat`, `damageMult`...). `power()` is the passive's strength at the item's level (0.6/0.8/1): effects multiply their numbers by it, all-or-nothing ones (revive, spell shield) stretch their cooldown. Shared mechanics in `src/itemPassives/shared.ts`: Spellblade, Lifeline, spell shield, burns, Energized. `unique` + `rank` reproduce LoL's UNIQUE passives (only the best one works). Stats stay in `items.json`.
@@ -256,7 +303,7 @@ WASD is not used because it clashes with Q/W/E.
 
 ## Known limitations / next steps
 
-- Particles: child particle sets (`childParticleSetDefinition`) ride their parent particle, at the joints of a skinned particle mesh (`.skn` drawn static in bind pose, `.skl` joints exported by `build_vfx.py`). `VfxPrimitiveBeam` (from the particle to the system's `target`, or to its own target offset; meshes stretched along Z; ground-layer beams lie on the terrain), `VfxPrimitiveRay`, `VfxPrimitiveAttachedMesh` (the owner's skinned mesh redrawn as a glow or frozen-pose afterimage), force fields (acceleration, drag, attraction) and `FlexShapeDefinition` (scaled to the target's size) are supported. Not implemented: orbital/noise fields, distortion; attached meshes ignore birth scale, UV scroll and erosion. Cast effects ride the bone named by the skin's animation events (`Actor.bone`, `Vfx.playOn`); with `ChampionDef.animVfx` the game plays those events itself (`events.json` from `build_vfx.py`: the particle events of each clip; a clip file shared by variants that play different effects is left to the kit). `blendMode` missing/4 = additive, 1 = alpha (inferred from the textures, not documented).
+- Particles: child particle sets (`childParticleSetDefinition`) ride their parent particle, at the joints of a skinned particle mesh (`.skn` drawn static in bind pose, `.skl` joints exported by `build_vfx.py`). `VfxPrimitiveBeam` (from the particle to the system's `target`, or to its own target offset; meshes stretched along Z; ground-layer beams lie on the terrain), `VfxPrimitiveRay`, `VfxPrimitiveAttachedMesh` (the owner's skinned mesh redrawn as a glow or frozen-pose afterimage), force fields (acceleration, drag, attraction) and `FlexShapeDefinition` (scaled to the target's size) are supported. Not implemented: orbital/noise fields, distortion; attached meshes ignore birth scale, UV scroll and erosion; mesh particles with `uvMode` 2 and scrolling multiply textures (Lux's constellation rings) render faint; ground-layer quads sit at a fixed height, so the raised spawn platform clips them. Beam UVs: U across (textures are cross-section profiles), V along, repeating every `mBirthTilingSize.y`; `scale.x` is the full width. `colorLookUpTypeY` 3 picks a random row of the colour texture per particle; particle rotations use the YXZ order. Cast effects ride the bone named by the skin's animation events (`Actor.bone`, `Vfx.playOn`); with `ChampionDef.animVfx` the game plays those events itself (`events.json` from `build_vfx.py`: the particle events of each clip; a clip file shared by variants that play different effects is left to the kit). `blendMode` missing/4 = additive, 1 = alpha (inferred from the textures, not documented).
 - The source `.glb` files are heavy (Ezreal 29 MB, Baron 45 MB); `pnpm build:prod` (`tools/optimize.mjs`) drops clips the code never names, resamples and meshopt-compresses them (Ezreal 1.9 MB, Baron 1.9 MB).
 - Each enemy is a SkinnedMesh with its own mixer, capped at 260 alive (`MAX_ENEMIES`). For bigger hordes: texture-baked animation + instancing.
 - Dragons: animations shared from `sru_dragon`. Infernal and Mountain use the Cloud mesh (`sru_dragon_air`) with their own texture, as in the game (`EnemyDef.mesh`).

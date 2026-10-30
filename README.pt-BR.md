@@ -28,20 +28,45 @@
 
 > O jogo está em inglês, português, espanhol e chinês simplificado, escolhido pelo idioma do navegador.
 
+## Campeões
+
+Sete campeões jogáveis, cada um com o kit completo do LoL adaptado (detalhes em [Regras implementadas](#regras-implementadas)):
+
+| Campeão | Funções | Estilo |
+|---|---|---|
+| Ezreal | Atirador · Mago | Skillshots; acertos do Q reduzem todas as recargas, blink da Mudança Arcana |
+| Samira | Atiradora · Assassina | Mistura de corpo a corpo e distância que sobe o grau de Estilo até S para a ultimate |
+| Brand | Mago · Suporte | Queimaduras da Labareda que detonam e se espalham pela horda |
+| Aphelios | Atirador | Cinco armas com munição de Luar, cada uma com ataque e Q próprios |
+| Aurelion Sol | Mago | Estrelas em órbita, voo por cima de paredes, meteoro que cai do céu |
+| Teemo | Atirador · Mago | Parado ganha velocidade de ataque, veneno no ataque, cogumelos que quicam |
+| Lux | Maga · Suporte | Marcas de Iluminação, enraizamento, escudo e o laser da Centelha Final |
+
 ## Galeria
 
 | Seleção de campeão | Página de runas |
 |---|---|
-| ![Seleção de campeão com a splash art e o kit do Ezreal](docs/media/champion-select.jpg) | ![Página de runas: Precisão + Feitiçaria com fragmentos](docs/media/rune-page.jpg) |
+| ![Seleção de campeão com a splash art da Lux e os sete campeões](docs/media/champion-select.jpg) | ![Página de runas: Precisão + Feitiçaria com fragmentos](docs/media/rune-page.jpg) |
 
 | Level-up: habilidades | Level-up: itens |
 |---|---|
 | ![Cartas de habilidade com dano, recarga e recomendação](docs/media/skill-pick.jpg) | ![Cartas de item com o nível, os atributos antes e depois da escolha e a passiva](docs/media/item-shop.jpg) |
 
-| Samira | Barão Na'Shor (20:00) |
+| Lux | Aurelion Sol |
 |---|---|
-| ![Samira enfrentando uma horda em volta do Aronguejo](docs/media/samira.gif) | ![Arena do Barão com ataques telegrafados](docs/media/baron.gif) |
-| ![Samira com o gauge de Estilo contra o Aronguejo](docs/media/samira.jpg) | ![Ezreal desviando da chicotada do Barão](docs/media/baron.jpg) |
+| ![Lux: Ligação da Luz, Singularidade Lucente e Centelha Final numa horda](docs/media/lux.gif) | ![Aurelion Sol: estrelas em órbita, Oscilação Estelar e Estrela Cadente](docs/media/aurelionsol.gif) |
+
+| Teemo | Brand |
+|---|---|
+| ![Teemo: dardos que cegam, veneno e Armadilha Venenosa](docs/media/teemo.gif) | ![Brand: queimaduras da Labareda e detonações em cadeia](docs/media/brand.gif) |
+
+| Aphelios | Samira |
+|---|---|
+| ![Aphelios: habilidades das armas, Fase e Vigília do Plenilúnio](docs/media/aphelios.gif) | ![Samira enfrentando uma horda em volta do Aronguejo](docs/media/samira.gif) |
+
+| Barão Na'Shor (20:00) | Menu de pausa: atributos, itens e botas |
+|---|---|
+| ![Arena do Barão com ataques telegrafados](docs/media/baron.gif) | ![Menu de pausa com todos os atributos do campeão e os atributos e a passiva de cada item](docs/media/stats-menu.jpg) |
 
 | Vitória | Celular (controles de toque) |
 |---|---|
@@ -241,13 +266,35 @@ WASD não é usado porque colide com Q/W/E.
   - Perto do Barão: 33% de chance de mordida (engole, instantânea, impossível de esquivar). Senão, chicotada em cone: 75% da vida máxima, nunca mata.
   - Ajustes em `BARON` (`src/data.ts`); comportamento em `src/enemies/baron.ts`.
 
+## Balanceamento
+
+Os ajustes atuais num lugar só (as regras completas estão acima):
+
+| O quê | Valor | Onde |
+|---|---|---|
+| Ritmo do jogo | x1 em 0:00 até x2 em 5:00, depois x2 | `PACE` (`src/game.ts`) |
+| Ficar parado | dano recebido até x5 após 5 s sem se mover | `CAMPING` (`src/game.ts`) |
+| Barão Na'Shor | 70 mil de Vida (fixa, sem escala por tempo) | `ENEMIES.baron` (`src/data.ts`) |
+| Poções (build completa) | 5% da Vida ou Mana máxima | `POTION` (`src/items.ts`) |
+| Botas | aos 5:00, nível 2 pelo Aronguejo, nível 3 pelo dragão | `BOOTS_AT`, `BOOT_UPGRADES` (`src/items.ts`) |
+| Vida / dano dos inimigos | `× (1 + 0,08 × (nível − 1)) × (1 + tempo / 900 s)` / `× (1 + tempo / 600 s)` | `enemyHpScale` / `enemyDamageScale` (`src/data.ts`) |
+| Surgimento | `0,45 + 0,04 × (nível − 1) + tempo / 450` por segundo, ×0,6–1,3 pela taxa de abates, limite `12 + 2 × nível + tempo / 8` | `DIRECTOR` (`src/data.ts`) |
+
+Magos conjuram sem parar contra hordas, então os custos de mana do LoL foram reduzidos e a mana por abate tem recarga interna contra tropas (1 s; 0,5 s para as estrelas do Aurelion Sol):
+
+| Campeão | Custos (LoL entre parênteses) | Mana por abate |
+|---|---|---|
+| Brand | Q 40, W/E 45–65, R 80 | 20–40 em abates por habilidade ou de inimigo em chamas |
+| Aurelion Sol | Q 50–70, R 100, W sem custo de ativação (drena 6–10/s) | 4–12 por abate de estrela |
+| Teemo | Q 40–60 (70–90) | nenhuma |
+| Lux | Q 40, W 40–60, E 50–70, R 80 | 10–30 quando um inimigo iluminado morre |
+
 ## Arquitetura (onde adicionar conteúdo)
 
 - **Campeões** (`src/champion.ts`, `src/champions/`): um campeão é um `ChampionDef` (stats base, skills com ranks/custos/recargas/animação/ícone, animações, VFX do ataque básico) mais um `kit`, criado a cada run, que resolve as skills e guarda as peculiaridades (acúmulos, marcas...). O `Game` cuida do genérico: movimento, ataque básico, recargas, mana, itens e o pipeline de dano.
   - Novo campeão: criar `src/champions/<nome>.ts` (modelos: `ezreal.ts`; `brand.ts` para mago AP com dano contínuo e marcas por inimigo) e registrar em `src/champions/index.ts`. Sons seguem `<id>_auto`, `<id>_Q`, `<id>_death`... Passo a passo: `.claude/skills/creating-champions/SKILL.md`.
-  - Hooks do kit: `cast` (obrigatório), `castStart`, `castAnim`, `canCast`, `attackSpeedBonus`/`moveSpeedBonus`, `disarmed`, `ghost` (sem colisão com paredes nem unidades, ex. Cometa Lendário), `steer`/`onMoveOrder` (anda sozinho até uma ordem de movimento, ex. o rumo do Cometa Lendário), `meleeAuto`, `onDamage` (dano mágico extra antes da mitigação, ex. detonar a marca do W), `onKill` (ex. mana da Labareda em abates), `onDealt` (dano após a mitigação, ex. a cura do Severum), `update`, `dispose`, `hud`, `gauge`. Campeões com mais de uma forma (as armas do Aphelios): `stat` (atributos próprios, ex. pontos comprados), `attackTarget`/`attackStart`/`basicAttack` (alvo, clip, som e windup do ataque básico, e o disparo), `moveAnims`, `cooldownBase`/`castTime` (por forma), `skillView` (ícone, nome e selo do slot) e `tray` (ícones pequenos acima dos slots).
+  - Hooks do kit: `cast` (obrigatório), `castStart`, `castAnim`, `canCast`, `recast` (a skill apertada em recarga, ex. detonar a Singularidade Lucente), `attackSpeedBonus`/`moveSpeedBonus`, `disarmed`, `ghost` (sem colisão com paredes nem unidades, ex. Cometa Lendário), `steer`/`onMoveOrder` (anda sozinho até uma ordem de movimento, ex. o rumo do Cometa Lendário), `meleeAuto`, `onDamage` (dano mágico extra antes da mitigação, ex. detonar a marca do W), `onKill` (ex. mana da Labareda em abates), `onDealt` (dano após a mitigação, ex. a cura do Severum), `update`, `dispose`, `hud`, `gauge`. Campeões com mais de uma forma (as armas do Aphelios): `stat` (atributos próprios, ex. pontos comprados), `attackTarget`/`attackStart`/`basicAttack` (alvo, clip, som e windup do ataque básico, e o disparo), `moveAnims`, `cooldownBase`/`castTime` (por forma), `skillView` (ícone, nome e selo do slot) e `tray` (ícones pequenos acima dos slots).
   - Extras do `ChampionDef`: `idleVfx` (sistemas presos a ossos a run toda, ex. as chamas do Brand), `vfx.death`, `scale` (tamanho do modelo), `sequences` (clips emendados, o SequencerClipData do bin, ex. a corrida do Aurelion Sol), `translucent` (submeshes misturados pelo alfa da textura em vez de recortados, ex. a cauda dele), `conformPath` (cadeia de juntas curvada pelo caminho percorrido, o ConformToPathRigPoseModifierData do bin), `itemPool: 'ap'` para magos (skills escalam com `apRatio`), `build` (os 6 lendários recomendados de um site de builds, ofertados com mais frequência e marcados no level-up), `rankLevels` (nível de cada rank), `autoRank` (skills que sobem sem ponto) e `SkillDef.unlockLevel` (conjurável a partir de um nível, qualquer que seja o rank).
-  - Hooks do kit: `cast` (obrigatório), `castStart`, `castAnim`, `canCast`, `recast` (a skill apertada em recarga, ex. detonar a Singularidade Lucente), `attackSpeedBonus`/`moveSpeedBonus`, `disarmed`, `ghost` (sem colisão com paredes nem unidades, ex. Cometa Lendário), `meleeAuto`, `onDamage` (dano mágico extra antes da mitigação, ex. detonar a marca do W), `onKill` (ex. mana da Labareda em abates), `onDealt` (dano após a mitigação, ex. a cura do Severum), `update`, `dispose`, `hud`, `gauge`. Campeões com mais de uma forma (as armas do Aphelios): `stat` (atributos próprios, ex. pontos comprados), `attackTarget`/`attackStart`/`basicAttack` (alvo, clip, som e windup do ataque básico, e o disparo), `moveAnims`, `cooldownBase`/`castTime` (por forma), `skillView` (ícone, nome e selo do slot) e `tray` (ícones pequenos acima dos slots).
   - Controle em inimigos: `game.slow(e, pct, s)`, `game.stunEnemy(e, s)` e `game.rootEnemy(e, s)` (não anda, ainda ataca) (só no loop genérico; as IAs de chefe ignoram os dois últimos). `game.knockUp(e, s)` é um Atordoamento que joga o modelo para o alto (Estrela Cadente).
   - Projéteis: `game.spawnMissile(vfx, de, para, { hit, target | pierce, onHit, ... })`. Sem `onHit`, o impacto padrão aplica VFX, som e dano.
 - **Passivas de itens** (hooks em `src/itemEffects.ts`, entradas em `src/itemPassives/ad.ts`, `ap.ts`, `tank.ts`): cada entrada tem a descrição (números do nível máximo) e uma fábrica de hooks `effect(g, power)` (`onHit`, `onHitMagic`, `onAttack`, `onCast`, `onDealt`, `onKill`, `onHurt`, `onStruck`, `onOverheal`, `tick`, `onLethal`, `stat`, `damageMult`...). `power()` é a força da passiva no nível do item (0,6/0,8/1): efeitos multiplicam seus números por ela, os de tudo-ou-nada (reviver, escudo de feitiço) esticam a recarga. Mecânicas comuns em `src/itemPassives/shared.ts`: Lâmina Arcana, Linha da Vida, escudo de feitiço, queimaduras, Energizado. `unique` + `rank` reproduzem as passivas ÚNICAS do LoL (só a melhor funciona). Stats continuam em `items.json`.
@@ -256,7 +303,7 @@ WASD não é usado porque colide com Q/W/E.
 
 ## Limitações conhecidas / próximos passos
 
-- Partículas: conjuntos de partículas filhas (`childParticleSetDefinition`) acompanham a partícula mãe, nos ossos da malha skinned da partícula (`.skn` desenhado estático na pose de bind, ossos do `.skl` exportados pelo `build_vfx.py`). `VfxPrimitiveBeam` (da partícula até o `target` do sistema, ou até o próprio offset de alvo; malhas esticadas no eixo Z; beams de chão ficam no terreno), `VfxPrimitiveRay`, `VfxPrimitiveAttachedMesh` (a malha do dono redesenhada como brilho ou pós-imagem com pose congelada), campos de força (aceleração, arrasto, atração) e `FlexShapeDefinition` (escala pelo tamanho do alvo) são suportados. Não implementados: campos orbitais/ruído, distorção; malhas anexadas ignoram escala de nascimento, rolagem de UV e erosão. Efeitos de cast seguem o osso indicado pelos eventos de animação da skin (`Actor.bone`, `Vfx.playOn`); com `ChampionDef.animVfx` o jogo toca esses eventos sozinho (`events.json` do `build_vfx.py`: os eventos de partícula de cada clip; arquivo de clip compartilhado por variantes com efeitos diferentes fica com o kit). `blendMode` ausente/4 = aditivo, 1 = alpha (inferido das texturas, não documentado).
+- Partículas: conjuntos de partículas filhas (`childParticleSetDefinition`) acompanham a partícula mãe, nos ossos da malha skinned da partícula (`.skn` desenhado estático na pose de bind, ossos do `.skl` exportados pelo `build_vfx.py`). `VfxPrimitiveBeam` (da partícula até o `target` do sistema, ou até o próprio offset de alvo; malhas esticadas no eixo Z; beams de chão ficam no terreno), `VfxPrimitiveRay`, `VfxPrimitiveAttachedMesh` (a malha do dono redesenhada como brilho ou pós-imagem com pose congelada), campos de força (aceleração, arrasto, atração) e `FlexShapeDefinition` (escala pelo tamanho do alvo) são suportados. Não implementados: campos orbitais/ruído, distorção; malhas anexadas ignoram escala de nascimento, rolagem de UV e erosão; partículas de malha com `uvMode` 2 e texturas de multiplicação com rolagem (os anéis de constelação da Lux) aparecem fracas; quads de chão ficam numa altura fixa, então a plataforma elevada do spawn os corta. UV de beam: U atravessa o feixe (as texturas são perfis de seção), V corre ao longo, repetindo a cada `mBirthTilingSize.y`; `scale.x` é a largura total. `colorLookUpTypeY` 3 sorteia uma linha da textura de cor por partícula; rotações de partícula usam a ordem YXZ. Efeitos de cast seguem o osso indicado pelos eventos de animação da skin (`Actor.bone`, `Vfx.playOn`); com `ChampionDef.animVfx` o jogo toca esses eventos sozinho (`events.json` do `build_vfx.py`: os eventos de partícula de cada clip; arquivo de clip compartilhado por variantes com efeitos diferentes fica com o kit). `blendMode` ausente/4 = aditivo, 1 = alpha (inferido das texturas, não documentado).
 - Os `.glb` de origem são pesados (Ezreal 29 MB, Barão 45 MB); `pnpm build:prod` (`tools/optimize.mjs`) remove os clips que o código não usa, faz resample e comprime com meshopt (Ezreal 1,9 MB, Barão 1,9 MB).
 - Cada inimigo é um SkinnedMesh com o próprio mixer, com limite de 260 vivos (`MAX_ENEMIES`). Para hordas maiores: animação baked em textura + instancing.
 - Dragões: animações compartilhadas do `sru_dragon`. Infernal e Montanha usam a malha do Nuvens (`sru_dragon_air`) com a própria textura, como no jogo (`EnemyDef.mesh`).
