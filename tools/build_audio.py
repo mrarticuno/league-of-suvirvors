@@ -32,6 +32,7 @@ AS = "Play_sfx_AurelionSol_AurelionSol"
 TE = "Play_sfx_Teemo_Teemo"
 TM = "Play_sfx_TeemoMushroom_TeemoRTrap_"
 LX = "Play_sfx_Lux_Lux"
+ZG = "Play_sfx_Ziggs_Ziggs"
 
 # bank path (without _events/_audio) -> {sound key: event name candidates (first match wins) or an event id}
 BANKS: dict[str, dict[str, list[str] | int]] = {
@@ -190,6 +191,33 @@ BANKS: dict[str, dict[str, list[str] | int]] = {
         "lux_R_end": [LX + "RBeam_beamend"],
         "lux_death": ["Play_sfx_Lux_Death3D_cast"],
     },
+    SFX + "characters/ziggs/skins/base/ziggs_base_sfx": {
+        "ziggs_auto": [ZG + "BasicAttack_OnCast"],
+        "ziggs_auto2": [ZG + "BasicAttack2_OnCast"],
+        "ziggs_crit": [ZG + "CritAttack_OnCast"],
+        "ziggs_auto_hit": [ZG + "BasicAttack_OnHit", ZG + "BasicAttack2_OnHit"],
+        "ziggs_crit_hit": [ZG + "CritAttack_OnHit"],
+        "ziggs_P_ready": [ZG + "ShortFuse_OnBuffActivate"],
+        "ziggs_P_auto": [ZG + "PassiveAttack_OnCast"],
+        "ziggs_P_hit": [ZG + "PassiveAttack_OnHit"],
+        "ziggs_Q": [ZG + "Q_OnCast"],
+        "ziggs_Q_launch": [ZG + "QSpell_OnMissileLaunch"],
+        "ziggs_Q_bounce": [ZG + "Q_hit_bounce"],
+        "ziggs_Q_hit": [ZG + "Q_hit"],
+        "ziggs_W": [ZG + "W_OnCast"],
+        "ziggs_W_launch": [ZG + "W_OnMissileLaunch"],
+        "ziggs_W_land": [ZG + "W_buffactivate"],
+        "ziggs_W_hit": [ZG + "W_detonate"],
+        "ziggs_E": [ZG + "E_OnCast"],
+        "ziggs_E_launch": [ZG + "E2_OnMissileLaunch"],
+        "ziggs_E_land": [ZG + "E2_OnBuffActivate"],
+        "ziggs_E_hit": [ZG + "E_detonate"],
+        "ziggs_R": [ZG + "R_OnCast"],
+        "ziggs_R_launch": [ZG + "R_OnMissileLaunch", ZG + "R_missilelaunch"],
+        "ziggs_R_fall": [ZG + "RImpactSound_OnBuffActivate"],
+        "ziggs_R_hit": [ZG + "R_hit"],
+        "ziggs_death": ["Play_sfx_Ziggs_Death3D_cast"],
+    },
     SFX + "characters/teemo/skins/base/teemo_base_sfx": {
         "teemo_auto": [TE + "BasicAttack_OnCast"],
         "teemo_auto2": [TE + "BasicAttack_OnCast"],
@@ -309,7 +337,7 @@ def render(txtp_path, mp3, music):
 
 def main(wwiser, out_dir, final_dir):
     final = Path(final_dir)
-    wads = [Wad(final / w) for w in ("Champions/Ezreal.wad.client", "Champions/Samira.wad.client", "Champions/Brand.wad.client", "Champions/Aphelios.wad.client", "Champions/AurelionSol.wad.client", "Champions/Lux.wad.client", "Champions/Teemo.wad.client", "Maps/Shipping/Map11.wad.client", "Maps/Shipping/Common.wad.client")]
+    wads = [Wad(final / w) for w in ("Champions/Ezreal.wad.client", "Champions/Samira.wad.client", "Champions/Brand.wad.client", "Champions/Aphelios.wad.client", "Champions/AurelionSol.wad.client", "Champions/Lux.wad.client", "Champions/Teemo.wad.client", "Champions/Ziggs.wad.client", "Maps/Shipping/Map11.wad.client", "Maps/Shipping/Common.wad.client")]
     read = lambda p: next((d for d in (w.read(p) for w in wads) if d is not None), None)
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)

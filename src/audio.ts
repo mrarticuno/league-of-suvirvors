@@ -75,7 +75,8 @@ class GameAudio {
     }));
   }
 
-  play(key: string, volume = 1) {
+  /** Returns a stop function (e.g. a countdown cut short); undefined when nothing played. */
+  play(key: string, volume = 1): (() => void) | undefined {
     const takes = this.buffers.get(key);
     if (!this.sfxVolume || !takes?.length || volume <= 0.02 || this.voices >= MAX_VOICES) return;
     const now = this.ctx.currentTime;
@@ -89,11 +90,12 @@ class GameAudio {
     this.voices++;
     src.onended = () => this.voices--;
     src.start();
+    return () => src.stop();
   }
 
   /** Positional sound, quieter the farther `at` is from the listener. */
   playAt(key: string, at: THREE.Vector3, listener: THREE.Vector3) {
-    this.play(key, falloff(Math.hypot(at.x - listener.x, at.z - listener.z)));
+    return this.play(key, falloff(Math.hypot(at.x - listener.x, at.z - listener.z)));
   }
 
   setPaused(paused: boolean) {

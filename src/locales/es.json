@@ -579,7 +579,6 @@
  "champion.teemo.E.desc": "Pasiva: los ataques básicos de Teemo infligen daño mágico adicional al impactar y envenenan al objetivo, que recibe daño mágico cada segundo durante 4 s (145 % contra monstruos).",
  "champion.teemo.R.desc": "Lanza un hongo a la zona objetivo (hasta 3 cargas). Se arma tras 1 s y dura 5 min; cuando un enemigo lo pisa, explota, infligiendo daño mágico a los enemigos a 400 unidades y una ralentización del 30–50 % durante 4 s. Un hongo que cae sobre otro rebota hacia adelante.",
  "champion.teemo.recharge": "Recarga de carga (s)",
- "champion.aurelionsol.R.desc": "Hace caer un meteorito en el área objetivo. Tras 1 s impacta, inflige daño mágico a los enemigos a menos de 450 unidades y los lanza por los aires durante 1 s.",
  "champion.lux.name": "Lux",
  "champion.lux.title": "la Dama Luminosa",
  "champion.lux.passive": "Iluminación",
@@ -592,5 +591,17 @@
  "champion.lux.Q.desc": "Dispara una esfera de luz que inflige daño mágico a los dos primeros enemigos alcanzados y los inmoviliza durante 2 s.",
  "champion.lux.W.desc": "Lanza su varita hasta 1175 unidades y vuelve volando hacia ella. Lux obtiene un Escudo durante 2,5 s al lanzarla y otro cuando regresa (se acumulan).",
  "champion.lux.E.desc": "Envía una singularidad a la zona objetivo que ralentiza un 25–45 % a los enemigos dentro (la Ralentización dura 1 s más tras salir). Pulsa de nuevo para detonarla e infligir daño mágico; detona sola tras 5 s.",
- "champion.lux.R.desc": "Tras 1 s, dispara un láser gigante de 3340 unidades que inflige daño mágico a todos los enemigos en la línea. Detona la Iluminación de los enemigos alcanzados y vuelve a iluminarlos."
+ "champion.lux.R.desc": "Tras 1 s, dispara un láser gigante de 3340 unidades que inflige daño mágico a todos los enemigos en la línea. Detona la Iluminación de los enemigos alcanzados y vuelve a iluminarlos.",
+ "champion.ziggs.name": "Ziggs",
+ "champion.ziggs.title": "el Experto en Hexplosivos",
+ "champion.ziggs.passive": "Mecha Corta",
+ "champion.ziggs.Q": "Bomba Rebotante",
+ "champion.ziggs.W": "Carga Concentrada",
+ "champion.ziggs.E": "Minas Hexplosivas",
+ "champion.ziggs.R": "Bomba Megainfernal",
+ "champion.ziggs.slow": "Ralentización",
+ "champion.ziggs.Q.desc": "Lanza una bomba que rebota hacia delante hasta dos veces y explota al caer cerca de un enemigo o en su último rebote, e inflige daño mágico a 240 unidades.",
+ "champion.ziggs.W.desc": "Arroja una carga que detona tras 4 s o al pulsar de nuevo, inflige daño mágico a 325 unidades y repele a los enemigos. Si la explosión alcanza a Ziggs, sale despedido.",
+ "champion.ziggs.E.desc": "Esparce 11 minas de proximidad que se activan tras 0,5 s y duran 10 s. Cada mina inflige daño mágico y una ralentización del 10–50 % durante 1,5 s; un enemigo recibe un 40 % del daño de las minas siguientes.",
+ "champion.ziggs.R.desc": "Catapulta una bomba enorme a la zona objetivo que inflige daño mágico a 525 unidades, un 50 % más en su epicentro de 250 unidades."
 }

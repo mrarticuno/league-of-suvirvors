@@ -617,7 +617,7 @@ function skillCard(g: Game, k: SkillKey, n: number, best: boolean, st: SkillStat
   const ratios = [
     s.adRatio !== undefined && t('skillsel.ratioAd', { n: Math.round((typeof s.adRatio === 'number' ? s.adRatio : s.adRatio[Math.min(rank, s.maxRank - 1)]) * 100) }),
     s.bonusAdRatio && t('skillsel.ratioBonusAd', { n: Math.round(s.bonusAdRatio * 100) }),
-    s.apRatio && t('skillsel.ratioAp', { n: Math.round(s.apRatio * 100) }),
+    s.apRatio && t('skillsel.ratioAp', { n: Math.round((typeof s.apRatio === 'number' ? s.apRatio : s.apRatio[Math.min(rank, s.maxRank - 1)]) * 100) }),
   ].filter(Boolean).join(' · ');
   const why = k === 'R' ? t('skillsel.whyUlt') : rank === 0 ? t('skillsel.whyNew') : t('skillsel.whyDps', { n: num(Math.max(0, Math.round(dpsGain(s, rank, st)))) });
   const lock = max ? t('skillsel.max')

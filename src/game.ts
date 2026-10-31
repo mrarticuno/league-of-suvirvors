@@ -83,6 +83,7 @@ export interface Enemy {
   blindUntil: number; // basic attacks miss while time < blindUntil (generic loop only, like stunUntil)
   airUntil: number; // knocked up: the model arcs into the air while time < airUntil (Game.knockUp)
   airFor: number; // length of that knock-up
+  push?: { x: number; z: number; done: number }; // knocked back (Game.knockBack): ground offset and the share of it applied
   ai?: EnemyAI; // own behaviour (src/enemies), replaces the generic chase-and-attack loop
   animDt: number; // animation time not yet applied (animation LOD)
 }
@@ -183,7 +184,7 @@ export class Game {
   private idleFx: ParticleSystem[] = []; // ChampionDef.idleVfx, stopped on death
   private animLock = 0;
   private pendingCast: { key: SkillKey; point: THREE.Vector3 } | null = null;
-  private dashMove: { dir: THREE.Vector3; left: number; speed: number } | null = null; // forced movement (dash)
+  private dashMove: { dir: THREE.Vector3; left: number; speed: number; length: number; height: number } | null = null; // forced movement (dash)
   stasis = 0; // frozen and untargetable (Guardian Angel)
   private stasisEnd: (() => void) | null = null;
   stunned = 0; // seconds of crowd control left
@@ -477,6 +478,12 @@ export class Game {
     e.airUntil = this.time + seconds;
     e.airFor = seconds;
   }
+  /** Knock-back: a knock-up that also carries the enemy by `offset` (ground plane) while airborne; walls stop it. */
+  knockBack(e: Enemy, offset: THREE.Vector3, seconds: number) {
+    e.airUntil = 0; // a new knock-back restarts the arc
+    this.knockUp(e, seconds);
+    e.push = { x: offset.x, z: offset.z, done: 0 };
+  }
   inWater() { return this.map.inWater(this.pos.x, this.pos.z); }
 
   get hasFlash() { return [...this.page.primaryRunes, ...this.page.secondaryRunes].includes('hextech-flashtraption'); }
@@ -702,6 +709,8 @@ export class Game {
       this.stillFor = 0;
       if ((d.left -= step) <= 0) this.dashMove = null;
       this.player.root.position.copy(this.pos);
+      const k = 1 - Math.max(0, d.left) / d.length;
+      this.player.root.position.y = d.height * 4 * k * (1 - k);
       this.player.root.rotation.y = this.facing;
     }
 
@@ -761,10 +770,10 @@ export class Game {
     if (off.length() > max) this.pos.copy(this.arena.center).addScaledVector(off.normalize(), max);
   }
 
-  /** Moves the champion `distance` along `dir` (ground plane) at `speed`; no walking or attacking meanwhile. */
-  dash(dir: THREE.Vector3, distance: number, speed: number) {
+  /** Moves the champion `distance` along `dir` (ground plane) at `speed`; no walking or attacking meanwhile. `height`: peak of a jump arc. */
+  dash(dir: THREE.Vector3, distance: number, speed: number, height = 0) {
     this.windup = -1;
-    this.dashMove = { dir: dir.clone().setY(0).normalize(), left: distance, speed };
+    this.dashMove = { dir: dir.clone().setY(0).normalize(), left: distance, speed, length: distance, height };
   }
 
   get dashing() { return this.dashMove !== null; }
@@ -1204,6 +1213,14 @@ export class Game {
 
       if (e.stunUntil > this.time) {
         e.actor.play(e.def.anims.idle, { fade: 0.1 });
+        if (e.push) {
+          // offset applied by the share of the arc flown (real time: the arc is timed on this.time, not enemy-side dt)
+          const k = Math.min(1, 1 - (e.airUntil - this.time) / e.airFor);
+          e.pos.x += e.push.x * (k - e.push.done);
+          e.pos.z += e.push.z * (k - e.push.done);
+          e.push.done = k;
+          if (k >= 1) e.push = undefined;
+        }
         continue;
       }
       if (dist > DESPAWN_RADIUS && e.def.tier !== 'epic') {

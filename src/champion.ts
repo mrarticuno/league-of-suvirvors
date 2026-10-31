@@ -64,7 +64,7 @@ export interface SkillDef {
   damage: readonly number[]; // base damage per rank (per hit)
   adRatio?: number | readonly number[]; // total AD ratio (per rank when a list)
   bonusAdRatio?: number;
-  apRatio?: number; // ability power ratio
+  apRatio?: number | readonly number[]; // ability power ratio (per rank when a list)
   hits?: number; // damage instances per cast (Blade Whirl: 2, Inferno Trigger: 10 volleys)
   extra?: { label: string; values: readonly number[]; percent?: boolean }; // one more per-rank number (a buff)
 }
@@ -75,7 +75,8 @@ export interface SkillStats { ad: number; bonusAd: number; ap: number; haste: nu
 /** One cast at rank index `r` (0-based): damage per hit and per cast, cooldown after ability haste, damage per second. */
 export function skillNumbers(s: SkillDef, r: number, st: SkillStats) {
   const ratio = typeof s.adRatio === 'number' ? s.adRatio : (s.adRatio?.[r] ?? 0);
-  const perHit = s.damage[r] + ratio * st.ad + (s.bonusAdRatio ?? 0) * st.bonusAd + (s.apRatio ?? 0) * st.ap;
+  const ap = typeof s.apRatio === 'number' ? s.apRatio : (s.apRatio?.[r] ?? 0);
+  const perHit = s.damage[r] + ratio * st.ad + (s.bonusAdRatio ?? 0) * st.bonusAd + ap * st.ap;
   const damage = perHit * (s.hits ?? 1);
   const cooldown = s.cooldown[r] * (100 / (100 + st.haste));
   return { perHit, damage, cooldown, cost: s.cost[r], dps: cooldown > 0 ? damage / cooldown : 0 };

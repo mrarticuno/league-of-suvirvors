@@ -30,7 +30,7 @@
 
 ## Champions
 
-Seven playable champions, each with a full kit ported from LoL (details in [Implemented rules](#implemented-rules)):
+Eight playable champions, each with a full kit ported from LoL (details in [Implemented rules](#implemented-rules)):
 
 | Champion | Roles | Style |
 |---|---|---|
@@ -41,6 +41,7 @@ Seven playable champions, each with a full kit ported from LoL (details in [Impl
 | Aurelion Sol | Mage | Stars orbiting him, a flight over walls, a falling meteor |
 | Teemo | Marksman · Mage | Stand still for attack speed, poison on hit, bouncing mushroom traps |
 | Lux | Mage · Support | Illumination marks, roots, a shield and the Final Spark laser |
+| Ziggs | Mage | Lobbed bombs: a bouncing bomb, a satchel that blasts enemies (and Ziggs) away, a minefield and a map-wide nuke |
 
 ## Gallery
 
@@ -51,6 +52,10 @@ Seven playable champions, each with a full kit ported from LoL (details in [Impl
 | Level-up: abilities | Level-up: items |
 |---|---|
 | ![Ability cards with damage, cooldown and a recommendation](docs/media/skill-pick.jpg) | ![Item cards with the level, stats now and after the pick, and the passive](docs/media/item-shop.jpg) |
+
+| Ziggs |
+|---|
+| ![Ziggs: Bouncing Bomb, Satchel Charge, Hexplosive Minefield and Mega Inferno Bomb](docs/media/ziggs.gif) |
 
 | Lux | Aurelion Sol |
 |---|---|
@@ -95,7 +100,7 @@ The models are **not in the repository** (they are Riot assets). Generate them l
 2. Hash list (the game's `.bin` files reference textures/animations by xxh64 hash):
    ```bash
    curl -s https://raw.communitydragon.org/data/hashes/lol/hashes.game.txt \
-     | grep -E "assets/characters/(ezreal|samira|brand|aphelios|aurelionsol|lux|teemo|sru_|turret|inhibitor|nexus)" > assets-raw/hashes.filtered.txt
+     | grep -E "assets/characters/(ezreal|samira|brand|aphelios|aurelionsol|lux|teemo|ziggs|sru_|turret|inhibitor|nexus)" > assets-raw/hashes.filtered.txt
    ```
 3. Extract from the WADs (`tools/extract_lol.py`) and convert to `.glb` (`tools/build_models.py`):
    ```bash
@@ -107,6 +112,7 @@ The models are **not in the repository** (they are Riot assets). Generate them l
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt teemo assets-raw/teemo "$G/Champions/Teemo.wad.client"
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt teemomushroom assets-raw/teemomushroom "$G/Champions/Teemo.wad.client"
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt lux assets-raw/lux "$G/Champions/Lux.wad.client"
+   .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt ziggs assets-raw/ziggs "$G/Champions/Ziggs.wad.client"
    # Aphelios and Crescendum's sentry (a character of its own in the same WAD)
    for c in aphelios apheliosturret; do .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt $c assets-raw/$c "$G/Champions/Aphelios.wad.client"; done
    for c in sru_chaosminion{melee,ranged,siege,super} sru_orderminionmelee sru_krug sru_murkwolf sru_razorbeak sru_razorbeakmini sru_gromp sru_blue sru_red sru_riftherald sru_baron sru_crab sru_dragon sru_dragon_{air,fire,earth,water,hextech,chemtech}; do
@@ -130,7 +136,7 @@ The models are **not in the repository** (they are Riot assets). Generate them l
    `pieces` is a limited `.mapgeo` v14 parser: if it is skipped or fails (different format version, missing WAD), the runtime draws dark boxes/cylinders from the layout obstacles. Nothing breaks.
 5. Ability VFX: Ezreal's particle systems read from the skin `.bin`, with every texture and mesh they use. Uses the hash lists downloaded in step 4:
    ```bash
-   for c in ezreal samira brand aphelios aurelionsol lux teemo; do (cd tools && ../.venv-tools/bin/python build_vfx.py ../assets-raw/hashes $c ../public/assets/vfx/$c "$G"); done
+   for c in ezreal samira brand aphelios aurelionsol lux teemo ziggs; do (cd tools && ../.venv-tools/bin/python build_vfx.py ../assets-raw/hashes $c ../public/assets/vfx/$c "$G"); done
    ```
    Generates `systems.json` (effects indexed by `ResourceResolver` keys, e.g. `Ezreal_Q_mis`), `spells.json` (missile speed/width/range) and the asset PNG/JSON files. `tools/read_bin.py` alone converts any `.bin` into JSON. The emitter runtime lives in `src/particles.ts`; `src/vfx.ts` only picks which system to play and where.
 
@@ -221,6 +227,13 @@ WASD is not used because it clashes with Q/W/E.
   - **E (Lucent Singularity)**: a singularity flies to the target area (1100 range) and slows enemies within 310 by 25–45% (lingering 1 s); pressing E again detonates it (on arrival if still flying), otherwise it goes off after 5 s: 65–265 + 80% AP and the same slow for 1 s.
   - **R (Final Spark)**: after a 1 s channel, a laser 3340 long and 190 wide deals 300/400/500 + 120% AP to every enemy in the line; it detonates Illumination and marks again.
   - Not from LoL: costs Q 40, W 40–60, E 50–70, R 80; the mana on illuminated kills (shown with the skin's unused `Lux_globalhit_mana` flash); Prismatic Barrier only shields Lux.
+- **Ziggs** (client spell data from `ziggs.bin` for every number, LoL Wiki for what the bin leaves to scripts): 550 range, ability power items. Every bomb is lobbed with the bins' gravity (arc peak = gravity × time² / 8), including his basic attacks.
+  - **Passive (Short Fuse)**: every 12 s (static) the next basic attack throws a bigger bomb for 20–160 (level breakpoints 1/7/13) + 50% AP bonus magic damage; each ability cast takes 4/5/6 s (levels 1/7/13) off that cooldown at the start of the cast. The bomb in his hand glows while it is ready; the gauge counts down.
+  - **Q (Bouncing Bomb)**: thrown toward the cursor (850 range, 1700 speed), it bounces forward twice (325 and 225 at max range, scaled by the throw, 0.48 s each) and explodes when it lands within 180 of an enemy or on its last bounce: 80–280 + 60–80% AP within 240 (1400 total reach).
+  - **W (Satchel Charge)**: a charge (1000 range, 1750 speed) that sits for 4 s; pressing W again detonates it (on landing if still flying): 70–210 + 50% AP within 325, knocking enemies out to 500 from the center over 0.5 s. If Ziggs is in the blast, he jumps out to 775 from the center.
+  - **E (Hexplosive Minefield)**: a cluster (900 range) scatters 11 mines (3 inner, 8 on a 200 ring, random turn) that arm after 0.5 s and last 10 s; each explodes on an enemy within 135: 30–190 + 25–45% AP and a 10–50% slow for 1.5 s; an enemy already hit by the cast takes 40% from later mines.
+  - **R (Mega Inferno Bomb)**: 5000 range; lands after 1.2 s within 2700, else distance / 2250: 300/500/700 + 100% AP within the 250 epicenter, 65% of that out to 525. Landing-zone indicator from the cast, the closing ring 0.65 s before the blast.
+  - Not from LoL: costs Q 30–40, W 55, E 50–75, R 80 (Brand's cuts); ability kills restore 10–30 mana (level; 1 s cooldown against minions and small monsters); the Minefield's inner ring radius (100) and the thresholds between R's long-range missiles are estimates (script-side, not in the bin); no turret execute (no turrets).
 - **Two-step level-up**:
   1. One ability rank, by LoL's rule: basic abilities at levels 1/3/5/7/9, R at levels 6/11/16 (Aphelios: stat points, see above). The step is skipped when no rank is available.
   2. One item out of 3 rolled (or a potion, once the build is complete).
@@ -229,7 +242,7 @@ WASD is not used because it clashes with Q/W/E.
   - Every item has 5 levels. Stats grow from 40% (level 1) to 100% (level 5); the passive unlocks at level 3 at 60% strength, 80% at level 4, 100% at level 5. Manamune, Archangel's Staff and Winter's Approach gain their transformed passive (Muramana, Seraph's Embrace, Fimbulwinter) at level 5.
   - Pool: every Summoner's Rift legendary except items with an active (Zhonya's, Youmuu's, the Hydras...), support items, anti-heal items (Mortal Reminder, Chempunk, Morellonomicon; Thornmail keeps only its reflect) and passives that need vision or champion shields (Umbral Glaive, Serpent's Fang). AD champions get attack items, AP champions ability power items, both get tanks and hybrids.
   - Passives adapted to hordes: "champion" triggers become elite/epic monster kills; spell shields block the next damage taken.
-  - Recommended build per champion (OP.GG, patch 16.21): offered three times as often and tagged "Recommended". Ezreal: Trinity Force, Manamune, Spear of Shojin, Serylda's Grudge, Endless Hunger, Guardian Angel. Samira: The Collector, Infinity Edge, Lord Dominik's Regards, Immortal Shieldbow, Bloodthirster, Guardian Angel. Brand: Blackfire Torch, Rylai's, Liandry's, Shadowflame, Rabadon's, Void Staff. Aphelios: The Collector, Infinity Edge, Lord Dominik's Regards, Runaan's Hurricane, Guardian Angel, Bloodthirster. Aurelion Sol: Liandry's, Rylai's, Rabadon's, Void Staff, Shadowflame, Cosmic Drive. Teemo: Nashor's Tooth, Liandry's Torment, Riftmaker, Rabadon's Deathcap, Void Staff, Shadowflame. Lux: Luden's Echo, Shadowflame, Rabadon's, Horizon Focus, Void Staff, Malignance.
+  - Recommended build per champion (OP.GG, patch 16.21): offered three times as often and tagged "Recommended". Ezreal: Trinity Force, Manamune, Spear of Shojin, Serylda's Grudge, Endless Hunger, Guardian Angel. Samira: The Collector, Infinity Edge, Lord Dominik's Regards, Immortal Shieldbow, Bloodthirster, Guardian Angel. Brand: Blackfire Torch, Rylai's, Liandry's, Shadowflame, Rabadon's, Void Staff. Aphelios: The Collector, Infinity Edge, Lord Dominik's Regards, Runaan's Hurricane, Guardian Angel, Bloodthirster. Aurelion Sol: Liandry's, Rylai's, Rabadon's, Void Staff, Shadowflame, Cosmic Drive. Teemo: Nashor's Tooth, Liandry's Torment, Riftmaker, Rabadon's Deathcap, Void Staff, Shadowflame. Lux: Luden's Echo, Shadowflame, Rabadon's, Horizon Focus, Void Staff, Malignance. Ziggs: Luden's Echo, Shadowflame, Rabadon's Deathcap, Void Staff, Banshee's Veil, Horizon Focus.
   - Complete build (6 items at level 5): level-ups offer a Health or Mana Potion (5% of max), and each kill has a 1% chance to drop a blueprint (blue scroll, 1 per run) that makes a random item Legendary (+50% stats; its slot gets an animated gold ring and a "Legendary" ribbon).
   - Boots: a 7th slot outside the six. Boots (+25 Move Speed) at 5:00; killing the Rift Scuttler offers a pick of Berserker's Greaves, Boots of Swiftness, Sorcerer's Shoes, Plated Steelcaps (Plating: physical hits deal 10% less), Mercury's Treads or Ionian Boots of Lucidity; killing the dragon turns them into their tier 3 (Gunmetal Greaves, Swiftmarch, Spellslinger's Shoes, Armored Advance, Chainlaced Crushers, Crimson Lucidity: stats only).
   - Pace: the enemy side (movement, attacks, animations, boss attacks, enemy projectiles, spawn rate) speeds up from x1 at 0:00 to x1.5 at 5:00, then stays at x1.5. The clock, cooldowns, buffs and the champion keep real time.
@@ -288,6 +301,7 @@ Mages cast nonstop against hordes, so their LoL mana costs are lowered and their
 | Aurelion Sol | Q 50–70, R 100, W no activation cost (drains 6–10/s) | 4–12 per star kill |
 | Teemo | Q 40–60 (70–90) | none |
 | Lux | Q 40, W 40–60, E 50–70, R 80 | 10–30 when an illuminated enemy dies |
+| Ziggs | Q 30–40 (50–70), W 55 (80), E 50–75 (70–110), R 80 (100) | 10–30 on ability kills |
 
 ## Architecture (where to add content)
 
@@ -295,7 +309,7 @@ Mages cast nonstop against hordes, so their LoL mana costs are lowered and their
   - New champion: create `src/champions/<name>.ts` (templates: `ezreal.ts`; `brand.ts` for an AP mage with damage over time and per-enemy marks) and register it in `src/champions/index.ts`. Sounds follow `<id>_auto`, `<id>_Q`, `<id>_death`... Step-by-step guide: `.claude/skills/creating-champions/SKILL.md`.
   - Kit hooks: `cast` (required), `castStart`, `castAnim`, `canCast`, `recast` (the skill pressed while on cooldown, e.g. detonating Lucent Singularity), `attackSpeedBonus`/`moveSpeedBonus`, `disarmed`, `ghost` (no wall nor unit collision, e.g. Comet of Legend), `steer`/`onMoveOrder` (walks the champion on its own until a move order, e.g. Comet of Legend's course), `meleeAuto`, `onDamage` (extra magic damage before mitigation, e.g. detonating the W mark), `onKill` (e.g. Blaze's mana on kills), `onDealt` (damage after mitigation, e.g. Severum's heal), `update`, `dispose`, `hud`, `gauge`. Champions with more than one form (Aphelios' weapons): `stat` (own stats, e.g. points bought), `attackTarget`/`attackStart`/`basicAttack` (target, clip, sound and windup of the basic attack, firing it), `moveAnims`, `cooldownBase`/`castTime` (per form), `skillView` (slot icon, name and badge) and `tray` (small icons above the slots).
   - `ChampionDef` extras: `idleVfx` (systems riding bones all run long, e.g. Brand's flames), `vfx.death`, `scale` (model size), `sequences` (clips joined end to end, the bin's SequencerClipData, e.g. Aurelion Sol's run), `translucent` (submeshes blended by texture alpha instead of cut out, e.g. his tail), `conformPath` (joint chain bent along the travelled path, the bin's ConformToPathRigPoseModifierData), `itemPool: 'ap'` for mages (skills scale with `apRatio`), `build` (the 6 recommended legendaries from a build site, offered more often and tagged on level up), `rankLevels` (level of each rank), `autoRank` (skills ranked without a point) and `SkillDef.unlockLevel` (castable from a level, whatever its ranks).
-  - Crowd control on enemies: `game.slow(e, pct, s)`, `game.stunEnemy(e, s)` and `game.rootEnemy(e, s)` (no moving, still attacks) (generic loop only; boss AIs ignore them). `game.knockUp(e, s)` is a stun that throws the model into the air (Falling Star).
+  - Crowd control on enemies: `game.slow(e, pct, s)`, `game.stunEnemy(e, s)` and `game.rootEnemy(e, s)` (no moving, still attacks) (generic loop only; boss AIs ignore them). `game.knockUp(e, s)` is a stun that throws the model into the air (Falling Star). `game.knockBack(e, offset, s)` also carries it along the ground (Satchel Charge); `game.dash(dir, dist, speed, height)` can jump.
   - Projectiles: `game.spawnMissile(vfx, from, to, { hit, target | pierce, onHit, ... })`. Without `onHit`, the default impact applies VFX, sound and damage.
 - **Item passives** (`src/itemEffects.ts` hooks, entries in `src/itemPassives/ad.ts`, `ap.ts`, `tank.ts`): each entry has the description (max-level numbers) and a hook factory `effect(g, power)` (`onHit`, `onHitMagic`, `onAttack`, `onCast`, `onDealt`, `onKill`, `onHurt`, `onStruck`, `onOverheal`, `tick`, `onLethal`, `stat`, `damageMult`...). `power()` is the passive's strength at the item's level (0.6/0.8/1): effects multiply their numbers by it, all-or-nothing ones (revive, spell shield) stretch their cooldown. Shared mechanics in `src/itemPassives/shared.ts`: Spellblade, Lifeline, spell shield, burns, Energized. `unique` + `rank` reproduce LoL's UNIQUE passives (only the best one works). Stats stay in `items.json`.
 - **Enemies** (`src/data.ts` + `src/enemies/`): a regular enemy only needs an `EnemyDef`. Custom behavior registers an AI in `AI`; timeline events with special rules (rolled dragon, Baron arena) register a spawner in `SPAWNERS`. `src/hazards.ts` has the ground markers and eruptions for bosses.
