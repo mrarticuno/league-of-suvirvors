@@ -148,6 +148,7 @@ export class Actor {
   private nextEvent = 0;
   private lastTime = 0;
   private path?: { joints: THREE.Object3D[]; trail: THREE.Vector3[] };
+  private collapsed = new Set<THREE.Object3D>();
 
   constructor(id: string, scale = 1) {
     const t = templates.get(id);
@@ -167,6 +168,17 @@ export class Actor {
   /** Shows or hides a submesh (the skin's SubmeshVisibility events, e.g. the weapon in hand), case-insensitive. */
   showSubmesh(name: string, visible: boolean) {
     for (const o of this.submeshes.get(name.toLowerCase()) ?? []) o.visible = visible;
+  }
+
+  /**
+   * Collapses a joint (and what it carries) to nothing after each animated pose, or restores it: a part of a single
+   * mesh that leaves the model (e.g. Orianna's Ball when it flies off), case-insensitive.
+   */
+  hideBone(name: string, hidden: boolean) {
+    const b = this.bone(name);
+    if (!b) return;
+    if (hidden) this.collapsed.add(b);
+    else if (this.collapsed.delete(b)) b.scale.setScalar(1);
   }
 
   /**
@@ -230,6 +242,7 @@ export class Actor {
 
   update(dt: number) {
     this.mixer.update(dt);
+    for (const b of this.collapsed) b.scale.setScalar(0);
     if (this.path) this.followPath(this.path);
     const evs = this.events?.[this.currentName];
     if (!evs || !this.current || !this.onEvent) return;

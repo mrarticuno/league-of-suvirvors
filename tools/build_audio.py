@@ -35,6 +35,8 @@ LX = "Play_sfx_Lux_Lux"
 ZG = "Play_sfx_Ziggs_Ziggs"
 SV = "Play_sfx_Sivir_Sivir"
 GP = "Play_sfx_Gangplank_Gangplank"
+OR = "Play_sfx_Orianna_Orianna"
+TW = "Play_sfx_Twitch_Twitch"
 
 # bank path (without _events/_audio) -> {sound key: event name candidates (first match wins) or an event id}
 BANKS: dict[str, dict[str, list[str] | int]] = {
@@ -230,6 +232,53 @@ BANKS: dict[str, dict[str, list[str] | int]] = {
         "gangplank_R_zone": [GP + "RZoneSpeed_buffactivate"],
         "gangplank_death": ["Play_sfx_Gangplank_Base_Death3D_buffactivate"],
     },
+    SFX + "characters/orianna/skins/base/orianna_base_sfx": {
+        "orianna_auto": [OR + "BasicAttack_OnCast"],
+        "orianna_auto2": [OR + "BasicAttack2_OnCast"],
+        "orianna_crit": [OR + "CritAttack_OnCast"],
+        "orianna_auto_hit": [OR + "BasicAttack_OnHit"],
+        "orianna_crit_hit": [OR + "CritAttack_OnHit"],
+        "orianna_Q": ["Play_sfx_OrianaIzunaCommand_OnCast"],
+        "orianna_Q_launch": ["Play_sfx_OrianaIzuna_OnMissileLaunch"],
+        "orianna_Q_hit": [OR + "Izuna_hit"],
+        "orianna_Q_land": [OR + "Izuna_buffdeactivate"],
+        "orianna_W": ["Play_sfx_OrianaDissonanceCommand_OnCast"],
+        "orianna_W_field": [OR + "DissonanceCommand_buffactivate"],
+        "orianna_W_hit": [OR + "DissonanceCommand_hit"],
+        "orianna_E": ["Play_sfx_OrianaRedactCommand_OnCast"],
+        "orianna_E_launch": ["Play_sfx_OrianaRedact_OnMissileLaunch"],
+        "orianna_E_shield": ["Play_sfx_OrianaRedactShield_OnBuffActivate"],
+        "orianna_R": ["Play_sfx_OrianaDetonateCommand_OnCast"],
+        "orianna_R_charge": [OR + "DetonateCommand_buffactivate"],
+        "orianna_R_hit": [OR + "DetonateCommand_hit"],
+        "orianna_ball_flash": [OR + "BallFlash_buffactivate"],
+        "orianna_ball_attach": ["Play_sfx_OrianaGhostSelf_OnBuffActivate"],
+        "orianna_death": ["Play_sfx_Orianna_Death3D_cast"],
+    },
+    SFX + "characters/twitch/skins/base/twitch_base_sfx": {
+        "twitch_auto": [TW + "BasicAttack_OnCast"],
+        "twitch_auto_launch": [TW + "BasicAttack_OnMissileLaunch", TW + "BasicAttack_OnMissileCast"],
+        "twitch_auto_hit": [TW + "BasicAttack_OnHit"],
+        "twitch_crit": [TW + "CritAttack_OnCast"],
+        "twitch_crit_launch": [TW + "CritAttack_OnMissileCast"],
+        "twitch_crit_hit": [TW + "CritAttack_OnHit"],
+        "twitch_Q": [TW + "HideInShadows_OnCast"],
+        "twitch_Q_on": [TW + "HideInShadows_OnBuffActivate"],
+        "twitch_Q_off": [TW + "HideInShadows_OnBuffDeactivate"],
+        "twitch_W": [TW + "VenomCask_OnCast"],
+        "twitch_W_launch": [TW + "VenomCaskMissile_OnMissileLaunch"],
+        "twitch_W_hit": [TW + "VenomCaskMissile_OnHitLocation"],
+        "twitch_E": [TW + "Expunge_OnCast"],
+        "twitch_E_launch": [TW + "Expunge_missilelaunch"],
+        "twitch_E_hit": [TW + "Expunge_OnHit"],
+        "twitch_R": [TW + "FullAutomatic_OnCast"],
+        "twitch_R_on": [TW + "FullAutomatic_OnBuffActivate"],
+        "twitch_R_off": [TW + "FullAutomatic_OnBuffDeactivate"],
+        "twitch_R_attack": [TW + "SprayAndPrayAttack_OnCast"],
+        "twitch_R_launch": [TW + "SprayAndPrayAttack_OnMissileCast", TW + "SprayAndPrayAttack_OnMissileLaunch"],
+        "twitch_R_hit": [TW + "SprayAndPrayAttack_OnHit"],
+        "twitch_death": ["Play_sfx_Twitch_Death3D_cast"],
+    },
     SFX + "characters/lux/skins/base/lux_base_sfx": {
         "lux_auto": [LX + "BasicAttack_OnCast"],
         "lux_auto2": [LX + "BasicAttack2_OnCast"],
@@ -399,7 +448,7 @@ def render(txtp_path, mp3, music):
 
 def main(wwiser, out_dir, final_dir):
     final = Path(final_dir)
-    wads = [Wad(final / w) for w in ("Champions/Ezreal.wad.client", "Champions/Samira.wad.client", "Champions/Brand.wad.client", "Champions/Aphelios.wad.client", "Champions/AurelionSol.wad.client", "Champions/Lux.wad.client", "Champions/Teemo.wad.client", "Champions/Ziggs.wad.client", "Champions/Sivir.wad.client", "Champions/Gangplank.wad.client", "Maps/Shipping/Map11.wad.client", "Maps/Shipping/Common.wad.client")]
+    wads = [Wad(final / w) for w in ("Champions/Ezreal.wad.client", "Champions/Samira.wad.client", "Champions/Brand.wad.client", "Champions/Aphelios.wad.client", "Champions/AurelionSol.wad.client", "Champions/Lux.wad.client", "Champions/Teemo.wad.client", "Champions/Ziggs.wad.client", "Champions/Sivir.wad.client", "Champions/Twitch.wad.client", "Champions/Orianna.wad.client", "Champions/Gangplank.wad.client", "Maps/Shipping/Map11.wad.client", "Maps/Shipping/Common.wad.client")]
     read = lambda p: next((d for d in (w.read(p) for w in wads) if d is not None), None)
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)

@@ -30,7 +30,7 @@
 
 ## Champions
 
-Ten playable champions, each with a full kit ported from LoL (details in [Implemented rules](#implemented-rules)):
+Twelve playable champions, each with a full kit ported from LoL (details in [Implemented rules](#implemented-rules)):
 
 | Champion | Roles | Style |
 |---|---|---|
@@ -43,6 +43,8 @@ Ten playable champions, each with a full kit ported from LoL (details in [Implem
 | Lux | Mage · Support | Illumination marks, roots, a shield and the Final Spark laser |
 | Ziggs | Mage | Lobbed bombs: a bouncing bomb, a satchel that blasts enemies (and Ziggs) away, a minefield and a map-wide nuke |
 | Sivir | Marksman | Boomerang blade out and back, ricocheting attacks, a spell shield and On the Hunt |
+| Orianna | Mage · Support | Commands a Ball: it flies, rests where sent, pulses a slowing field, shields her and pulls the horde in |
+| Twitch | Marksman · Assassin | Deadly Venom stacks, a venom cask pool, Contaminate and piercing Spray and Pray bolts |
 | Gangplank | Fighter | Powder kegs chained into explosions, a shot that blows them, a cleanse and a cannon barrage with upgrades |
 
 ## Gallery
@@ -71,9 +73,13 @@ Ten playable champions, each with a full kit ported from LoL (details in [Implem
 |---|---|
 | ![Aphelios: weapon abilities, Phase and Moonlight Vigil](docs/media/aphelios.gif) | ![Samira fighting a horde around the Rift Scuttler](docs/media/samira.gif) |
 
-| Sivir | Gangplank |
+| Sivir | Orianna |
 |---|---|
-| ![Sivir: Boomerang Blade, Ricochet, Spell Shield and On the Hunt against a horde](docs/media/sivir.gif) | ![Gangplank: a Powder Keg chain, Parrrley on a keg, Remove Scurvy and Cannon Barrage against a horde](docs/media/gangplank.gif) |
+| ![Sivir: Boomerang Blade, Ricochet, Spell Shield and On the Hunt against a horde](docs/media/sivir.gif) | ![Orianna: Command: Attack, Dissonance, Protect and Shockwave against a horde](docs/media/orianna.gif) |
+
+| Gangplank | |
+|---|---|
+| ![Gangplank: a Powder Keg chain, Parrrley on a keg, Remove Scurvy and Cannon Barrage against a horde](docs/media/gangplank.gif) | |
 
 | Baron Nashor (20:00) | Pause menu: stats, items and boots |
 |---|---|
@@ -106,7 +112,7 @@ The models are **not in the repository** (they are Riot assets). Generate them l
 2. Hash list (the game's `.bin` files reference textures/animations by xxh64 hash):
    ```bash
    curl -s https://raw.communitydragon.org/data/hashes/lol/hashes.game.txt \
-     | grep -E "assets/characters/(ezreal|samira|brand|aphelios|aurelionsol|lux|teemo|ziggs|sivir|gangplank|gangplankbarrel|sru_|turret|inhibitor|nexus)" > assets-raw/hashes.filtered.txt
+     | grep -E "assets/characters/(ezreal|samira|brand|aphelios|aurelionsol|lux|teemo|ziggs|sivir|twitch|orianna|gangplank|gangplankbarrel|sru_|turret|inhibitor|nexus)" > assets-raw/hashes.filtered.txt
    ```
 3. Extract from the WADs (`tools/extract_lol.py`) and convert to `.glb` (`tools/build_models.py`):
    ```bash
@@ -117,6 +123,8 @@ The models are **not in the repository** (they are Riot assets). Generate them l
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt aurelionsol assets-raw/aurelionsol "$G/Champions/AurelionSol.wad.client"
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt teemo assets-raw/teemo "$G/Champions/Teemo.wad.client"
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt sivir assets-raw/sivir "$G/Champions/Sivir.wad.client"
+   for c in orianna oriannaball; do .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt $c assets-raw/$c "$G/Champions/Orianna.wad.client"; done
+   .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt twitch assets-raw/twitch "$G/Champions/Twitch.wad.client"
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt gangplank assets-raw/gangplank "$G/Champions/Gangplank.wad.client"
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt gangplankbarrel assets-raw/gangplankbarrel "$G/Champions/Gangplank.wad.client"
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt teemomushroom assets-raw/teemomushroom "$G/Champions/Teemo.wad.client"
@@ -145,7 +153,7 @@ The models are **not in the repository** (they are Riot assets). Generate them l
    `pieces` is a limited `.mapgeo` v14 parser: if it is skipped or fails (different format version, missing WAD), the runtime draws dark boxes/cylinders from the layout obstacles. Nothing breaks.
 5. Ability VFX: Ezreal's particle systems read from the skin `.bin`, with every texture and mesh they use. Uses the hash lists downloaded in step 4:
    ```bash
-   for c in ezreal samira brand aphelios aurelionsol lux teemo ziggs sivir gangplank; do (cd tools && ../.venv-tools/bin/python build_vfx.py ../assets-raw/hashes $c ../public/assets/vfx/$c "$G"); done
+   for c in ezreal samira brand aphelios aurelionsol lux teemo ziggs sivir twitch orianna gangplank; do (cd tools && ../.venv-tools/bin/python build_vfx.py ../assets-raw/hashes $c ../public/assets/vfx/$c "$G"); done
    ```
    Generates `systems.json` (effects indexed by `ResourceResolver` keys, e.g. `Ezreal_Q_mis`), `spells.json` (missile speed/width/range) and the asset PNG/JSON files. `tools/read_bin.py` alone converts any `.bin` into JSON. The emitter runtime lives in `src/particles.ts`; `src/vfx.ts` only picks which system to play and where.
 
@@ -250,6 +258,20 @@ WASD is not used because it clashes with Q/W/E.
   - **E (Spell Shield)**: 1.5 s spell shield, no mana cost; blocking a hostile effect (enemy missile, hazard, Baron attack; melee hits are not spells) heals 60–80% AD + 50% AP and triggers Fleet of Foot after 0.25 s.
   - **R (On the Hunt)**: +20/25/30% Move Speed for 8/10/12 s; while active, every basic attack cuts Q, W and E's cooldowns by 0.5 s.
   - Not from LoL: Fleet of Foot counts every enemy (champions only in LoL); On the Hunt is refreshed by elite and epic takedowns (champion takedowns within 3 s in LoL) and has no ally aura; mana costs are LoL's (Q 55–75, W 60, E 0, R 100).
+- **Orianna** (client spell data from `orianna.bin`; LoL Wiki V26.21 where the installed client predates it): 525 range, ability power items, Clockwork triblade attacks. The Ball is part of her mesh while she holds it (its joints collapse while it is away; League swaps to the OriannaNoBall model, the same body without it), the OriannaBall model resting on the ground and the skin's Ghost particle meshes in flight. Every gameplay particle system of the skin is used (the three Ball flights, impacts, the resting ring, the arrow toward the Ball and the leash arc, the Dissonance field, the Protect shield, the Shockwave charge, orb and nova).
+  - **Passive (Clockwork Windup)**: basic attacks deal 10–50 (level) + 15% AP bonus magic damage, +15% per stack on the same target (2 stacks, 4 s; a new target starts over). The Ball attaches back when she walks within 135 of it and snaps back to her past 1290 (0.75 s on Command: Shockwave).
+  - **Q (Command: Attack)**: the Ball flies (1400 speed, 160 wide) to the point (825 range, at least 150 from her when she holds it) and rests there: 60–180 + 60% AP magic damage to enemies it passes through and within 175 of where it lands; 70% past the first enemy.
+  - **W (Command: Dissonance)**: a pulse at the Ball, 70–230 + 85% AP within 225; its field lasts 3 s: enemies inside are slowed 20–40% and Orianna inside gains as much Move Speed, both fading over 2 s after leaving it.
+  - **E (Command: Protect)**: the Ball flies back to her (1850 speed), dealing 60–180 + 30% AP to enemies on the way, and shields her for 55–195 + 45% AP for 2.5 s; while she holds it, +6–30 Armor and Magic Resist.
+  - **R (Command: Shockwave)**: after 0.5 s, 225/350/475 + 110% AP within 415 of the Ball, tossing enemies 325 toward it and stunning them 0.75 s. W and R pressed while the Ball flies to an Attack point go off when it lands.
+  - Not from LoL: Command: Protect only targets Orianna (no allies); the arrow's colour thresholds (60%/80% of the leash) and when the leash arc shows are estimates (script-side, not in the bin); W plays the `spell2` clip (the bin names Spell1 for both Q and W). Mana costs and cooldowns are LoL's.
+- **Twitch** (the DataValues of his spell bins, patch 26.21; LoL Wiki V26.16 for script rules): 550 range, 2500 u/s bolts, 20.2% windup. Every gameplay particle system of the skin is used (bolts and impacts, the rat-skull stack icons and poison smoke, the cask, burst, pool, ring and slow debuff, the toxin and its burst, the Ambush poof, hand glow and haste, the Spray and Pray aura, crossbow glow, bolts and hits, the idle smoke).
+  - **Passive (Deadly Venom)**: on-hit (basic attacks, Runaan's bolts, every enemy a Spray and Pray bolt hits) and Venom Cask apply a stack for 6 s (refreshed, up to 6): 1/2/3/4/5 (levels 1/5/9/13/17) + 3% AP true damage per stack every second.
+  - **Q (Ambush)**: 10% Move Speed for 10–14 s and 40–60% Attack Speed for 6 s; 16 s cooldown, 40 mana.
+  - **W (Venom Cask)**: a cask lobbed up to 950 (1400 speed, gravity 4000) bursts within 300: a stack and a 30–50% (+6% per 100 AP) slow; the pool lasts 3 s, slowing enemies inside and adding a stack each second (at most 4 per enemy per cask).
+  - **E (Contaminate)**: needs a poisoned enemy within 1200; a toxin flies to each (3000 speed) and deals 20–60 + 15–35 (+35% bonus AD) physical and 35% AP magic damage per stack held when the cast began.
+  - **R (Spray and Pray)**: 6 s of +30/45/60 AD and +300 attack range; basic attacks become bolts (5000 speed, 120 wide) reaching attack range + 250 that hit every enemy in line with on-hit effects, 10% less per enemy hit, down to 60%. Runaan's bolts do not pierce.
+  - Not from LoL: no invisibility, so Ambush grants both buffs at once (LoL: Move Speed while camouflaged, Attack Speed on leaving it); its cooldown resets on elite and epic kills (LoL: an enemy champion dying while poisoned); the stealth systems and the E range ring are left out.
 - **Gangplank** (the DataValues of his spell bins, patch 26.21, cross-checked with the LoL wiki): 250 range (LoL: 125), melee hits at the end of the 0.25 s windup, 175% crit, model at League's size next to Ezreal (SkinScale 0.95 against 1.1). Every gameplay particle system of the skin is used (swing trails, burning blade, burn and speed, Parrrley's muzzle, bullet and impacts, the citrus and heal, the keg's timer ring, powder trail, lit fuse, detonation and explosions, the flare, the barrage zone, volleys, Death's Daughter and the Raise Morale zone and buff).
   - **Passive (Trial by Fire)**: every 15 s the next basic attack burns for 50–250 (level) + 100% bonus AD (+2 per 1% crit chance) true damage over 2.5 s and grants 15–30% Move Speed for 2 s; every keg explosion resets it and grants the speed.
   - **Q (Parrrley)**: a 2600 u/s shot at an enemy or a Powder Keg within 625: 10–130 + 100% AD physical, can crit, applies on-hit and on-attack effects; never Trial by Fire. Auto-aim prefers a ready keg whose blast covers the target.
@@ -265,7 +287,7 @@ WASD is not used because it clashes with Q/W/E.
   - Every item has 5 levels. Stats grow from 40% (level 1) to 100% (level 5); the passive unlocks at level 3 at 60% strength, 80% at level 4, 100% at level 5. Manamune, Archangel's Staff and Winter's Approach gain their transformed passive (Muramana, Seraph's Embrace, Fimbulwinter) at level 5.
   - Pool: every Summoner's Rift legendary except items with an active (Zhonya's, Youmuu's, the Hydras...), support items, anti-heal items (Mortal Reminder, Chempunk, Morellonomicon; Thornmail keeps only its reflect) and passives that need vision or champion shields (Umbral Glaive, Serpent's Fang). AD champions get attack items, AP champions ability power items, both get tanks and hybrids.
   - Passives adapted to hordes: "champion" triggers become elite/epic monster kills; spell shields block the next damage taken.
-  - Recommended build per champion (OP.GG, patch 16.21): offered three times as often and tagged "Recommended". Ezreal: Trinity Force, Manamune, Spear of Shojin, Serylda's Grudge, Endless Hunger, Guardian Angel. Samira: The Collector, Infinity Edge, Lord Dominik's Regards, Immortal Shieldbow, Bloodthirster, Guardian Angel. Brand: Blackfire Torch, Rylai's, Liandry's, Shadowflame, Rabadon's, Void Staff. Aphelios: The Collector, Infinity Edge, Lord Dominik's Regards, Runaan's Hurricane, Guardian Angel, Bloodthirster. Aurelion Sol: Liandry's, Rylai's, Rabadon's, Void Staff, Shadowflame, Cosmic Drive. Teemo: Nashor's Tooth, Liandry's Torment, Riftmaker, Rabadon's Deathcap, Void Staff, Shadowflame. Lux: Luden's Echo, Shadowflame, Rabadon's, Horizon Focus, Void Staff, Malignance. Ziggs: Luden's Echo, Shadowflame, Rabadon's Deathcap, Void Staff, Banshee's Veil, Horizon Focus. Sivir: Essence Reaver, Navori Flickerblade, Infinity Edge, Lord Dominik's Regards, Bloodthirster, Guardian Angel. Gangplank: Essence Reaver, The Collector, Infinity Edge, Lord Dominik's Regards, Immortal Shieldbow, Guardian Angel.
+  - Recommended build per champion (OP.GG, patch 16.21): offered three times as often and tagged "Recommended". Ezreal: Trinity Force, Manamune, Spear of Shojin, Serylda's Grudge, Endless Hunger, Guardian Angel. Samira: The Collector, Infinity Edge, Lord Dominik's Regards, Immortal Shieldbow, Bloodthirster, Guardian Angel. Brand: Blackfire Torch, Rylai's, Liandry's, Shadowflame, Rabadon's, Void Staff. Aphelios: The Collector, Infinity Edge, Lord Dominik's Regards, Runaan's Hurricane, Guardian Angel, Bloodthirster. Aurelion Sol: Liandry's, Rylai's, Rabadon's, Void Staff, Shadowflame, Cosmic Drive. Teemo: Nashor's Tooth, Liandry's Torment, Riftmaker, Rabadon's Deathcap, Void Staff, Shadowflame. Lux: Luden's Echo, Shadowflame, Rabadon's, Horizon Focus, Void Staff, Malignance. Ziggs: Luden's Echo, Shadowflame, Rabadon's Deathcap, Void Staff, Banshee's Veil, Horizon Focus. Sivir: Essence Reaver, Navori Flickerblade, Infinity Edge, Lord Dominik's Regards, Bloodthirster, Guardian Angel. Twitch: Blade of the Ruined King, Guinsoo's Rageblade, Runaan's Hurricane, Infinity Edge, Lord Dominik's Regards, Guardian Angel. Orianna: Luden's Echo, Shadowflame, Rabadon's Deathcap, Void Staff, Cryptbloom, Banshee's Veil. Gangplank: Essence Reaver, The Collector, Infinity Edge, Lord Dominik's Regards, Immortal Shieldbow, Guardian Angel.
   - Complete build (6 items at level 5): level-ups offer a Health or Mana Potion (5% of max), and each kill has a 1% chance to drop a blueprint (blue scroll, 1 per run) that makes a random item Legendary (+50% stats; its slot gets an animated gold ring and a "Legendary" ribbon).
   - Boots: a 7th slot outside the six. Boots (+25 Move Speed) at 5:00; killing the Rift Scuttler offers a pick of Berserker's Greaves, Boots of Swiftness, Sorcerer's Shoes, Plated Steelcaps (Plating: physical hits deal 10% less), Mercury's Treads or Ionian Boots of Lucidity; killing the dragon turns them into their tier 3 (Gunmetal Greaves, Swiftmarch, Spellslinger's Shoes, Armored Advance, Chainlaced Crushers, Crimson Lucidity: stats only).
   - Pace: the enemy side (movement, attacks, animations, boss attacks, enemy projectiles, spawn rate) speeds up from x1 at 0:00 to x1.5 at 5:00, then stays at x1.5. The clock, cooldowns, buffs and the champion keep real time.
@@ -326,6 +348,8 @@ Mages cast nonstop against hordes, so their LoL mana costs are lowered and their
 | Lux | Q 40, W 40–60, E 50–70, R 80 | 10–30 when an illuminated enemy dies |
 | Ziggs | Q 30–40 (50–70), W 55 (80), E 50–75 (70–110), R 80 (100) | 10–30 on ability kills |
 | Sivir | LoL's (Q 55–75, W 60, E 0, R 100): she lives off basic attacks | none |
+| Orianna | LoL's (Q 35, W 60–80, E 60, R 100) | none |
+| Twitch | LoL's (Q 40, W 70, E 50–90, R 100): he lives off basic attacks | none |
 | Gangplank | Q 30–18 (50–30), W 40–70 (60–100), E charges, R 80 (100) | 10–30 on kills by Parrrley or a keg |
 
 ## Architecture (where to add content)
@@ -342,11 +366,11 @@ Mages cast nonstop against hordes, so their LoL mana costs are lowered and their
 
 ## Known limitations / next steps
 
-- Particles: child particle sets (`childParticleSetDefinition`) ride their parent particle, at the joints of a skinned particle mesh (`.skn` drawn static in bind pose, `.skl` joints exported by `build_vfx.py`). `VfxPrimitiveBeam` (from the particle to the system's `target`, or to its own target offset; meshes stretched along Z; ground-layer beams lie on the terrain), `VfxPrimitiveRay`, `VfxPrimitiveAttachedMesh` (the owner's skinned mesh redrawn as a glow or frozen-pose afterimage), force fields (acceleration, drag, attraction) and `FlexShapeDefinition` (scaled to the target's size) are supported. Not implemented: orbital/noise fields, distortion; attached meshes ignore birth scale, UV scroll and erosion; mesh particles with `uvMode` 2 and scrolling multiply textures (Lux's constellation rings) render faint; ground-layer quads sit at a fixed height, so the raised spawn platform clips them. Beam UVs: U across (textures are cross-section profiles), V along, repeating every `mBirthTilingSize.y`; `scale.x` is the full width. `colorLookUpTypeY` 3 picks a random row of the colour texture per particle; particle rotations use the YXZ order. Cast effects ride the bone named by the skin's animation events (`Actor.bone`, `Vfx.playOn`); with `ChampionDef.animVfx` the game plays those events itself (`events.json` from `build_vfx.py`: the particle events of each clip; a clip file shared by variants that play different effects is left to the kit). `blendMode` missing/4 = additive, 1 = alpha (inferred from the textures, not documented).
+- Particles: child particle sets (`childParticleSetDefinition`) ride their parent particle, at the joints of a skinned particle mesh (`.skn` drawn static in bind pose, `.skl` joints exported by `build_vfx.py`). `VfxPrimitiveBeam` (from the particle to the system's `target`, or to its own target offset; meshes stretched along Z; ground-layer beams lie on the terrain), `VfxPrimitiveRay`, `VfxPrimitiveAttachedMesh` (the owner's skinned mesh redrawn as a glow or frozen-pose afterimage), force fields (acceleration, drag, attraction) and `FlexShapeDefinition` (scaled to the target's size) are supported. Not implemented: orbital/noise fields, distortion; attached meshes ignore birth scale, UV scroll and erosion; mesh particles with `uvMode` 2 and scrolling multiply textures (Lux's constellation rings) render faint; ground-layer quads sit at a fixed height, so the raised spawn platform clips them. Beam UVs: U across (textures are cross-section profiles), V along, repeating every `mBirthTilingSize.y`; `scale.x` is the full width. `colorLookUpTypeY` 3 picks a random row of the colour texture per particle; particle rotations use the YXZ order. Cast effects ride the bone named by the skin's animation events (`Actor.bone`, `Vfx.playOn`); with `ChampionDef.animVfx` the game plays those events itself (`events.json` from `build_vfx.py`: the particle events of each clip; a clip file shared by variants that play different effects is left to the kit). `blendMode` missing/4 = additive, 1 = alpha (inferred from the textures, not documented). Mesh particles with a `reflectionDefinition` get a Fresnel rim (fresnelColor × its alpha × (1 − |N·V|)^(1/Fresnel), flat normals; League's exact curve is unknown); `SystemOpts.duration` gives -1-lifetime particles of a buff-bound effect that buff's length (Command: Dissonance's field).
 - The source `.glb` files are heavy (Ezreal 29 MB, Baron 45 MB); `pnpm build:prod` (`tools/optimize.mjs`) drops clips the code never names, resamples and meshopt-compresses them (Ezreal 1.9 MB, Baron 1.9 MB).
 - Each enemy is a SkinnedMesh with its own mixer, capped at 260 alive (`MAX_ENEMIES`). For bigger hordes: texture-baked animation + instancing.
 - Dragons: animations shared from `sru_dragon`. Infernal and Mountain use the Cloud mesh (`sru_dragon_air`) with their own texture, as in the game (`EnemyDef.mesh`).
-- Next champions (chosen for wave clear): Sivir, Ziggs, Orianna, Viktor, Tristana, Jinx, Garen, Darius, Irelia, Olaf, Xerath, Karthus, Cassiopeia, Malzahar.
+- Next champions (chosen for wave clear): Sivir, Ziggs, Viktor, Tristana, Jinx, Garen, Darius, Irelia, Olaf, Xerath, Karthus, Cassiopeia, Malzahar.
 
 ## Legal notice
 
