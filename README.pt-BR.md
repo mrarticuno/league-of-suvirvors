@@ -48,7 +48,7 @@ Nove campeões jogáveis, cada um com o kit completo do LoL adaptado (detalhes e
 
 | Seleção de campeão | Página de runas |
 |---|---|
-| ![Seleção de campeão com a splash art da Lux e os sete campeões](docs/media/champion-select.jpg) | ![Página de runas: Precisão + Feitiçaria com fragmentos](docs/media/rune-page.jpg) |
+| ![Seleção de campeão com a splash art da Lux e os nove campeões](docs/media/champion-select.jpg) | ![Página de runas: Feitiçaria + Dominação com fragmentos](docs/media/rune-page.jpg) |
 
 | Level-up: habilidades | Level-up: itens |
 |---|---|
