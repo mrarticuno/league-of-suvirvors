@@ -282,6 +282,7 @@
  "runes.progress": "{have} / {cost} points",
  "runes.earn": "1 point every {n} kills.",
   "runes.costRule": "Each rune unlocked in a tree raises the next one's cost by {n} points.",
+  "runes.replaces": "Equipping it replaces {name}.",
  "runes.yourPage": "Your page",
  "shard.adaptive": "Adaptive Force +9",
  "shard.ah": "Ability Haste +8",

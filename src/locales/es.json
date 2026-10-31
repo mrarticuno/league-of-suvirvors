@@ -282,6 +282,7 @@
  "runes.progress": "{have} / {cost} puntos",
  "runes.earn": "1 punto cada {n} asesinatos.",
   "runes.costRule": "Cada runa desbloqueada en un árbol sube el coste de la siguiente en {n} puntos.",
+  "runes.replaces": "Equiparla sustituye a {name}.",
  "runes.yourPage": "Tu página",
  "shard.adaptive": "Fuerza adaptable +9",
  "shard.ah": "Aceleración de Habilidad +8",

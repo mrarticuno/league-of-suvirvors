@@ -4,7 +4,7 @@ import { ROLES, SKILL_KEYS, type ChampionDef, type Role } from './champion';
 import { CHAMPIONS } from './champions';
 import { t, type Key } from './i18n';
 import {
-  browserStorage, choosePrimary, chooseSecondary, emptyPage, equipRune, equipShard, KILLS_PER_POINT, loadProgress, NODE_COST_STEP, nodeCost,
+  browserStorage, choosePrimary, chooseSecondary, defaultShards, emptyPage, equipRune, equipShard, KILLS_PER_POINT, loadProgress, NODE_COST_STEP, nodeCost,
   saveProgress, SHARD_ROW_COST, unlockRune, unlockShardRow, type Page, type Progress,
 } from './progress';
 import { RUNES, runesOf, SHARDS, TREE_IDS, TREES, type RuneDef, type TreeId } from './runes';
@@ -105,7 +105,7 @@ const WHEEL = '<svg class="wheel" viewBox="0 0 400 400" fill="none" stroke="curr
 
 export function showRunePage(champ: ChampionDef, onPlay: (page: Page) => void, onBack: () => void) {
   let progress = loadProgress(browserStorage);
-  let page = progress.pages[champ.id] ?? emptyPage();
+  let page = defaultShards(progress.pages[champ.id] ?? emptyPage(), progress.shardRows);
   if (!page.primary) page = choosePrimary(page, 'precision'); // minor runes need a primary tree to land in
   let secondaryView: TreeId = page.secondary ?? TREE_IDS.find((x) => x !== page.primary)!;
   let focus = page.keystone ?? runesOf(page.primary!, 0)[0].id;
@@ -124,6 +124,13 @@ export function showRunePage(champ: ChampionDef, onPlay: (page: Page) => void, o
   };
   const equipped = (id: string) => page.keystone === id || page.primaryRunes.includes(id) || page.secondaryRunes.includes(id);
   const stateOf = (r: RuneDef) => equipped(r.id) ? 'on' : progress.unlocked.includes(r.id) ? 'open' : progress.points >= nodeCost(progress, r.tree) ? 'buy' : 'locked';
+  /** The equipped rune that equipping `r` would drop (same slot: LoL allows one rune per row), for the detail warning. */
+  const replaced = (r: RuneDef): string | null => {
+    if (r.row === 0) return page.keystone;
+    if (r.tree === page.primary) return page.primaryRunes[r.row - 1];
+    if (r.tree === page.secondary) return page.secondaryRunes.find((id) => RUNES[id].row === r.row) ?? (page.secondaryRunes.length > 1 ? page.secondaryRunes[0] : null);
+    return null;
+  };
 
   const rings = '<i class="ring"></i><i class="ring r2"></i>';
   const shards = (n: number) => Array.from({ length: n }, (_, i) => `<i class="sp" style="--a:${(360 / n) * i}deg"></i>`).join('');
@@ -155,7 +162,9 @@ export function showRunePage(champ: ChampionDef, onPlay: (page: Page) => void, o
     const short = st === 'locked' ? `<div class="short"><div><span>${t('runes.progress', { have: progress.points, cost })}</span></div>
       <div class="track"><i style="width:${Math.min(100, (progress.points / cost) * 100).toFixed(0)}%"></i></div>
       <span>${t('runes.earn', { n: KILLS_PER_POINT })}</span></div>` : '';
-    const rule = st === 'on' || st === 'open' ? '' : `<p class="rule">${t('runes.costRule', { n: NODE_COST_STEP })}</p>`;
+    const swap = st === 'open' ? replaced(r) : null;
+    const rule = swap ? `<p class="rule">${t('runes.replaces', { name: RUNES[swap].name })}</p>`
+      : st === 'on' || st === 'open' ? '' : `<p class="rule">${t('runes.costRule', { n: NODE_COST_STEP })}</p>`;
     return `<div class="in" style="--dc:${TREE_COLOR[r.tree]}">
       <div class="d-top"><div class="big"><span class="halo"></span><div class="art ${st === 'on' || st === 'open' ? '' : 'dim'} ${burst && fx!.kind === 'unseal' ? 'unseal' : ''}"><img src="${r.icon}" alt=""></div>${burst ? rings : ''}</div>
         <div><div class="tags"><span>${TREES[r.tree].name}</span>${r.row === 0 ? `<span class="k">${t('runes.keystoneTag')}</span>` : ''}</div>

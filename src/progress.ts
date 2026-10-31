@@ -94,6 +94,11 @@ export const browserStorage: Store & Pick<Storage, 'removeItem'> = {
   removeItem: (k) => localStorage.removeItem(k),
 };
 
+/** A page opened for the first time (or after a row was unlocked elsewhere) takes the first shard of every unlocked row. */
+export function defaultShards(page: Page, shardRows: number[]): Page {
+  return { ...page, shards: page.shards.map((s, i) => s ?? (shardRows.includes(i) ? 0 : null)) };
+}
+
 export function equipShard(page: Page, row: number, index: number, shardRows: number[]): Page {
   if (!shardRows.includes(row)) return page;
   return { ...page, shards: page.shards.map((s, i) => (i === row ? index : s)) };

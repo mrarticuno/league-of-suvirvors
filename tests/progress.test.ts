@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  choosePrimary, chooseSecondary, credit, emptyPage, emptyProgress, equipRune, equipShard, loadProgress, nodeCost, saveProgress, unlockRune, unlockShardRow,
+  choosePrimary, chooseSecondary, credit, defaultShards, emptyPage, emptyProgress, equipRune, equipShard, loadProgress, nodeCost, saveProgress, unlockRune, unlockShardRow,
   type Progress,
 } from '../src/progress';
 
@@ -89,6 +89,11 @@ describe('page rules', () => {
   it('shards equip only in unlocked rows', () => {
     expect(equipShard(emptyPage(), 1, 2, []).shards).toEqual([null, null, null]);
     expect(equipShard(emptyPage(), 1, 2, [1]).shards).toEqual([null, 2, null]);
+  });
+
+  it('a new page takes the first shard of every unlocked row and keeps picks', () => {
+    expect(defaultShards(emptyPage(), [0, 2]).shards).toEqual([0, null, 0]);
+    expect(defaultShards({ ...emptyPage(), shards: [2, null, null] }, [0, 1]).shards).toEqual([2, 0, null]);
   });
 });
 

@@ -1244,7 +1244,8 @@ export class Game {
   private horde() {
     if (this.arena || this.time < this.nextHordeAt) return;
     this.nextHordeAt += HORDE.every;
-    const swarmers = POOL.filter((p) => this.time >= p.from && this.time <= p.to && ENEMIES[p.enemy].hp <= 60 && ready(p.enemy));
+    // melee only: a ring of ranged attackers fires its whole volley at once and ignores the escape gap
+    const swarmers = POOL.filter((p) => this.time >= p.from && this.time <= p.to && ENEMIES[p.enemy].hp <= 60 && !ENEMIES[p.enemy].ranged && ready(p.enemy));
     const key = swarmers[Math.floor(Math.random() * swarmers.length)].enemy;
     const n = Math.min(HORDE.size(this.level), this.enemyCap - this.aliveCount);
     // ring with an opening (HORDE.gap of the circle) at a random side, so the player can break out
