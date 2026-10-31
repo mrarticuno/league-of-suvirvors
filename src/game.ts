@@ -704,13 +704,13 @@ export class Game {
     });
   }
 
-  /** Blueprint scroll: bobs on the ground until the champion walks over it, then a random max-level item turns legendary. */
+  /** Blueprint scroll: bobs on the ground until the champion comes within PICKUP_RANGE, then a random max-level item turns legendary. */
   private updateBlueprint(dt: number) {
     const bp = this.blueprint;
     if (!bp) return;
     bp.rotation.y += dt * 1.5;
     bp.children[0].position.y = 60 + 15 * Math.sin(this.time * 3);
-    if (bp.position.distanceTo(this.pos) > this.champ.base.radius + 60) return;
+    if (bp.position.distanceTo(this.pos) > this.champ.base.radius + PICKUP_RANGE) return;
     bp.removeFromParent();
     this.blueprint = null;
     const maxed = this.slots.flatMap((s, i) => (s.level >= MAX_LEVEL ? [i] : []));
@@ -720,12 +720,12 @@ export class Game {
     audio.play('hud_legendary');
   }
 
-  /** Jungle buff drops: picked up by walking over them, gone after BUFF.dropLife seconds. */
+  /** Jungle buff drops: picked up from within PICKUP_RANGE, gone after BUFF.dropLife seconds. */
   private updateBuffDrops(dt: number) {
     compact(this.buffDrops, (d) => {
       d.mesh.rotation.y += dt * 1.5;
       d.mesh.children[0].position.y = 60 + 15 * Math.sin(this.time * 3);
-      const picked = this.alive && d.mesh.position.distanceTo(this.pos) <= this.champ.base.radius + 60;
+      const picked = this.alive && d.mesh.position.distanceTo(this.pos) <= this.champ.base.radius + PICKUP_RANGE;
       if (picked) {
         this.buffs[d.key] = this.time + BUFF.duration;
         this.float(this.pos, BUFF.names[d.key], 'crit');
@@ -1439,24 +1439,36 @@ export class Game {
   get boss() { return this.epics.find((e) => e.deadFor < 0) ?? null; }
 }
 
-/** Jungle buff drop: a glowing orb over a ring in the buff's colour. */
+const PICKUP_RANGE = 500; // ground drops are collected from this far (edge distance) so a drop inside a horde is still reachable
+
+/** Pillar of light from the sky down to a ground drop, so the player spots it from afar. */
+function dropBeam(color: number) {
+  const mat = glow(color);
+  mat.opacity = 0.22;
+  mat.side = THREE.DoubleSide;
+  const beam = new THREE.Mesh(new THREE.CylinderGeometry(34, 26, 2400, 24, 1, true), mat);
+  beam.position.y = 1200;
+  return beam;
+}
+
+/** Jungle buff drop: a glowing orb over a ring in the buff's colour, under a light beam. */
 function makeBuffDrop(color: number) {
   const g = new THREE.Group();
   const orb = new THREE.Mesh(new THREE.SphereGeometry(22, 16, 12), glow(color));
   const ring = new THREE.Mesh(ringGeo, glow(color));
   ring.scale.setScalar(70);
   ring.position.y = 3;
-  g.add(orb, ring);
+  g.add(orb, ring, dropBeam(color));
   return g;
 }
 
-/** Blue scroll (blueprint drop): rolled parchment over a glowing ring. */
+/** Blue scroll (blueprint drop): rolled parchment over a glowing ring, under a light beam. */
 function makeBlueprint() {
   const g = new THREE.Group();
   const scroll = new THREE.Mesh(new THREE.CylinderGeometry(14, 14, 70, 16).rotateZ(Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x3d8bff }));
   const ring = new THREE.Mesh(ringGeo, glow(0x3d8bff));
   ring.scale.setScalar(70);
   ring.position.y = 3;
-  g.add(scroll, ring);
+  g.add(scroll, ring, dropBeam(0x3d8bff));
   return g;
 }
