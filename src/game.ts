@@ -27,9 +27,10 @@ import { loadVfx, Vfx, type MissileFx } from './vfx';
 const SPAWN_RADIUS = 1800;
 const BASIC_LEVELS = [1, 3, 5, 7, 9], ULT_LEVELS = [6, 11, 16]; // LoL skill point rules (ChampionDef.rankLevels)
 const FLASH = { range: 400, cooldown: 120 };
-// the enemy side (movement, attacks, animations, boss AIs and hazards, enemy missiles, spawn rate) speeds up from x1 at
+// the enemy side (attacks, animations, boss AIs and hazards, enemy missiles, spawn rate) speeds up from x1 at
 // 0:00 to x1.5 at 5:00, then stays; the clock, cooldowns, buffs and the champion keep real time
 const PACE = { ramp: 300, max: 1.5 };
+const ENEMY_SPEED_CAP = 0.9; // non-epic enemies move at most this share of the champion's base move speed
 const CAMPING = { ramp: 5, max: 5 }; // standing still: damage taken grows to x5 (after armor) over 5 s
 const BASE_MR = 30, BASE_MR_PER_LEVEL = 1.3; // LoL marksmen and mages: no champion file lists MR
 const DESPAWN_RADIUS = 3600;
@@ -1319,7 +1320,10 @@ export class Game {
       } else if (e.rootUntil > this.time) {
         e.actor.play(e.def.anims.idle, { fade: 0.2 });
       } else {
-        e.pos.addScaledVector(toPlayer.normalize(), e.def.speed * (this.isSlowed(e) ? 1 - e.slowPct : 1) * dt);
+        // movement stays on real time (dt / pace): PACE made mobs outrun the champion; non-epic mobs are also capped
+        // below the champion's base move speed so kiting always works
+        const speed = e.def.tier === 'epic' ? e.def.speed : Math.min(e.def.speed, ENEMY_SPEED_CAP * B.moveSpeed);
+        e.pos.addScaledVector(toPlayer.normalize(), speed * (this.isSlowed(e) ? 1 - e.slowPct : 1) * dt / this.pace);
         e.actor.play(e.def.anims.run, { fade: 0.2 });
       }
       e.actor.root.rotation.y = Math.atan2(this.pos.x - e.pos.x, this.pos.z - e.pos.z);

@@ -113,7 +113,7 @@ export const DRAGONS: { model: string; name: string; mesh?: string }[] = [
 ];
 for (const d of DRAGONS) {
   ENEMIES[d.model] = {
-    ...d, hp: 9000, speed: 260, damage: 300, damageMax: 500, attackRange: 600, attackCooldown: 1.2, windup: 0.4, ranged: 1600, missileRadius: 90,
+    ...d, hp: 9000, speed: 260, damage: 200, damageMax: 350, attackRange: 600, attackCooldown: 2.4, windup: 0.6, ranged: 1100, missileRadius: 90,
     xp: 150, radius: 250, scale: DRAGON_SCALE, tier: 'epic',
     // flying_spell1 is left out: it converts with a 90° twist
     anims: { run: 'sru_dragon_flying_run', idle: 'sru_dragon_idle_aggro1', death: 'sru_dragon_death', attacks: ['sru_dragon_flying_attack1'] },
