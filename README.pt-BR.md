@@ -30,7 +30,7 @@
 
 ## Campeões
 
-Dez campeões jogáveis, cada um com o kit completo do LoL adaptado (detalhes em [Regras implementadas](#regras-implementadas)):
+Onze campeões jogáveis, cada um com o kit completo do LoL adaptado (detalhes em [Regras implementadas](#regras-implementadas)):
 
 | Campeão | Funções | Estilo |
 |---|---|---|
@@ -44,6 +44,7 @@ Dez campeões jogáveis, cada um com o kit completo do LoL adaptado (detalhes em
 | Ziggs | Mago | Bombas arremessadas: bomba que quica, carga que arremessa inimigos (e o Ziggs), campo minado e uma bomba que cruza o mapa |
 | Sivir | Atirador | Lâmina bumerangue na ida e na volta, ataques que ricocheteiam, escudo de feitiço e Na Caçada |
 | Orianna | Maga · Suporte | Comanda uma Bola: ela voa, fica onde foi mandada, pulsa um campo que aplica Lentidão, protege a Orianna e puxa a horda |
+| Twitch | Atirador · Assassino | Acúmulos de Veneno Mortal, poça do tonel de veneno, Contaminar e virotes perfurantes de Passando Fogo |
 
 ## Galeria
 
@@ -106,7 +107,7 @@ Os modelos **não estão no repositório** (são assets da Riot). Gere-os localm
 2. Lista de hashes (os `.bin` do jogo referenciam texturas/animações por hash xxh64):
    ```bash
    curl -s https://raw.communitydragon.org/data/hashes/lol/hashes.game.txt \
-     | grep -E "assets/characters/(ezreal|samira|brand|aphelios|aurelionsol|lux|teemo|ziggs|sivir|orianna|sru_|turret|inhibitor|nexus)" > assets-raw/hashes.filtered.txt
+     | grep -E "assets/characters/(ezreal|samira|brand|aphelios|aurelionsol|lux|teemo|ziggs|sivir|twitch|orianna|sru_|turret|inhibitor|nexus)" > assets-raw/hashes.filtered.txt
    ```
 3. Extrair dos WADs (`tools/extract_lol.py`) e converter para `.glb` (`tools/build_models.py`):
    ```bash
@@ -118,6 +119,7 @@ Os modelos **não estão no repositório** (são assets da Riot). Gere-os localm
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt teemo assets-raw/teemo "$G/Champions/Teemo.wad.client"
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt sivir assets-raw/sivir "$G/Champions/Sivir.wad.client"
    for c in orianna oriannaball; do .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt $c assets-raw/$c "$G/Champions/Orianna.wad.client"; done
+   .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt twitch assets-raw/twitch "$G/Champions/Twitch.wad.client"
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt teemomushroom assets-raw/teemomushroom "$G/Champions/Teemo.wad.client"
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt lux assets-raw/lux "$G/Champions/Lux.wad.client"
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt ziggs assets-raw/ziggs "$G/Champions/Ziggs.wad.client"
@@ -144,7 +146,7 @@ Os modelos **não estão no repositório** (são assets da Riot). Gere-os localm
    O `pieces` é um parser limitado do `.mapgeo` v14: se for pulado ou falhar (versão diferente do formato, WAD ausente), o runtime desenha caixas/cilindros escuros a partir dos obstáculos do layout — nada quebra.
 5. VFX das habilidades: sistemas de partículas do Ezreal lidos do `.bin` da skin, com todas as texturas e malhas que eles usam. Usa as listas de hashes baixadas no passo 4:
    ```bash
-   for c in ezreal samira brand aphelios aurelionsol lux teemo ziggs sivir orianna; do (cd tools && ../.venv-tools/bin/python build_vfx.py ../assets-raw/hashes $c ../public/assets/vfx/$c "$G"); done
+   for c in ezreal samira brand aphelios aurelionsol lux teemo ziggs sivir twitch orianna; do (cd tools && ../.venv-tools/bin/python build_vfx.py ../assets-raw/hashes $c ../public/assets/vfx/$c "$G"); done
    ```
    Gera `systems.json` (efeitos indexados pelas chaves do `ResourceResolver`, ex. `Ezreal_Q_mis`), `spells.json` (velocidade/largura/alcance dos mísseis) e os PNG/JSON dos assets. `tools/read_bin.py` sozinho converte qualquer `.bin` em JSON. O runtime dos emissores fica em `src/particles.ts`; `src/vfx.ts` só escolhe qual sistema tocar e onde.
 
@@ -256,6 +258,13 @@ WASD não é usado porque colide com Q/W/E.
   - **E (Comando: Proteger)**: a Bola volta voando até ela (velocidade 1850), causando 60–180 + 30% PdH aos inimigos no caminho, e dá um Escudo de 55–195 + 45% PdH por 2,5 s; enquanto está com ela, +6–30 de Armadura e Resistência Mágica.
   - **R (Comando: Onda de Choque)**: após 0,5 s, 225/350/475 + 110% PdH a até 415 da Bola, arremessando os inimigos 325 em direção a ela e atordoando-os por 0,75 s. W e R apertados enquanto a Bola voa até um ponto do Atacar disparam quando ela pousa.
   - Fora do LoL: o Comando: Proteger só mira a Orianna (sem aliados); os limites de cor da seta (60%/80% da coleira) e quando o arco da coleira aparece são estimativas (no script, não no bin); o W toca o clip `spell2` (o bin indica Spell1 para Q e W). Custos de mana e recargas são os do LoL.
+- **Twitch** (DataValues dos bins de feitiço, patch 26.21; LoL Wiki V26.16 para as regras de script): alcance 550, virotes a 2500 u/s, windup de 20,2%. Todos os sistemas de partícula de gameplay da skin são usados (virotes e impactos, os ícones de caveira de rato e a fumaça do veneno, o tonel, a explosão, a poça, o anel e o debuff de lentidão, a toxina e o impacto, o puf da Emboscada, o brilho nas mãos e o rastro de velocidade, a aura, o brilho da besta, os virotes e impactos de Passando Fogo, a fumaça idle).
+  - **Passiva (Veneno Mortal)**: efeitos ao acertar (ataques básicos, virotes do Furacão de Runaan, cada inimigo atingido por um virote de Passando Fogo) e o Tonel de Veneno aplicam um acúmulo por 6 s (renovado, até 6): 1/2/3/4/5 (níveis 1/5/9/13/17) + 3% do PdH de dano verdadeiro por acúmulo a cada segundo.
+  - **Q (Emboscada)**: 10% de Velocidade de Movimento por 10–14 s e 40–60% de Velocidade de Ataque por 6 s; recarga 16 s, 40 de mana.
+  - **W (Tonel de Veneno)**: um tonel arremessado até 950 (velocidade 1400, gravidade 4000) explode num raio de 300: um acúmulo e Lentidão de 30–50% (+6% a cada 100 PdH); a poça dura 3 s, causando Lentidão a quem estiver dentro e somando um acúmulo por segundo (no máximo 4 por inimigo por tonel).
+  - **E (Contaminar)**: exige um inimigo envenenado a até 1200; uma toxina voa até cada um (velocidade 3000) e causa 20–60 + 15–35 (+35% do DdA bônus) de dano físico e 35% do PdH de dano mágico por acúmulo que ele tinha no início do cast.
+  - **R (Passando Fogo)**: 6 s de +30/45/60 de DdA e +300 de alcance de ataque; os ataques básicos viram virotes (velocidade 5000, largura 120) que vão até o alcance de ataque + 250 e acertam todos os inimigos na linha com efeitos ao acertar, 10% a menos por inimigo atingido, até 60%. Os virotes do Runaan não perfuram.
+  - Fora do LoL: sem invisibilidade, então a Emboscada dá os dois bônus na hora (LoL: Velocidade de Movimento enquanto camuflado, Velocidade de Ataque ao sair); a recarga reinicia ao abater elites e épicos (LoL: um campeão inimigo morrendo envenenado); os sistemas de furtividade e o anel de alcance do E ficam de fora.
 - **Level-up em duas etapas**:
   1. Um rank de habilidade, pela regra do LoL: básicas nos níveis 1/3/5/7/9, R nos níveis 6/11/16 (Aphelios: pontos de atributo, ver acima). A etapa é pulada quando não há rank disponível.
   2. Um item entre 3 sorteados (ou uma poção, com a build completa).
@@ -264,7 +273,7 @@ WASD não é usado porque colide com Q/W/E.
   - Cada item tem 5 níveis. Os atributos crescem de 40% (nível 1) a 100% (nível 5); a passiva é liberada no nível 3 com 60% da força, 80% no nível 4 e 100% no nível 5. Manamune, Cajado do Arcanjo e Aproximação do Inverno ganham a passiva transformada (Muramana, Abraço do Serafim, Fimbulwinter) no nível 5.
   - Catálogo: todos os lendários do Summoner's Rift, menos itens com ativa (Zhonya, Youmuu, as Hidras...), itens de suporte, itens de corta-cura (Lembrete Mortal, Serrespada Quimtec, Morellonomicon; a Armadura de Espinhos fica só com o reflexo) e passivas que dependem de visão ou de escudos de campeão (Glaive Umbral, Presa da Serpente). Campeões AD recebem itens de ataque, campeões AP itens de poder de habilidade, e os dois recebem tanques e híbridos.
   - Passivas adaptadas às hordas: gatilhos de "campeão" viram abates de monstro elite/épico; escudos de feitiço bloqueiam o próximo dano sofrido.
-  - Build recomendada por campeão (OP.GG, patch 16.21): ofertada três vezes mais e marcada como "Recomendado". Ezreal: Força da Trindade, Manamune, Lança de Shojin, Rancor de Serylda, Fome Eterna, Anjo Guardião. Samira: O Coletor, Gume do Infinito, Lembranças do Lorde Dominik, Arco-escudo Imortal, Sanguinária, Anjo Guardião. Brand: Tocha de Fogo Negro, Rylai, Liandry, Chama Sombria, Rabadon, Cajado do Vazio. Aphelios: A Coletora, Gume do Infinito, Lembranças do Lorde Dominik, Furacão de Runaan, Anjo Guardião, Sedenta por Sangue. Aurelion Sol: Liandry, Rylai, Rabadon, Cajado do Vazio, Chama Sombria, Ímpeto Cósmico. Teemo: Dente de Na'Shor, Tormento de Liandry, Criafendas, Capuz da Morte de Rabadon, Cajado do Vazio, Chama Sombria. Lux: Eco de Luden, Chama Sombria, Rabadon, Foco do Horizonte, Cajado do Vazio, Malevolência. Ziggs: Eco de Luden, Chama Sombria, Capuz da Morte de Rabadon, Cajado do Vazio, Véu da Banshee, Foco do Horizonte. Sivir: Ceifador de Essência, Lâmina Fugaz de Navori, Lâmina do Infinito, Lembrete Mortal de Lorde Dominik, Sedenta por Sangue, Anjo Guardião. Orianna: Eco de Luden, Chama Sombria, Capuz da Morte de Rabadon, Cajado do Vazio, Criptoflora, Véu da Banshee.
+  - Build recomendada por campeão (OP.GG, patch 16.21): ofertada três vezes mais e marcada como "Recomendado". Ezreal: Força da Trindade, Manamune, Lança de Shojin, Rancor de Serylda, Fome Eterna, Anjo Guardião. Samira: O Coletor, Gume do Infinito, Lembranças do Lorde Dominik, Arco-escudo Imortal, Sanguinária, Anjo Guardião. Brand: Tocha de Fogo Negro, Rylai, Liandry, Chama Sombria, Rabadon, Cajado do Vazio. Aphelios: A Coletora, Gume do Infinito, Lembranças do Lorde Dominik, Furacão de Runaan, Anjo Guardião, Sedenta por Sangue. Aurelion Sol: Liandry, Rylai, Rabadon, Cajado do Vazio, Chama Sombria, Ímpeto Cósmico. Teemo: Dente de Na'Shor, Tormento de Liandry, Criafendas, Capuz da Morte de Rabadon, Cajado do Vazio, Chama Sombria. Lux: Eco de Luden, Chama Sombria, Rabadon, Foco do Horizonte, Cajado do Vazio, Malevolência. Ziggs: Eco de Luden, Chama Sombria, Capuz da Morte de Rabadon, Cajado do Vazio, Véu da Banshee, Foco do Horizonte. Sivir: Ceifador de Essência, Lâmina Fugaz de Navori, Lâmina do Infinito, Lembrete Mortal de Lorde Dominik, Sedenta por Sangue, Anjo Guardião. Twitch: Lâmina do Rei Destruído, Lâmina da Fúria de Guinsoo, Furacão de Runaan, Gume do Infinito, Lembranças do Lorde Dominik, Anjo Guardião. Orianna: Eco de Luden, Chama Sombria, Capuz da Morte de Rabadon, Cajado do Vazio, Criptoflora, Véu da Banshee.
   - Build completa (6 itens no nível 5): o level-up oferece Poção de Vida ou de Mana (5% do máximo), e cada abate tem 1% de chance de derrubar um blueprint (pergaminho azul, 1 por run) que torna um item aleatório Lendário (+50% dos atributos; o slot ganha um anel dourado animado e a faixa "Lendário").
   - Botas: um 7º slot fora dos seis. Botas (+25 de Velocidade de Movimento) aos 5:00; abater o Aronguejo oferece Grevas do Berserker, Botas da Rapidez, Sapatos do Feiticeiro, Botas Galvanizadas de Aço (Blindagem: golpes físicos causam 10% menos dano), Passos de Mercúrio ou Botas Ionianas da Lucidez; abater o dragão as transforma no nível 3 (só atributos).
   - Ritmo: o lado dos inimigos (movimento, ataques, animações, ataques dos chefes, projéteis inimigos, ritmo de spawn) acelera de x1 aos 0:00 até x1,5 aos 5:00 e fica em x1,5. O relógio, as recargas, os buffs e o campeão seguem o tempo real.
@@ -326,6 +335,7 @@ Magos conjuram sem parar contra hordas, então os custos de mana do LoL foram re
 | Ziggs | Q 30–40 (50–70), W 55 (80), E 50–75 (70–110), R 80 (100) | 10–30 em abates por habilidade |
 | Sivir | os do LoL (Q 55–75, W 60, E 0, R 100): ela vive de ataques básicos | nenhuma |
 | Orianna | os do LoL (Q 35, W 60–80, E 60, R 100) | nenhuma |
+| Twitch | os do LoL (Q 40, W 70, E 50–90, R 100): ele vive de ataques básicos | nenhuma |
 
 ## Arquitetura (onde adicionar conteúdo)
 

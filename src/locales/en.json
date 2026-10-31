@@ -642,5 +642,21 @@
  "champion.orianna.Q.desc": "Commands the Ball to fly to the target location (up to 825 units) and stay there, dealing magic damage to enemies it passes through and to enemies within 175 of where it lands. Enemies hit after the first take 70%.",
  "champion.orianna.W.desc": "The Ball emits an electric pulse that deals magic damage to enemies within 225 and leaves a field for 3s: enemies inside are slowed by 20–40% and Orianna inside gains as much Move Speed, both fading over 2s after leaving it.",
  "champion.orianna.E.desc": "Commands the Ball to fly back to Orianna and attach to her, dealing magic damage to enemies it passes through and granting her a Shield for 2.5s. While attached, the Ball grants her 6–30 Armor and Magic Resist.",
- "champion.orianna.R.desc": "After 0.5s, the Ball unleashes a shockwave that deals magic damage to enemies within 415, tosses them 325 units toward it and stuns them for 0.75s."
+ "champion.orianna.R.desc": "After 0.5s, the Ball unleashes a shockwave that deals magic damage to enemies within 415, tosses them 325 units toward it and stuns them for 0.75s.",
+ "champion.twitch.name": "Twitch",
+ "champion.twitch.title": "the Plague Rat",
+ "champion.twitch.passive": "Deadly Venom",
+ "champion.twitch.Q": "Ambush",
+ "champion.twitch.W": "Venom Cask",
+ "champion.twitch.E": "Contaminate",
+ "champion.twitch.R": "Spray and Pray",
+ "champion.twitch.hud": "Deadly Venom: {n} poisoned",
+ "champion.twitch.attackSpeed": "Attack Speed",
+ "champion.twitch.slow": "Slow",
+ "champion.twitch.perStack": "Damage per stack",
+ "champion.twitch.bonusAd": "Bonus AD",
+ "champion.twitch.Q.desc": "Grants 10% Move Speed for 10-14s and Attack Speed for 6s. Killing an elite or epic monster resets the cooldown.",
+ "champion.twitch.W.desc": "Lobs a cask that bursts in a 300 radius: enemies hit gain a Deadly Venom stack and are slowed (+6% per 100 AP). The venom pool lasts 3s, slowing enemies inside and adding a stack each second (up to 4 per cask).",
+ "champion.twitch.E.desc": "Needs a poisoned enemy within 1200. A toxin flies to each poisoned enemy: physical damage plus 15-35 (+35% bonus AD) physical and 35% AP magic damage per Deadly Venom stack. The card shows 6 stacks.",
+ "champion.twitch.R.desc": "For 6s gains bonus AD and 300 attack range; basic attacks fire bolts that pierce every enemy in line with on-hit effects, 10% less per enemy hit (down to 60%)."
 }

@@ -30,7 +30,7 @@
 
 ## Champions
 
-Ten playable champions, each with a full kit ported from LoL (details in [Implemented rules](#implemented-rules)):
+Eleven playable champions, each with a full kit ported from LoL (details in [Implemented rules](#implemented-rules)):
 
 | Champion | Roles | Style |
 |---|---|---|
@@ -44,6 +44,7 @@ Ten playable champions, each with a full kit ported from LoL (details in [Implem
 | Ziggs | Mage | Lobbed bombs: a bouncing bomb, a satchel that blasts enemies (and Ziggs) away, a minefield and a map-wide nuke |
 | Sivir | Marksman | Boomerang blade out and back, ricocheting attacks, a spell shield and On the Hunt |
 | Orianna | Mage · Support | Commands a Ball: it flies, rests where sent, pulses a slowing field, shields her and pulls the horde in |
+| Twitch | Marksman · Assassin | Deadly Venom stacks, a venom cask pool, Contaminate and piercing Spray and Pray bolts |
 
 ## Gallery
 
@@ -106,7 +107,7 @@ The models are **not in the repository** (they are Riot assets). Generate them l
 2. Hash list (the game's `.bin` files reference textures/animations by xxh64 hash):
    ```bash
    curl -s https://raw.communitydragon.org/data/hashes/lol/hashes.game.txt \
-     | grep -E "assets/characters/(ezreal|samira|brand|aphelios|aurelionsol|lux|teemo|ziggs|sivir|orianna|sru_|turret|inhibitor|nexus)" > assets-raw/hashes.filtered.txt
+     | grep -E "assets/characters/(ezreal|samira|brand|aphelios|aurelionsol|lux|teemo|ziggs|sivir|twitch|orianna|sru_|turret|inhibitor|nexus)" > assets-raw/hashes.filtered.txt
    ```
 3. Extract from the WADs (`tools/extract_lol.py`) and convert to `.glb` (`tools/build_models.py`):
    ```bash
@@ -118,6 +119,7 @@ The models are **not in the repository** (they are Riot assets). Generate them l
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt teemo assets-raw/teemo "$G/Champions/Teemo.wad.client"
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt sivir assets-raw/sivir "$G/Champions/Sivir.wad.client"
    for c in orianna oriannaball; do .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt $c assets-raw/$c "$G/Champions/Orianna.wad.client"; done
+   .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt twitch assets-raw/twitch "$G/Champions/Twitch.wad.client"
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt teemomushroom assets-raw/teemomushroom "$G/Champions/Teemo.wad.client"
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt lux assets-raw/lux "$G/Champions/Lux.wad.client"
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt ziggs assets-raw/ziggs "$G/Champions/Ziggs.wad.client"
@@ -144,7 +146,7 @@ The models are **not in the repository** (they are Riot assets). Generate them l
    `pieces` is a limited `.mapgeo` v14 parser: if it is skipped or fails (different format version, missing WAD), the runtime draws dark boxes/cylinders from the layout obstacles. Nothing breaks.
 5. Ability VFX: Ezreal's particle systems read from the skin `.bin`, with every texture and mesh they use. Uses the hash lists downloaded in step 4:
    ```bash
-   for c in ezreal samira brand aphelios aurelionsol lux teemo ziggs sivir orianna; do (cd tools && ../.venv-tools/bin/python build_vfx.py ../assets-raw/hashes $c ../public/assets/vfx/$c "$G"); done
+   for c in ezreal samira brand aphelios aurelionsol lux teemo ziggs sivir twitch orianna; do (cd tools && ../.venv-tools/bin/python build_vfx.py ../assets-raw/hashes $c ../public/assets/vfx/$c "$G"); done
    ```
    Generates `systems.json` (effects indexed by `ResourceResolver` keys, e.g. `Ezreal_Q_mis`), `spells.json` (missile speed/width/range) and the asset PNG/JSON files. `tools/read_bin.py` alone converts any `.bin` into JSON. The emitter runtime lives in `src/particles.ts`; `src/vfx.ts` only picks which system to play and where.
 
@@ -256,6 +258,13 @@ WASD is not used because it clashes with Q/W/E.
   - **E (Command: Protect)**: the Ball flies back to her (1850 speed), dealing 60–180 + 30% AP to enemies on the way, and shields her for 55–195 + 45% AP for 2.5 s; while she holds it, +6–30 Armor and Magic Resist.
   - **R (Command: Shockwave)**: after 0.5 s, 225/350/475 + 110% AP within 415 of the Ball, tossing enemies 325 toward it and stunning them 0.75 s. W and R pressed while the Ball flies to an Attack point go off when it lands.
   - Not from LoL: Command: Protect only targets Orianna (no allies); the arrow's colour thresholds (60%/80% of the leash) and when the leash arc shows are estimates (script-side, not in the bin); W plays the `spell2` clip (the bin names Spell1 for both Q and W). Mana costs and cooldowns are LoL's.
+- **Twitch** (the DataValues of his spell bins, patch 26.21; LoL Wiki V26.16 for script rules): 550 range, 2500 u/s bolts, 20.2% windup. Every gameplay particle system of the skin is used (bolts and impacts, the rat-skull stack icons and poison smoke, the cask, burst, pool, ring and slow debuff, the toxin and its burst, the Ambush poof, hand glow and haste, the Spray and Pray aura, crossbow glow, bolts and hits, the idle smoke).
+  - **Passive (Deadly Venom)**: on-hit (basic attacks, Runaan's bolts, every enemy a Spray and Pray bolt hits) and Venom Cask apply a stack for 6 s (refreshed, up to 6): 1/2/3/4/5 (levels 1/5/9/13/17) + 3% AP true damage per stack every second.
+  - **Q (Ambush)**: 10% Move Speed for 10–14 s and 40–60% Attack Speed for 6 s; 16 s cooldown, 40 mana.
+  - **W (Venom Cask)**: a cask lobbed up to 950 (1400 speed, gravity 4000) bursts within 300: a stack and a 30–50% (+6% per 100 AP) slow; the pool lasts 3 s, slowing enemies inside and adding a stack each second (at most 4 per enemy per cask).
+  - **E (Contaminate)**: needs a poisoned enemy within 1200; a toxin flies to each (3000 speed) and deals 20–60 + 15–35 (+35% bonus AD) physical and 35% AP magic damage per stack held when the cast began.
+  - **R (Spray and Pray)**: 6 s of +30/45/60 AD and +300 attack range; basic attacks become bolts (5000 speed, 120 wide) reaching attack range + 250 that hit every enemy in line with on-hit effects, 10% less per enemy hit, down to 60%. Runaan's bolts do not pierce.
+  - Not from LoL: no invisibility, so Ambush grants both buffs at once (LoL: Move Speed while camouflaged, Attack Speed on leaving it); its cooldown resets on elite and epic kills (LoL: an enemy champion dying while poisoned); the stealth systems and the E range ring are left out.
 - **Two-step level-up**:
   1. One ability rank, by LoL's rule: basic abilities at levels 1/3/5/7/9, R at levels 6/11/16 (Aphelios: stat points, see above). The step is skipped when no rank is available.
   2. One item out of 3 rolled (or a potion, once the build is complete).
@@ -264,7 +273,7 @@ WASD is not used because it clashes with Q/W/E.
   - Every item has 5 levels. Stats grow from 40% (level 1) to 100% (level 5); the passive unlocks at level 3 at 60% strength, 80% at level 4, 100% at level 5. Manamune, Archangel's Staff and Winter's Approach gain their transformed passive (Muramana, Seraph's Embrace, Fimbulwinter) at level 5.
   - Pool: every Summoner's Rift legendary except items with an active (Zhonya's, Youmuu's, the Hydras...), support items, anti-heal items (Mortal Reminder, Chempunk, Morellonomicon; Thornmail keeps only its reflect) and passives that need vision or champion shields (Umbral Glaive, Serpent's Fang). AD champions get attack items, AP champions ability power items, both get tanks and hybrids.
   - Passives adapted to hordes: "champion" triggers become elite/epic monster kills; spell shields block the next damage taken.
-  - Recommended build per champion (OP.GG, patch 16.21): offered three times as often and tagged "Recommended". Ezreal: Trinity Force, Manamune, Spear of Shojin, Serylda's Grudge, Endless Hunger, Guardian Angel. Samira: The Collector, Infinity Edge, Lord Dominik's Regards, Immortal Shieldbow, Bloodthirster, Guardian Angel. Brand: Blackfire Torch, Rylai's, Liandry's, Shadowflame, Rabadon's, Void Staff. Aphelios: The Collector, Infinity Edge, Lord Dominik's Regards, Runaan's Hurricane, Guardian Angel, Bloodthirster. Aurelion Sol: Liandry's, Rylai's, Rabadon's, Void Staff, Shadowflame, Cosmic Drive. Teemo: Nashor's Tooth, Liandry's Torment, Riftmaker, Rabadon's Deathcap, Void Staff, Shadowflame. Lux: Luden's Echo, Shadowflame, Rabadon's, Horizon Focus, Void Staff, Malignance. Ziggs: Luden's Echo, Shadowflame, Rabadon's Deathcap, Void Staff, Banshee's Veil, Horizon Focus. Sivir: Essence Reaver, Navori Flickerblade, Infinity Edge, Lord Dominik's Regards, Bloodthirster, Guardian Angel. Orianna: Luden's Echo, Shadowflame, Rabadon's Deathcap, Void Staff, Cryptbloom, Banshee's Veil.
+  - Recommended build per champion (OP.GG, patch 16.21): offered three times as often and tagged "Recommended". Ezreal: Trinity Force, Manamune, Spear of Shojin, Serylda's Grudge, Endless Hunger, Guardian Angel. Samira: The Collector, Infinity Edge, Lord Dominik's Regards, Immortal Shieldbow, Bloodthirster, Guardian Angel. Brand: Blackfire Torch, Rylai's, Liandry's, Shadowflame, Rabadon's, Void Staff. Aphelios: The Collector, Infinity Edge, Lord Dominik's Regards, Runaan's Hurricane, Guardian Angel, Bloodthirster. Aurelion Sol: Liandry's, Rylai's, Rabadon's, Void Staff, Shadowflame, Cosmic Drive. Teemo: Nashor's Tooth, Liandry's Torment, Riftmaker, Rabadon's Deathcap, Void Staff, Shadowflame. Lux: Luden's Echo, Shadowflame, Rabadon's, Horizon Focus, Void Staff, Malignance. Ziggs: Luden's Echo, Shadowflame, Rabadon's Deathcap, Void Staff, Banshee's Veil, Horizon Focus. Sivir: Essence Reaver, Navori Flickerblade, Infinity Edge, Lord Dominik's Regards, Bloodthirster, Guardian Angel. Twitch: Blade of the Ruined King, Guinsoo's Rageblade, Runaan's Hurricane, Infinity Edge, Lord Dominik's Regards, Guardian Angel. Orianna: Luden's Echo, Shadowflame, Rabadon's Deathcap, Void Staff, Cryptbloom, Banshee's Veil.
   - Complete build (6 items at level 5): level-ups offer a Health or Mana Potion (5% of max), and each kill has a 1% chance to drop a blueprint (blue scroll, 1 per run) that makes a random item Legendary (+50% stats; its slot gets an animated gold ring and a "Legendary" ribbon).
   - Boots: a 7th slot outside the six. Boots (+25 Move Speed) at 5:00; killing the Rift Scuttler offers a pick of Berserker's Greaves, Boots of Swiftness, Sorcerer's Shoes, Plated Steelcaps (Plating: physical hits deal 10% less), Mercury's Treads or Ionian Boots of Lucidity; killing the dragon turns them into their tier 3 (Gunmetal Greaves, Swiftmarch, Spellslinger's Shoes, Armored Advance, Chainlaced Crushers, Crimson Lucidity: stats only).
   - Pace: the enemy side (movement, attacks, animations, boss attacks, enemy projectiles, spawn rate) speeds up from x1 at 0:00 to x1.5 at 5:00, then stays at x1.5. The clock, cooldowns, buffs and the champion keep real time.
@@ -326,6 +335,7 @@ Mages cast nonstop against hordes, so their LoL mana costs are lowered and their
 | Ziggs | Q 30–40 (50–70), W 55 (80), E 50–75 (70–110), R 80 (100) | 10–30 on ability kills |
 | Sivir | LoL's (Q 55–75, W 60, E 0, R 100): she lives off basic attacks | none |
 | Orianna | LoL's (Q 35, W 60–80, E 60, R 100) | none |
+| Twitch | LoL's (Q 40, W 70, E 50–90, R 100): he lives off basic attacks | none |
 
 ## Architecture (where to add content)
 

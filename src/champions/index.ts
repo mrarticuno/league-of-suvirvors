@@ -9,7 +9,8 @@ import { ORIANNA } from './orianna';
 import { SAMIRA } from './samira';
 import { SIVIR } from './sivir';
 import { TEEMO } from './teemo';
+import { TWITCH } from './twitch';
 import { ZIGGS } from './ziggs';
 
-export const CHAMPIONS: Record<string, ChampionDef> = { ezreal: EZREAL, samira: SAMIRA, brand: BRAND, aphelios: APHELIOS, aurelionsol: AURELIONSOL, lux: LUX, teemo: TEEMO, ziggs: ZIGGS, sivir: SIVIR, orianna: ORIANNA };
+export const CHAMPIONS: Record<string, ChampionDef> = { ezreal: EZREAL, samira: SAMIRA, brand: BRAND, aphelios: APHELIOS, aurelionsol: AURELIONSOL, lux: LUX, teemo: TEEMO, ziggs: ZIGGS, sivir: SIVIR, twitch: TWITCH, orianna: ORIANNA };
 export const DEFAULT_CHAMPION = EZREAL;

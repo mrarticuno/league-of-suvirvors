@@ -30,7 +30,7 @@
 
 ## 英雄
 
-十位可玩英雄，每位都移植了英雄联盟的完整技能组（详见[已实现的规则](#已实现的规则)）：
+十一位可玩英雄，每位都移植了英雄联盟的完整技能组（详见[已实现的规则](#已实现的规则)）：
 
 | 英雄 | 定位 | 风格 |
 |---|---|---|
@@ -44,6 +44,7 @@
 | 吉格斯 | 法师 | 抛投炸弹：弹跳炸弹、把敌人（和吉格斯自己）炸飞的炸药包、雷区与跨越地图的巨型炸弹 |
 | 希维尔 | 射手 | 去而复返的回旋之刃、弹射普攻、法术护盾与狩猎 |
 | 奥莉安娜 | 法师 · 辅助 | 指挥魔偶：飞行、停在指定位置、释放减速力场、为她提供护盾、把怪潮拉到一起 |
+| 图奇 | 射手 · 刺客 | 死亡毒液叠层、剧毒之桶毒池、毒性爆发与火力全开的穿透弩箭 |
 
 ## 截图
 
@@ -106,7 +107,7 @@ pnpm dev        # http://localhost:5173（在第一个界面选择英雄）
 2. 哈希列表（游戏的 `.bin` 通过 xxh64 哈希引用纹理和动画）：
    ```bash
    curl -s https://raw.communitydragon.org/data/hashes/lol/hashes.game.txt \
-     | grep -E "assets/characters/(ezreal|samira|brand|aphelios|aurelionsol|lux|teemo|ziggs|sivir|orianna|sru_|turret|inhibitor|nexus)" > assets-raw/hashes.filtered.txt
+     | grep -E "assets/characters/(ezreal|samira|brand|aphelios|aurelionsol|lux|teemo|ziggs|sivir|twitch|orianna|sru_|turret|inhibitor|nexus)" > assets-raw/hashes.filtered.txt
    ```
 3. 从 WAD 中提取（`tools/extract_lol.py`）并转换为 `.glb`（`tools/build_models.py`）：
    ```bash
@@ -118,6 +119,7 @@ pnpm dev        # http://localhost:5173（在第一个界面选择英雄）
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt teemo assets-raw/teemo "$G/Champions/Teemo.wad.client"
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt sivir assets-raw/sivir "$G/Champions/Sivir.wad.client"
    for c in orianna oriannaball; do .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt $c assets-raw/$c "$G/Champions/Orianna.wad.client"; done
+   .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt twitch assets-raw/twitch "$G/Champions/Twitch.wad.client"
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt teemomushroom assets-raw/teemomushroom "$G/Champions/Teemo.wad.client"
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt lux assets-raw/lux "$G/Champions/Lux.wad.client"
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt ziggs assets-raw/ziggs "$G/Champions/Ziggs.wad.client"
@@ -144,7 +146,7 @@ pnpm dev        # http://localhost:5173（在第一个界面选择英雄）
    `pieces` 是一个有限的 `.mapgeo` v14 解析器：如果跳过或失败（格式版本不同、缺少 WAD），运行时会根据布局障碍物绘制深色方块/圆柱。不会出错。
 5. 技能特效：从皮肤的 `.bin` 读取伊泽瑞尔的粒子系统，以及它们使用的所有纹理和网格。使用第 4 步下载的哈希列表：
    ```bash
-   for c in ezreal samira brand aphelios aurelionsol lux teemo ziggs sivir orianna; do (cd tools && ../.venv-tools/bin/python build_vfx.py ../assets-raw/hashes $c ../public/assets/vfx/$c "$G"); done
+   for c in ezreal samira brand aphelios aurelionsol lux teemo ziggs sivir twitch orianna; do (cd tools && ../.venv-tools/bin/python build_vfx.py ../assets-raw/hashes $c ../public/assets/vfx/$c "$G"); done
    ```
    生成 `systems.json`（按 `ResourceResolver` 键索引的特效，例如 `Ezreal_Q_mis`）、`spells.json`（飞弹速度/宽度/射程）以及资源的 PNG/JSON。`tools/read_bin.py` 可以单独把任意 `.bin` 转为 JSON。发射器运行时位于 `src/particles.ts`；`src/vfx.ts` 只负责选择播放哪个系统以及在哪里播放。
 
@@ -256,6 +258,13 @@ pnpm dev        # http://localhost:5173（在第一个界面选择英雄）
   - **E（指令：防卫）**：魔偶飞回她身边（速度 1850），对途经敌人造成 60–180 + 30% 法术强度，并为她提供 55–195 + 45% 法术强度的护盾，持续 2.5 秒；魔偶在她身上时，+6–30 护甲和魔法抗性。
   - **R（指令：冲击波）**：0.5 秒后，对魔偶 415 码内造成 225/350/475 + 110% 法术强度，将敌人朝魔偶抛掷 325 码并眩晕 0.75 秒。魔偶飞向攻击目标点时按下的 W 和 R 会在落地时生效。
   - 非原版：指令：防卫只能以奥莉安娜为目标（没有队友）；箭头的颜色阈值（牵引距离的 60%/80%）和牵引弧线的出现时机为估计值（由脚本决定，不在 bin 中）；W 播放 `spell2` 动画（bin 中 Q 和 W 都写作 Spell1）。法力消耗与冷却与原版相同。
+- **图奇**（技能 bin 的 DataValues，26.21 版本；脚本规则参考 LoL Wiki V26.16）：射程 550，弩箭 2500 码/秒，前摇 20.2%。皮肤中所有玩法粒子系统均被使用（弩箭与命中、鼠头骷髅层数图标与毒烟、毒桶、爆开、毒池、圆环与减速效果、毒素与命中、埋伏的烟雾、手部光效与加速拖尾、火力全开的光环、弩的光效、弩箭与命中、待机烟雾）。
+  - **被动（死亡毒液）**：攻击特效（普通攻击、卢安娜的飓风的弩箭、火力全开弩箭命中的每个敌人）和剧毒之桶施加一层持续6秒的毒液（刷新，最多6层）：每层每秒造成1/2/3/4/5（等级1/5/9/13/17）+3%法术强度的真实伤害。
+  - **Q（埋伏）**：10-14秒的10%移动速度和6秒的40-60%攻击速度；冷却16秒，40法力值。
+  - **W（剧毒之桶）**：毒桶最远投出950码（速度1400，重力4000），在300半径内爆开：一层毒液和30-50%（每100法术强度+6%）减速；毒池持续3秒，减速其中的敌人并每秒叠加一层（每个毒桶对每个敌人最多4层）。
+  - **E（毒性爆发）**：需要1200范围内有中毒的敌人；毒素飞向每个中毒的敌人（速度3000），按施法开始时的层数，每层造成15-35（+35%额外攻击力）物理伤害和35%法术强度的魔法伤害，外加20-60基础物理伤害。
+  - **R（火力全开）**：6秒内+30/45/60攻击力和+300攻击距离；普通攻击变为弩箭（速度5000，宽120），飞至攻击距离+250，命中直线上所有敌人并附带攻击特效，每命中一个敌人伤害降低10%，最低60%。卢安娜的飓风的弩箭不穿透。
+  - 非英雄联盟原版：没有隐身，因此埋伏立即给予两种增益（原版：伪装时获得移动速度，离开伪装时获得攻击速度）；击杀精英和史诗怪物会重置其冷却（原版：敌方英雄带着毒液死亡）；隐身相关系统和E的范围圈未使用。
 - **两步升级**：
   1. 按英雄联盟规则提升一个技能等级：基础技能在 1/3/5/7/9 级，R 在 6/11/16 级（厄斐琉斯：属性点，见上文）。没有可升级的技能时跳过此步。
   2. 从随机的 3 件装备中选 1 件（出装完成后改为药水）。
@@ -264,7 +273,7 @@ pnpm dev        # http://localhost:5173（在第一个界面选择英雄）
   - 每件装备有 5 级。属性从 40%（1 级）成长到 100%（5 级）；被动在 3 级解锁，强度 60%，4 级 80%，5 级 100%。魔宗、大天使之杖和凛冬之临在 5 级获得转化后的被动（魔切、炽天使之拥、末日寒冬）。
   - 装备池：召唤师峡谷的全部传说装备，除了带主动效果的装备（中娅沙漏、幽梦之灵、九头蛇系列……）、辅助装备、重伤装备（凡性的提醒、炼金朋克链锯剑、莫雷洛秘典；荆棘之甲只保留反伤）以及需要视野或英雄护盾的被动（暗行者之爪、毒蛇之牙）。物理英雄获得攻击装备，法术英雄获得法强装备，坦克和混合装备两者都有。
   - 被动针对怪潮调整："英雄"触发改为击杀精英 / 史诗野怪；法术护盾格挡下一次受到的伤害。
-  - 每个英雄的推荐出装（OP.GG，16.21 版本）：出现概率为三倍，并标记为“推荐”。伊泽瑞尔：三相之力、魔宗、朔极之矛、赛瑞尔达的怨恨、无穷饥渴、守护天使。莎弥拉：收集者、无尽之刃、多米尼克领主的致意、不朽盾弓、饮血剑、守护天使。布兰德：黑焰火炬、瑞莱的冰晶节杖、兰德里的折磨、影焰、灭世者的死亡之帽、虚空之杖。厄斐琉斯：收集者、无尽之刃、多米尼克领主的致意、卢安娜的飓风、守护天使、饮血剑。 奥瑞利安·索尔：兰德里的折磨、瑞莱的冰晶节杖、灭世者的死亡之帽、虚空之杖、影焰、星界驱驰。 拉克丝：卢登的回声、影焰、灭世者的死亡之帽、视界专注、虚空之杖、残疫。希维尔：精华掠夺者、纳沃利迅刃、无尽之刃、多米尼克领主的致意、饮血剑、守护天使。 提莫：纳什之牙、兰德里的折磨、裂隙制造者、灭世者的死亡之帽、虚空之杖、影焰。吉格斯：卢登的回声、影焰、灭世者的死亡之帽、虚空之杖、女妖面纱、视界专注。 奥莉安娜：卢登的回声、影焰、灭世者的死亡之帽、虚空之杖、蜕生、女妖面纱。
+  - 每个英雄的推荐出装（OP.GG，16.21 版本）：出现概率为三倍，并标记为“推荐”。伊泽瑞尔：三相之力、魔宗、朔极之矛、赛瑞尔达的怨恨、无穷饥渴、守护天使。莎弥拉：收集者、无尽之刃、多米尼克领主的致意、不朽盾弓、饮血剑、守护天使。布兰德：黑焰火炬、瑞莱的冰晶节杖、兰德里的折磨、影焰、灭世者的死亡之帽、虚空之杖。厄斐琉斯：收集者、无尽之刃、多米尼克领主的致意、卢安娜的飓风、守护天使、饮血剑。 奥瑞利安·索尔：兰德里的折磨、瑞莱的冰晶节杖、灭世者的死亡之帽、虚空之杖、影焰、星界驱驰。 拉克丝：卢登的回声、影焰、灭世者的死亡之帽、视界专注、虚空之杖、残疫。希维尔：精华掠夺者、纳沃利迅刃、无尽之刃、多米尼克领主的致意、饮血剑、守护天使。 提莫：纳什之牙、兰德里的折磨、裂隙制造者、灭世者的死亡之帽、虚空之杖、影焰。吉格斯：卢登的回声、影焰、灭世者的死亡之帽、虚空之杖、女妖面纱、视界专注。 图奇：破败王者之刃、鬼索的狂暴之刃、卢安娜的飓风、无尽之刃、多米尼克领主的致意、守护天使。 奥莉安娜：卢登的回声、影焰、灭世者的死亡之帽、虚空之杖、蜕生、女妖面纱。
   - 出装完成（6 件装备均为 5 级）：升级时提供生命药水或法力药水（恢复 5% 最大值），每次击杀有 1% 概率掉落图纸（蓝色卷轴，每局 1 张），使随机一件装备变为传说（属性 +50%；该格获得动态金色光环与“传说”标签）。
   - 鞋子：六格之外的第 7 格。5:00 获得鞋子（+25 移动速度）；击杀峡谷迅捷蟹后可选择一双二级鞋（镀甲之靴带镀层：物理攻击造成的伤害降低 10%）；击杀小龙后升级为三级鞋（仅属性）。
   - 节奏：敌人一方（移动、攻击、动画、首领攻击、敌方投射物、刷怪速度）从 0:00 的 x1 逐渐加速到 5:00 的 x1.5，之后保持 x1.5。计时器、冷却、增益和英雄保持真实时间。
@@ -326,6 +335,7 @@ pnpm dev        # http://localhost:5173（在第一个界面选择英雄）
 | 吉格斯 | Q 30–40（50–70）、W 55（80）、E 50–75（70–110）、R 80（100） | 技能击杀回复 10–30 |
 | 希维尔 | 与原版相同（Q 55–75、W 60、E 0、R 100）：靠普攻输出 | 无 |
 | 奥莉安娜 | 与原版相同（Q 35、W 60–80、E 60、R 100） | 无 |
+| 图奇 | 与原版相同（Q 40、W 70、E 50–90、R 100）：靠普攻输出 | 无 |
 
 ## 架构（在哪里添加内容）
 
