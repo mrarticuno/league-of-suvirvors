@@ -149,13 +149,16 @@ export class Actor {
   private lastTime = 0;
   private path?: { joints: THREE.Object3D[]; trail: THREE.Vector3[] };
   private collapsed = new Set<THREE.Object3D>();
+  /** Detached rig: the bone hierarchy lives outside `root` (not in the scene), so moving the actor costs one matrix and the
+   *  bones only recompute when `update` runs. Bone world positions are then rig-local (unusable for world VFX). */
+  private rig: THREE.Object3D | null = null;
+  private skeletons: THREE.Skeleton[] = [];
+  private poseDirty = true;
 
-  constructor(id: string, scale = 1) {
+  constructor(id: string, scale = 1, opts: { detachedRig?: boolean } = {}) {
     const t = templates.get(id);
     if (!t) throw new Error(`model ${id} not loaded`);
     const model = clone(t.scene);
-    model.scale.setScalar(scale);
-    this.root.add(model);
     this.mixer = new THREE.AnimationMixer(model);
     this.clips = t.clips;
     model.traverse((o) => {
@@ -163,6 +166,39 @@ export class Actor {
       const sub = (o.userData.submesh as string | undefined)?.toLowerCase();
       if (sub) this.submeshes.set(sub, [...(this.submeshes.get(sub) ?? []), o]);
     });
+    if (opts.detachedRig && this.detachRig(model, scale)) return;
+    model.scale.setScalar(scale);
+    this.root.add(model);
+  }
+
+  /**
+   * Moves the skinned meshes under `root` (scaled) and keeps the unscaled bone tree as a scene-less rig. Only when every
+   * mesh is skinned (a static prop parented to a bone would vanish). The skeleton only rebuilds its bone matrices after a pose
+   * change (three calls `Skeleton.update` on every draw of a skinned mesh).
+   */
+  private detachRig(model: THREE.Object3D, scale: number) {
+    const meshes: THREE.SkinnedMesh[] = [];
+    let plain = false;
+    model.traverse((o) => { if ((o as THREE.Mesh).isMesh) { if ((o as THREE.SkinnedMesh).isSkinnedMesh) meshes.push(o as THREE.SkinnedMesh); else plain = true; } });
+    if (plain || !meshes.length) return false;
+    const body = new THREE.Group();
+    body.scale.setScalar(scale);
+    this.root.add(body);
+    model.updateMatrixWorld(true); // model at the origin: matrixWorld is the mesh's transform relative to the model root
+    for (const m of meshes) {
+      m.bindMode = THREE.DetachedBindMode; // bindMatrix stays the loader's (mesh transform at bind), now applied in rig space
+      m.bindMatrixInverse.copy(m.bindMatrix).invert();
+      m.matrix.copy(m.matrixWorld);
+      m.matrix.decompose(m.position, m.quaternion, m.scale);
+      body.add(m);
+      if (!this.skeletons.includes(m.skeleton)) this.skeletons.push(m.skeleton);
+    }
+    for (const sk of this.skeletons) {
+      const update = sk.update.bind(sk);
+      sk.update = () => { if (this.poseDirty) { update(); this.poseDirty = false; } };
+    }
+    this.rig = model;
+    return true;
   }
 
   /** Shows or hides a submesh (the skin's SubmeshVisibility events, e.g. the weapon in hand), case-insensitive. */
@@ -243,6 +279,7 @@ export class Actor {
   update(dt: number) {
     this.mixer.update(dt);
     for (const b of this.collapsed) b.scale.setScalar(0);
+    if (this.rig) { this.rig.updateMatrixWorld(true); this.poseDirty = true; }
     if (this.path) this.followPath(this.path);
     const evs = this.events?.[this.currentName];
     if (!evs || !this.current || !this.onEvent) return;

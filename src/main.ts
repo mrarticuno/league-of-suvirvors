@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 import { Game, type RunSnapshot } from './game';
+import { MAX_ENEMIES } from './data';
+import { FrameGovernor } from './perf';
 import { t, type Key } from './i18n';
 import { browserStorage, credit, loadProgress, saveProgress } from './progress';
 import { showChampionSelect, showRunePage } from './runePage';
@@ -263,8 +265,17 @@ function checkPrompts() {
 
 let last = performance.now();
 const view = new THREE.Frustum(), viewMatrix = new THREE.Matrix4();
+const governor = new FrameGovernor(MAX_ENEMIES);
 function frame(now = last) {
   const dt = Math.min((now - last) / 1000, 0.05);
+  const simulating = !inMenu && !hud.menuOpen && !game.paused && !game.over;
+  if (simulating) {
+    const cap = governor.sample(now - last, game.aliveCount >= 0.6 * game.enemyCap);
+    if (cap !== null) {
+      game.enemyCap = cap;
+      if (import.meta.env.DEV) console.info(`[governor] enemy cap ${cap}`);
+    }
+  }
   last = now;
   requestAnimationFrame(frame);
   if (inMenu) return renderer.clear(); // black behind champion select and the rune page
