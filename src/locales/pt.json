@@ -680,5 +680,21 @@
  "champion.twitch.Q.desc": "Concede 10% de Velocidade de Movimento por 10-14s e Velocidade de Ataque por 6s. Abater um monstro elite ou épico reinicia a recarga.",
  "champion.twitch.W.desc": "Arremessa um tonel que explode num raio de 300: inimigos atingidos recebem um acúmulo de Veneno Mortal e sofrem Lentidão (+6% a cada 100 PdH). A poça de veneno dura 3s, causando Lentidão a quem estiver dentro e somando um acúmulo por segundo (até 4 por tonel).",
  "champion.twitch.E.desc": "Exige um inimigo envenenado a até 1200. Uma toxina voa até cada inimigo envenenado: dano físico mais 25-55 (+50% do DdA bônus) de dano físico e 50% do PdH de dano mágico por acúmulo de Veneno Mortal (a morte de um inimigo envenenado espalha seus acúmulos a até 300). O card mostra 6 acúmulos.",
- "champion.twitch.R.desc": "Por 6s ganha DdA bônus e 300 de alcance de ataque; os ataques básicos disparam virotes que atravessam todos os inimigos na linha com efeitos ao acertar, 10% a menos por inimigo atingido (até 60%)."
+ "champion.twitch.R.desc": "Por 6s ganha DdA bônus e 300 de alcance de ataque; os ataques básicos disparam virotes que atravessam todos os inimigos na linha com efeitos ao acertar, 10% a menos por inimigo atingido (até 60%).",
+ "champion.udyr.name": "Udyr",
+ "champion.udyr.title": "o Andarilho Espiritual",
+ "champion.udyr.passive": "Ponte Espiritual",
+ "champion.udyr.Q": "Garra Selvagem",
+ "champion.udyr.W": "Manto de Ferro",
+ "champion.udyr.E": "Investida Ardente",
+ "champion.udyr.R": "Tempestade Alada",
+ "champion.udyr.hud": "{stance} · {n} ataques fortalecidos · Despertar em {s}s",
+ "champion.udyr.hud.ready": "{stance} · {n} ataques fortalecidos · Despertar pronto",
+ "champion.udyr.hud.none": "Sem postura",
+ "champion.udyr.shield": "Escudo",
+ "champion.udyr.slow": "Lentidão",
+ "champion.udyr.Q.desc": "Postura da Garra: seus próximos dois ataques alcançam 50 a mais e causam 3-8% (+3,5% por 100 de DdA bônus) da Vida máxima do alvo como dano físico. Por 4s você ganha Velocidade de Ataque e seus ataques causam o dano físico bônus mostrado (+20% do DdA bônus +0,8-1,8% da Vida bônus). Despertar: 20-70% a mais de Velocidade de Ataque, os ataques fortalecidos causam 2-4% (+5% por 100 de DdA bônus) a mais de Vida máxima, e seus próximos dois ataques invocam raios 6 vezes em 1s com 1,5-3% (+0,6% por 100 de PdH) da Vida máxima em dano mágico, saltando entre até 3 inimigos próximos.",
+ "champion.udyr.W.desc": "Postura do Manto: seus próximos dois ataques têm 15-20% de Roubo de Vida e curam 1,2% da Vida máxima (+8% do PdH) ao acertar (60% contra tropas). Você ganha o escudo mostrado (+2-3,5% da Vida máxima +40% do PdH +50% do DdA bônus) por 4s. Despertar: um segundo escudo de 20-150 (por nível) + o primeiro +65% do PdH +8% da Vida máxima +100% do DdA bônus, metade dele curada em 4s, e os ataques fortalecidos curam o dobro.",
+ "champion.udyr.E.desc": "Postura da Investida: seus próximos dois ataques saltam sobre o alvo e o atordoam por 0,75s (uma vez por alvo a cada 6-4s). Por 4s você atravessa inimigos e ganha a Velocidade de Movimento mostrada (+5% por 100 de DdA bônus), decaindo até 30% em 1,5s. Despertar: +75 de alcance de ataque, 30-40% (por nível) a mais de Velocidade de Movimento e imunidade a controle de grupo por 1,5s.",
+ "champion.udyr.R.desc": "Postura da Tempestade: seus próximos dois ataques causam 10-40 (por nível) +35% do PdH de dano mágico aos inimigos ao redor do alvo. Uma nevasca segue você por 4s, causando o dano mágico mostrado a cada 0,5s aos inimigos em 370 e aplicando Lentidão (tropas sofrem 50-80%). Despertar: a nevasca vira uma tempestade glacial que caça o inimigo mais próximo, somando 1-1,75% (+0,44% por 100 de PdH) da Vida máxima por tique e 5% a mais de Lentidão; os ataques fortalecidos atingem todos os inimigos dentro dela."
 }

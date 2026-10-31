@@ -1109,7 +1109,7 @@ export class Game {
 
   /** Crowd control: no actions for `seconds`; `airborne` plays the knock-up arc. */
   stun(seconds: number, airborne = true) {
-    if (!this.alive || this.stasis > 0) return;
+    if (!this.alive || this.stasis > 0 || this.kit.unstoppable?.()) return;
     seconds *= 1 - Math.min(0.8, this.items.tenacity + this.fxStat('tenacity'));
     for (const fx of this.itemFx) fx.onStunned?.();
     this.stunned = this.stunLength = Math.max(this.stunned, seconds);

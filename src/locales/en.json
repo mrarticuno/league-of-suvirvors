@@ -680,5 +680,21 @@
  "champion.twitch.Q.desc": "Grants 10% Move Speed for 10-14s and Attack Speed for 6s. Killing an elite or epic monster resets the cooldown.",
  "champion.twitch.W.desc": "Lobs a cask that bursts in a 300 radius: enemies hit gain a Deadly Venom stack and are slowed (+6% per 100 AP). The venom pool lasts 3s, slowing enemies inside and adding a stack each second (up to 4 per cask).",
  "champion.twitch.E.desc": "Needs a poisoned enemy within 1200. A toxin flies to each poisoned enemy: physical damage plus 25-55 (+50% bonus AD) physical and 50% AP magic damage per Deadly Venom stack (a poisoned enemy's death spreads its stacks within 300). The card shows 6 stacks.",
- "champion.twitch.R.desc": "For 6s gains bonus AD and 300 attack range; basic attacks fire bolts that pierce every enemy in line with on-hit effects, 10% less per enemy hit (down to 60%)."
+ "champion.twitch.R.desc": "For 6s gains bonus AD and 300 attack range; basic attacks fire bolts that pierce every enemy in line with on-hit effects, 10% less per enemy hit (down to 60%).",
+ "champion.udyr.name": "Udyr",
+ "champion.udyr.title": "the Spirit Walker",
+ "champion.udyr.passive": "Bridge Between",
+ "champion.udyr.Q": "Wilding Claw",
+ "champion.udyr.W": "Iron Mantle",
+ "champion.udyr.E": "Blazing Stampede",
+ "champion.udyr.R": "Wingborne Storm",
+ "champion.udyr.hud": "{stance} · {n} empowered attacks · Awaken in {s}s",
+ "champion.udyr.hud.ready": "{stance} · {n} empowered attacks · Awaken ready",
+ "champion.udyr.hud.none": "No stance",
+ "champion.udyr.shield": "Shield",
+ "champion.udyr.slow": "Slow",
+ "champion.udyr.Q.desc": "Claw Stance: your next two attacks reach 50 farther and deal 3-8% (+3.5% per 100 bonus AD) of the target's max Health as physical damage. For 4s you gain Attack Speed and your attacks deal the bonus physical damage shown (+20% bonus AD +0.8-1.8% bonus Health). Awaken: 20-70% more Attack Speed, the empowered attacks deal 2-4% (+5% per 100 bonus AD) more max Health, and your next two attacks call lightning 6 times over 1s for 1.5-3% (+0.6% per 100 AP) of max Health magic damage, chaining between up to 3 nearby enemies.",
+ "champion.udyr.W.desc": "Mantle Stance: your next two attacks life steal 15-20% and heal 1.2% max Health (+8% AP) on hit (60% against minions). You gain the shield shown (+2-3.5% max Health +40% AP +50% bonus AD) for 4s. Awaken: a second shield of 20-150 (by level) + the first +65% AP +8% max Health +100% bonus AD, half of it healed over 4s, and the empowered attacks heal twice as much.",
+ "champion.udyr.E.desc": "Stampede Stance: your next two attacks pounce onto the target and stun it for 0.75s (once per target every 6-4s). For 4s you pass through enemies and gain the Move Speed shown (+5% per 100 bonus AD), decaying to 30% over 1.5s. Awaken: +75 attack range, 30-40% (by level) more Move Speed and immunity to crowd control for 1.5s.",
+ "champion.udyr.R.desc": "Storm Stance: your next two attacks deal 10-40 (by level) +35% AP magic damage to enemies around the target. A blizzard follows you for 4s, dealing the magic damage shown every 0.5s to enemies within 370 and slowing them (minions take 50-80%). Awaken: the blizzard becomes a glacial storm that hunts the nearest enemy, adding 1-1.75% (+0.44% per 100 AP) max Health per tick and 5% more slow; the empowered attacks hit every enemy inside it."
 }

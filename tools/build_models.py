@@ -36,6 +36,9 @@ MODELS = {
     # The Ball parked on the ground or riding Orianna's shield: the OriannaBall character (own mesh, one idle clip)
     "oriannaball": ("oriannaball", "orianna_base_tx_cm.png", []),
     "twitch": ("twitch", "twitch_base_tx_cm.png", []),
+    "udyr": ("udyr", "udyr_base_main_tx_cm.png", []),
+    # stance arms and horns texture of the udyr mesh (ChampionDef.textures)
+    "udyr_arms": ("udyr", "../udyr/udyr_submesharms_tx_cm.png", []),
     "aphelios_guns": ("aphelios", "../aphelios/aphelios_base_guns_tx_cm.png", []),
     # Crescendum's sentry: own mesh and clips, wearing Aphelios' gun texture (OWN_MESH)
     "apheliosturret": ("apheliosturret", "../aphelios/aphelios_base_guns_tx_cm.png", []),
@@ -80,6 +83,7 @@ SKIP_CLIPS = {
     "gangplank": re.compile(r"channel|dance|joke|laugh|taunt|respawn|recall"),
     "orianna": re.compile(r"channel|dance|joke|laugh|taunt"),
     "twitch": re.compile(r"channel|dance|joke|laugh|taunt|recall"),
+    "udyr": re.compile(r"channel|dance|joke|laugh|taunt|recall|recal_|respawn|homeguard"),
 }
 
 # entries whose "../" texture belongs to another folder but that still have a mesh of their own
