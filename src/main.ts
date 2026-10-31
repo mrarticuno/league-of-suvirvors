@@ -57,7 +57,6 @@ addEventListener('mousemove', (e) => {
   updateCursor(e);
   if (rightHeld) moveTarget?.copy(cursor);
 });
-addEventListener('contextmenu', (e) => e.preventDefault());
 renderer.domElement.addEventListener('mousedown', (e) => {
   updateCursor(e);
   const enemy = game.enemyAt(cursor);

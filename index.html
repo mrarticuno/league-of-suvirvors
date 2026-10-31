@@ -2,6 +2,8 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <!-- before any module loads (i18n awaits its locale): right-click moves the champion, never opens the browser menu -->
+    <script>addEventListener("contextmenu", (e) => e.preventDefault(), true);</script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
     <!-- iPhone has no Fullscreen API: added to the home screen, the game opens without the URL bar -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
