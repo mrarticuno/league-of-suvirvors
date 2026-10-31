@@ -325,13 +325,16 @@ class Emitter {
     if (this.bound) for (const p of this.particles) { p.pos.applyMatrix4(delta); p.quat.copy(this.sys.quat); }
     const t0 = this.age - (e.timeBeforeFirstEmission ?? 0);
     const et = Number.isFinite(this.duration) ? Math.min(1, Math.max(0, t0 / this.duration)) : 0;
-    if (this.active && t0 >= 0) {
-      if (e.isSingleParticle) {
+    // emits over the part of this frame inside the emitter's lifetime: the frame that crosses its end still counts
+    // (a rate 1 emitter living 1s owes its one particle, e.g. Gangplank's powder trail)
+    if (!this.sys.stopped && t0 >= 0 && t0 - dt < this.duration) {
+      // a finite emitter owing exactly one particle (rate x lifetime = 1, e.g. Gangplank's powder trail) emits it at birth
+      if (e.isSingleParticle || Math.abs((val(e.rate, 0) ?? 0) * this.duration - 1) < 1e-6) {
         // single-particle emitters fire `rate` particles at once
         if (!this.burst) { this.burst = true; for (let i = Math.max(1, Math.round((val(e.rate, 0) ?? 1) * this.sys.density)); i > 0; i--) this.spawn(et); }
       } else {
-        this.acc += (val(e.rate, et) ?? 0) * this.sys.density * dt;
-        for (; this.acc >= 1 && this.particles.length < 600; this.acc--) this.spawn(et);
+        this.acc += (val(e.rate, et) ?? 0) * this.sys.density * (Math.min(t0, this.duration) - Math.max(0, t0 - dt));
+        for (; this.acc >= 1 - 1e-6 && this.particles.length < 600; this.acc--) this.spawn(et);
       }
     }
     const worldAcc = vec3(val(e.worldAcceleration, et));
@@ -637,14 +640,15 @@ class Emitter {
       const x = _right.crossVectors(along, UP);
       if (x.lengthSq() < 1e-6) x.set(1, 0, 0);
       x.normalize();
-      const y = _up.crossVectors(along, x);
+      const y = _up.crossVectors(x, along); // up for a level beam: only X is mirrored (a flat strip authored at y 6 rides above the ground)
       let z0 = Infinity, z1 = -Infinity;
       for (let i = 2; i < m.pos.length; i += 3) { z0 = Math.min(z0, m.pos[i]); z1 = Math.max(z1, m.pos[i]); }
       const n = m.pos.length / 3;
       b.reserve(n, n);
       for (let i = 0; i < n; i++) {
         const k = (z1 - m.pos[i * 3 + 2]) / (z1 - z0 || 1);
-        _w.copy(src).addScaledVector(along, k * len).addScaledVector(x, m.pos[i * 3] * s.x).addScaledVector(y, m.pos[i * 3 + 1] * s.y);
+        // ground-layer meshes lie flat on the terrain: their height offset (e.g. a rope strip at y 5.7) is dropped
+        _w.copy(src).addScaledVector(along, k * len).addScaledVector(x, m.pos[i * 3] * s.x).addScaledVector(y, ground ? 0 : m.pos[i * 3 + 1] * s.y);
         const [u, v] = uv(m.uv[i * 2], m.uv[i * 2 + 1]);
         b.idx[b.ni++] = b.vert(_w, u, v, c, pt, erode);
       }

@@ -34,6 +34,7 @@ TM = "Play_sfx_TeemoMushroom_TeemoRTrap_"
 LX = "Play_sfx_Lux_Lux"
 ZG = "Play_sfx_Ziggs_Ziggs"
 SV = "Play_sfx_Sivir_Sivir"
+GP = "Play_sfx_Gangplank_Gangplank"
 
 # bank path (without _events/_audio) -> {sound key: event name candidates (first match wins) or an event id}
 BANKS: dict[str, dict[str, list[str] | int]] = {
@@ -196,6 +197,38 @@ BANKS: dict[str, dict[str, list[str] | int]] = {
         "sivir_passive_on": [SV + "PassiveSpeed_OnBuffActivate"],
         "sivir_passive_off": [SV + "PassiveSpeed_OnBuffDeactivate"],
         "sivir_death": ["Play_sfx_Sivir_Death3D_cast"],
+    },
+    SFX + "characters/gangplank/skins/base/gangplank_base_sfx": {
+        "gangplank_auto": [GP + "BasicAttack_OnCast"],
+        "gangplank_auto2": [GP + "BasicAttack_OnCast"],
+        "gangplank_auto_hit": [GP + "BasicAttack_OnHit"],
+        "gangplank_crit": [GP + "CritAttack_OnCast"],
+        "gangplank_crit_hit": [GP + "CritAttack_OnHit"],
+        "gangplank_P_auto": [GP + "PassiveAttack_OnBuffCast"],
+        "gangplank_P_burn": [GP + "PassiveAttackDoT_OnBuffCast"],
+        "gangplank_Q": [GP + "QProceed_OnCast"],
+        "gangplank_Q_swing": [GP + "QProceed_Cast_Swing"],
+        "gangplank_Q_point": [GP + "QProceed_Cast_Point"],
+        "gangplank_Q_crit_swing": [GP + "QProceedCrit_Cast_Swing"],
+        "gangplank_Q_launch": [GP + "QProceed_OnMissileLaunch"],
+        "gangplank_Q_crit_launch": [GP + "QProceedCrit_OnMissileLaunch"],
+        "gangplank_Q_hit": [GP + "QProceed_OnHit"],
+        "gangplank_Q_crit_hit": [GP + "QProceedCrit_OnHit"],
+        "gangplank_W": [GP + "W_OnCast"],
+        "gangplank_W_foley": [GP + "W_foley"],
+        "gangplank_W_cleanse": [GP + "WAudioCleanse_OnBuffCast"],
+        "gangplank_E": [GP + "E_OnCast"],
+        "gangplank_E_life": [GP + "EBarrelLife_OnBuffCast"],
+        "gangplank_E_gone": [GP + "EBarrelLife_OnBuffDeactivate"],
+        "gangplank_E_burn": [GP + "E_powderburn"],
+        "gangplank_E_explode": [GP + "EBarrelExplosionSound_buffcast"],  # the bin's _OnBuffCast name is gone from the bank
+        "gangplank_R": [GP + "R_OnCast"],
+        "gangplank_R_shots": [GP + "R_distantshots"],
+        "gangplank_R_hit": [GP + "R_bomb_hit"],
+        "gangplank_R_bigshot": [GP + "R_bigshot"],
+        "gangplank_R_speed": [GP + "RSpeed_OnBuffCast"],
+        "gangplank_R_zone": [GP + "RZoneSpeed_buffactivate"],
+        "gangplank_death": ["Play_sfx_Gangplank_Base_Death3D_buffactivate"],
     },
     SFX + "characters/lux/skins/base/lux_base_sfx": {
         "lux_auto": [LX + "BasicAttack_OnCast"],
@@ -366,7 +399,7 @@ def render(txtp_path, mp3, music):
 
 def main(wwiser, out_dir, final_dir):
     final = Path(final_dir)
-    wads = [Wad(final / w) for w in ("Champions/Ezreal.wad.client", "Champions/Samira.wad.client", "Champions/Brand.wad.client", "Champions/Aphelios.wad.client", "Champions/AurelionSol.wad.client", "Champions/Lux.wad.client", "Champions/Teemo.wad.client", "Champions/Ziggs.wad.client", "Champions/Sivir.wad.client", "Maps/Shipping/Map11.wad.client", "Maps/Shipping/Common.wad.client")]
+    wads = [Wad(final / w) for w in ("Champions/Ezreal.wad.client", "Champions/Samira.wad.client", "Champions/Brand.wad.client", "Champions/Aphelios.wad.client", "Champions/AurelionSol.wad.client", "Champions/Lux.wad.client", "Champions/Teemo.wad.client", "Champions/Ziggs.wad.client", "Champions/Sivir.wad.client", "Champions/Gangplank.wad.client", "Maps/Shipping/Map11.wad.client", "Maps/Shipping/Common.wad.client")]
     read = lambda p: next((d for d in (w.read(p) for w in wads) if d is not None), None)
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)

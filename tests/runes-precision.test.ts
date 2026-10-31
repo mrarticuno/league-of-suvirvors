@@ -19,8 +19,8 @@ it('Conquistador: heals 0.16% of damage dealt only at 12 stacks', () => {
 });
 
 it('Lenda: Espontaneidade caps at +15% attack speed', () => {
-  expect(fx('legend-alacrity', stubGame({ kills: 1000 })).stat!('as')).toBeCloseTo(0.06);
-  expect(fx('legend-alacrity', stubGame({ kills: 5000 })).stat!('as')).toBeCloseTo(0.15);
+  expect(fx('legend-alacrity', stubGame({ kills: 600 })).stat!('as')).toBeCloseTo(0.06);
+  expect(fx('legend-alacrity', stubGame({ kills: 3000 })).stat!('as')).toBeCloseTo(0.15);
 });
 
 it('Dilacerar: +8% only against elites and epics', () => {

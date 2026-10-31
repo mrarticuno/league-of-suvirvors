@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { Actor, loadModel, modelLoaded } from './assets';
 import { audio } from './audio';
 import { BUFF, buffEffects, isBuffMonster, type BuffKey } from './buffs';
-import { MAX_CHAMPION_LEVEL, SKILL_KEYS, type BoneVfx, type ChampionDef, type ChampionKit, type Hit, type SkillKey } from './champion';
+import { MAX_CHAMPION_LEVEL, SKILL_KEYS, type AttackProp, type BoneVfx, type ChampionDef, type ChampionKit, type Hit, type SkillKey } from './champion';
 import { DEFAULT_CHAMPION } from './champions';
 import {
   DIRECTOR, DRAGONS, ENEMIES, ENEMY_ARMOR, ENEMY_MISSILE_EXTRA_RANGE, ENEMY_MR, EVENTS, enemyArmorScale, enemyDamageScale, enemyHpScale, HORDE,
@@ -191,6 +191,7 @@ export class Game {
   private attackTimer = 0;
   private windup = -1;
   private windupTarget: Enemy | null = null;
+  private windupProp: AttackProp | null = null; // a kit object being swung at (ChampionKit.attackProp)
   private pendingCrit = false;
   private pendingMelee = false;
   private attackIndex = 0;
@@ -304,7 +305,7 @@ export class Game {
     Object.assign(this, {
       time: 0, kills: 0, over: null, paused: false, level: 1, xp: 0, facing: 0,
       focus: null, manualTarget: null, pendingLevelUps: 1,
-      attackTimer: 0, windup: -1, windupTarget: null, castLock: 0, animLock: 0, pendingCast: null, dashMove: null,
+      attackTimer: 0, windup: -1, windupTarget: null, windupProp: null, castLock: 0, animLock: 0, pendingCast: null, dashMove: null,
       enemies: [], aliveCount: 0, epics: [], nextId: 0, missiles: [], floaters: [], nextEvent: 0, spawnBudget: 0,
       nextHordeAt: HORDE.every, legendary: -1, boots: null, dragonSlain: false, blueprintDropped: false,
       stasis: 0, stasisEnd: null, stunned: 0, stunLength: 0, airborne: true, arena: null,
@@ -582,10 +583,11 @@ export class Game {
   }
 
   cast(key: SkillKey, point: THREE.Vector3) {
-    if (!this.alive || this.stunned > 0 || !this.learned(key) || this.castLock > 0) return;
+    const skill = this.champ.skills[key];
+    if (!this.alive || (this.stunned > 0 && !skill.cleanse) || !this.learned(key) || this.castLock > 0) return;
     if (this.cooldowns[key] > 0) return this.kit.recast?.(key, point);
     if (this.mana < this.costOf(key) || this.kit.canCast?.(key) === false) return;
-    const skill = this.champ.skills[key];
+    if (skill.cleanse) this.cleanse();
     this.mana -= this.costOf(key);
     this.cooldowns[key] = this.cooldownOf(key);
     for (const fx of this.itemFx) fx.onCast?.();
@@ -843,6 +845,13 @@ export class Game {
   private tryAttack(dt: number) {
     if (this.windup >= 0) {
       this.windup -= dt;
+      const p = this.windupProp;
+      if (p) {
+        if (p.gone()) { this.windup = -1; return; }
+        this.faceTowards(p.pos);
+        if (this.windup < 0) p.struck(this.ad * (this.pendingCrit ? this.champ.base.critDamage + this.items.critDamage : 1), this.pendingCrit);
+        return;
+      }
       const t = this.windupTarget;
       if (!t || t.deadFor >= 0) { this.windup = -1; return; }
       this.faceTowards(t.pos);
@@ -856,18 +865,20 @@ export class Game {
       else target = this.nearestEnemy(this.pos, this.attackReach, (e) => this.inAttackRange(e));
     } else if (this.manualTarget && this.inAttackRange(this.manualTarget)) target = this.manualTarget;
     if (this.kit.attackTarget) target = this.kit.attackTarget(target);
-    if (!target) return;
+    const prop = (this.autoAttack || target ? this.kit.attackProp?.(target) : null) ?? null; // no swings of its own with auto attack off
+    if (!target && !prop) return;
     const { base: B, anims, id } = this.champ;
     const crit = Math.random() < this.critChance;
     this.pendingCrit = crit;
-    const melee = this.champ.melee && this.kit.meleeAuto?.(target) ? this.champ.melee : null;
+    const melee = !prop && target && this.champ.melee && this.kit.meleeAuto?.(target) ? this.champ.melee : null;
     this.pendingMelee = melee !== null;
-    const form = melee ? undefined : this.kit.attackStart?.(target, crit);
+    const form = melee || prop ? undefined : this.kit.attackStart?.(target!, crit);
     const delay = 1 / this.attackSpeed;
     this.attackTimer = delay;
     this.windup = delay * (form?.windupPercent ?? B.windupPercent);
-    this.windupTarget = target;
-    this.faceTowards(target.pos);
+    this.windupTarget = prop ? null : target;
+    this.windupProp = prop;
+    this.faceTowards((prop ?? target!).pos);
     const set = melee ?? anims;
     const anim = form?.anim ?? (crit ? set.crit : set.attacks[this.attackIndex++ % set.attacks.length]);
     const length = Math.min(this.player.duration(anim), delay);
@@ -892,7 +903,12 @@ export class Game {
     const dmg = this.ad * (this.pendingCrit ? B.critDamage + this.items.critDamage : 1);
     if (this.pendingMelee) this.meleeAttack(target, dmg, this.pendingCrit);
     else this.basicAttack(target, dmg, this.pendingCrit);
-    for (const fx of this.itemFx) fx.onAttack?.(target, dmg, this.pendingCrit);
+    this.attackEffects(target, dmg, this.pendingCrit);
+  }
+
+  /** Runs the "on attack" item and rune effects for an attack on `target` (also abilities that count as one, e.g. Parrrley). */
+  attackEffects(target: Enemy, damage: number, crit: boolean) {
+    for (const fx of this.itemFx) fx.onAttack?.(target, damage, crit);
   }
 
   /** The champion's melee basic attack (`ChampionDef.melee`): swing and hit land at once, no missile. */
@@ -991,13 +1007,13 @@ export class Game {
   }
 
   /** Damage left after the target's armor (physical) or magic resist (magic), with shred and penetration applied. */
-  private mitigate(e: Enemy, amount: number, type: 'physical' | 'magic') {
+  private mitigate(e: Enemy, amount: number, type: 'physical' | 'magic', hitPen = 0) {
     if (amount <= 0) return 0;
     const physical = type === 'physical';
     const shred = physical ? (e.shredUntil > this.time ? e.shred * 0.06 : 0) : (e.mrShredUntil > this.time ? e.mrShred * 0.075 : 0);
     const pen = physical ? this.items.armorPen + this.fxStat('armorPen') : this.items.magicPen + this.fxStat('magicPen');
     const flat = physical ? this.items.lethality + this.fxStat('lethality') : this.items.magicPenFlat + this.fxStat('magicPenFlat');
-    const resist = Math.max(0, (physical ? e.armor : e.mr) * (1 - shred) * (1 - pen) - flat);
+    const resist = Math.max(0, (physical ? e.armor : e.mr) * (1 - shred) * (1 - pen) * (physical ? 1 - hitPen : 1) - flat);
     return amount * (100 / (100 + resist));
   }
 
@@ -1014,7 +1030,7 @@ export class Game {
       }
     }
     magic += this.kit.onDamage?.(e, hit) ?? 0;
-    physical = this.mitigate(e, physical, 'physical');
+    physical = this.mitigate(e, physical, 'physical', hit.armorPen);
     magic = this.mitigate(e, magic, 'magic');
     if (physical > 0) for (const fx of this.itemFx) fx.onPhysical?.(e);
     if (magic > 0) for (const fx of this.itemFx) fx.onMagic?.(e);
@@ -1069,6 +1085,12 @@ export class Game {
     this.castLock = 0;
     this.pendingCast = null;
     this.stunned = 0;
+  }
+
+  /** Ends the champion's crowd control (a cleanse): back on the ground, free to act. */
+  cleanse() {
+    this.stunned = 0;
+    this.player.root.position.copy(this.pos);
   }
 
   /** Crowd control: no actions for `seconds`; `airborne` plays the knock-up arc. */

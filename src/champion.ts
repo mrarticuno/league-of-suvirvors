@@ -24,6 +24,14 @@ export interface Hit {
   bolt?: boolean; // secondary auto (Runaan's Hurricane): on-hit applies, "on attack" effects don't
   onHitMult?: number; // on-hit item damage effectiveness (default 1; Onslaught: 0.25)
   lifesteal?: boolean; // 'item' damage that still life steals (Sivir's ricochets are basic attacks)
+  armorPen?: number; // share of the target's armor this hit ignores, on top of other penetration (Powder Keg: 0.4)
+}
+
+/** Something of the kit's that basic attacks can target (e.g. a powder keg): the Game swings at it, the kit resolves the hit. */
+export interface AttackProp {
+  pos: THREE.Vector3;
+  gone(): boolean; // destroyed: the swing stops
+  struck(damage: number, crit: boolean): void; // at the end of the windup, with the attack's damage (crit included)
 }
 
 /** LoL base stats; `*PerLevel` values use the LoL growth formula. */
@@ -59,6 +67,8 @@ export interface SkillDef {
   aim: number | 'move' | 'none';
   /** Castable from this champion level regardless of its ranks (champions whose skill points buy stats, e.g. Aphelios). */
   unlockLevel?: number;
+  /** Castable while stunned, and casting it ends the stun (a cleanse, e.g. Remove Scurvy). */
+  cleanse?: boolean;
   /** Level-up card (src/ui.ts): what the skill does, t('champion.<id>.<K>.desc'), and the numbers it shows per rank. */
   desc: string;
   damageType: DamageType;
@@ -182,6 +192,8 @@ export interface ChampionKit {
   meleeAuto?(target: Enemy): boolean;
   /** Target for the next basic attack given the default pick (null: none in range); may be out of range (long-range marks). */
   attackTarget?(target: Enemy | null): Enemy | null;
+  /** A kit object to swing at instead of `target` (the pick after `attackTarget`), e.g. a powder keg; null keeps `target`. */
+  attackProp?(target: Enemy | null): AttackProp | null;
   /** The basic attack starting on `target`: animation, cast sound and windup share when it changes (e.g. per weapon). */
   attackStart?(target: Enemy, crit: boolean): { anim?: string; sound?: string; windupPercent?: number } | undefined;
   /** Fires the ranged basic attack (also secondary `bolt`s) instead of the default missile; false keeps the default. */

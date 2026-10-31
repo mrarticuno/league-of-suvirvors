@@ -10,9 +10,10 @@ export const loadVfx = loadParticles;
  * A running system, optionally following an object (missile root, W mark) until that object leaves the scene,
  * or a bone of an animated model (cast effects at the hand or weapon), keeping its facing.
  */
-interface Live { sys: ParticleSystem; follow?: THREE.Object3D; bone?: THREE.Object3D; dir?: THREE.Vector3; until?: number; killOnStop?: boolean; shot?: string }
+interface Live { sys: ParticleSystem; follow?: THREE.Object3D; bone?: THREE.Object3D; orient?: boolean; dir?: THREE.Vector3; until?: number; killOnStop?: boolean; shot?: string }
 type PlayOpts = Partial<Omit<Live, 'sys'>> & SystemOpts;
 const _p = new THREE.Vector3();
+const _q = new THREE.Quaternion();
 // Overlapping copies of a one-shot effect (impacts on a crowd: a piercing ult, Infernum's bolts) thin out instead of
 // multiplying the particle count: the first SAME_FULL copies emit everything, the n-th SAME_FULL/n of it; past
 // PARTICLE_BUDGET live particles every new one-shot thins too. Every hit still shows its effect.
@@ -61,7 +62,8 @@ export class Vfx {
           l.sys.scale = l.follow.scale.x; // scaling the followed object scales its effect (a growing area)
         }
       }
-      if (l.bone) l.sys.setFrame(l.bone.getWorldPosition(_p), l.sys.quat);
+      // `orient`: the system turns with the bone too (offsets authored along it, e.g. flames running down a blade)
+      if (l.bone) l.sys.setFrame(l.bone.getWorldPosition(_p), l.orient ? l.bone.getWorldQuaternion(_q) : l.sys.quat);
       if (l.until !== undefined && this.time >= l.until) l.sys.stop();
       l.sys.update(dt);
       if (!l.sys.done) return true;
