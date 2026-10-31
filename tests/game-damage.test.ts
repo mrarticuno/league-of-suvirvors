@@ -35,6 +35,15 @@ it('a proc after the killing blow neither kills again nor heals a negative amoun
   for (const [v] of g.heal.mock.calls) expect(v).toBeGreaterThanOrEqual(0);
 });
 
+it('life steal heals from basic attacks and abilities, not from item procs', () => {
+  const g = rig({});
+  g.hurtEnemy(enemy(100), 40, AUTO);
+  g.hurtEnemy(enemy(100), 40, { type: 'physical', source: 'ability', skill: 'Q' });
+  g.hurtEnemy(enemy(100), 40, PROC);
+  g.hurtEnemy(enemy(100), 40, { ...PROC, lifesteal: true }); // Sivir's ricochets
+  expect(g.heal.mock.calls).toEqual([[20], [20], [20]]);
+});
+
 /** hurtPlayer on a stand-in `this`: armor 100 halves the hit before the standing-still multiplier and Plating. */
 function player(stillFor: number, boots: string | null = null) {
   const desc = Object.getOwnPropertyDescriptor(Game.prototype, 'campingMult')!;

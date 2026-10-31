@@ -3,10 +3,13 @@
 // - .glb: resample + prune + meshopt (decoded at runtime by GLTFLoader.setMeshoptDecoder)
 // - .png -> .webp (the bundle was built with VITE_IMG_EXT=webp, systems.json is rewritten to match)
 // - .mp3 re-encoded at a lower bitrate (mono for sfx)
-// - .br/.gz siblings for text and binary files the server can send pre-compressed
+// - .br/.gz siblings for text and binary files the server can send pre-compressed (skipped with NO_PRECOMPRESS=1)
+// Every per-file result is cached in .cache/optimize/ keyed by the input bytes and the step settings, so an
+// unchanged asset is copied from the cache instead of re-encoded.
 // Needs ffmpeg and cwebp on PATH (brew install ffmpeg webp).
 import { execFile, execFileSync } from 'node:child_process';
-import { readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { cpus } from 'node:os';
 import { basename, extname, join } from 'node:path';
 import { promisify } from 'node:util';
@@ -25,6 +28,22 @@ const walk = (dir) => readdirSync(dir, { withFileTypes: true })
 const dirSize = (dir) => walk(dir).reduce((n, f) => n + statSync(f).size, 0);
 const mb = (n) => `${(n / 1e6).toFixed(1)}MB`;
 const stem = (f) => basename(f, extname(f));
+
+const CACHE = '.cache/optimize';
+mkdirSync(CACHE, { recursive: true });
+let hits = 0;
+// Runs produce() (which must write `out`) unless the cache already holds the output for this input + key.
+const cached = async (input, key, out, produce) => {
+  const slot = join(CACHE, createHash('sha256').update(readFileSync(input)).update(key).digest('hex').slice(0, 16) + extname(out));
+  if (existsSync(slot)) {
+    copyFileSync(slot, out);
+    if (out !== input) rmSync(input);
+    hits++;
+    return;
+  }
+  await produce();
+  copyFileSync(out, slot);
+};
 
 // not idempotent (re-encodes lossy formats): only runs on a fresh `vite build` output
 if (!walk(ASSETS).some((f) => f.endsWith('.png'))) throw new Error('dist/ is already optimized, run `pnpm build:prod`');
@@ -59,28 +78,33 @@ for (const f of walk(ASSETS).filter((f) => f.endsWith('.glb'))) {
   const doc = await io.read(f);
   const clips = doc.getRoot().listAnimations();
   const kept = clips.filter((a) => used(a.getName()));
-  // shortcut: a model whose clips are all unnamed in the bundle keeps them all (props have none anyway)
-  // Animation.dispose() leaves its samplers holding the keyframe accessors, so prune would keep them
-  if (kept.length) for (const a of clips) if (!kept.includes(a)) {
-    for (const s of a.listSamplers()) s.dispose();
-    a.dispose();
-  }
-  await doc.transform(
-    // every channel ships its own copy of the clip's keyframe times
-    dedup({ propertyTypes: [PropertyType.ACCESSOR] }),
-    resample(),
-    // materials carry no textures (the PNG is loaded beside the .glb), so keep UVs and empty leaf nodes
-    prune({ keepAttributes: true, keepLeaves: true }),
-    meshopt({ encoder: MeshoptEncoder, level: 'medium' }),
-  );
-  await io.write(f, doc);
+  await cached(f, `glb1:${kept.map((a) => a.getName()).join(',')}`, f, async () => {
+    // shortcut: a model whose clips are all unnamed in the bundle keeps them all (props have none anyway)
+    // Animation.dispose() leaves its samplers holding the keyframe accessors, so prune would keep them
+    if (kept.length) for (const a of clips) if (!kept.includes(a)) {
+      for (const s of a.listSamplers()) s.dispose();
+      a.dispose();
+    }
+    await doc.transform(
+      // every channel ships its own copy of the clip's keyframe times
+      dedup({ propertyTypes: [PropertyType.ACCESSOR] }),
+      resample(),
+      // materials carry no textures (the PNG is loaded beside the .glb), so keep UVs and empty leaf nodes
+      prune({ keepAttributes: true, keepLeaves: true }),
+      meshopt({ encoder: MeshoptEncoder, level: 'medium' }),
+    );
+    await io.write(f, doc);
+  });
   console.log(`glb  ${f}: ${kept.length || clips.length}/${clips.length} clips`);
 }
 
 // 3. Textures
 for (const f of walk(ASSETS).filter((f) => f.endsWith('.png'))) {
-  execFileSync('cwebp', ['-quiet', '-q', '88', '-alpha_q', '100', '-m', '6', f, '-o', f.replace(/\.png$/, '.webp')]);
-  rmSync(f);
+  const out = f.replace(/\.png$/, '.webp');
+  await cached(f, 'webp1', out, () => {
+    execFileSync('cwebp', ['-quiet', '-q', '88', '-alpha_q', '100', '-m', '6', f, '-o', out]);
+    rmSync(f);
+  });
 }
 for (const [c, refs] of Object.entries(vfxRefs)) writeFileSync(join(VFX, c, 'systems.json'), refs.replace(/\.png"/g, '.webp"'));
 
@@ -91,16 +115,18 @@ const queue = [...sounds];
 await Promise.all(Array.from({ length: cpus().length }, async () => {
   for (let f; (f = queue.shift());) {
     const args = music.has(basename(f)) ? ['-b:a', '96k'] : ['-ac', '1', '-b:a', '64k'];
-    const out = `${f}.tmp.mp3`;
-    await promisify(execFile)('ffmpeg', ['-v', 'error', '-y', '-i', f, ...args, out]);
-    // keep the original when re-encoding does not help (already tiny files)
-    if (statSync(out).size < statSync(f).size) writeFileSync(f, readFileSync(out));
-    rmSync(out);
+    await cached(f, `mp3:${args.join(' ')}`, f, async () => {
+      const out = `${f}.tmp.mp3`;
+      await promisify(execFile)('ffmpeg', ['-v', 'error', '-y', '-i', f, ...args, out]);
+      // keep the original when re-encoding does not help (already tiny files)
+      if (statSync(out).size < statSync(f).size) writeFileSync(f, readFileSync(out));
+      rmSync(out);
+    });
   }
 }));
 
 // 5. Pre-compressed siblings for the server (skip formats that are already compressed)
-for (const f of walk(DIST).filter((f) => /\.(js|css|html|json|glb|svg)$/.test(f))) {
+if (!process.env.NO_PRECOMPRESS) for (const f of walk(DIST).filter((f) => /\.(js|css|html|json|glb|svg)$/.test(f))) {
   const data = readFileSync(f);
   const br = brotliCompressSync(data, { params: { [constants.BROTLI_PARAM_QUALITY]: 11 } });
   if (br.length < data.length * 0.9) {
@@ -109,7 +135,8 @@ for (const f of walk(DIST).filter((f) => /\.(js|css|html|json|glb|svg)$/.test(f)
   }
 }
 
-console.log(`\ndist: ${mb(before)} -> ${mb(dirSize(DIST))} (incl. .br/.gz copies)`);
+console.log(`\ncache: ${hits} hits, ${CACHE}`);
+console.log(`dist: ${mb(before)} -> ${mb(dirSize(DIST))} (incl. .br/.gz copies)`);
 for (const d of readdirSync(ASSETS)) {
   const p = join(ASSETS, d);
   if (statSync(p).isDirectory()) console.log(`  ${d}: ${mb(dirSize(p))}`);

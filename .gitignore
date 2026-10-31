@@ -1,5 +1,6 @@
 node_modules
 dist/
+.cache/
 .venv-tools
 # Riot Games assets: extracted locally by tools/, never committed (see README)
 assets-raw

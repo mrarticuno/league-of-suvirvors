@@ -970,7 +970,7 @@ export class Game {
     let total = physical + magic + pure;
     for (const fx of this.itemFx) if (fx.damageMult) total *= fx.damageMult(e, hit);
     const dealt = Math.min(e.hp, total);
-    const vamp = this.items.omnivamp + this.fxStat('omnivamp') + (hit.source === 'auto' ? this.items.lifesteal + this.fxStat('lifesteal') : 0);
+    const vamp = this.items.omnivamp + this.fxStat('omnivamp') + (hit.source !== 'item' || hit.lifesteal ? this.items.lifesteal + this.fxStat('lifesteal') : 0); // life steal: autos and abilities; item procs and DoTs heal through omnivamp only
     if (vamp > 0) this.heal(dealt * vamp);
     e.hp -= total;
     this.float(e.pos, String(Math.round(total)), hit.crit ? 'crit' : magic > physical ? 'magic' : 'physical');

@@ -23,6 +23,7 @@ export interface Hit {
   crit?: boolean;
   bolt?: boolean; // secondary auto (Runaan's Hurricane): on-hit applies, "on attack" effects don't
   onHitMult?: number; // on-hit item damage effectiveness (default 1; Onslaught: 0.25)
+  lifesteal?: boolean; // 'item' damage that still life steals (Sivir's ricochets are basic attacks)
 }
 
 /** LoL base stats; `*PerLevel` values use the LoL growth formula. */

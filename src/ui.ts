@@ -142,7 +142,8 @@ export class Hud {
       $('tray').innerHTML = tray.map((x) => `<b title="${x.title}"><img src="${x.icon}" alt="">${x.label ? `<span>${x.label}</span>` : ''}</b>`).join('');
       // outside the dock (its frame clips), just above the skill slots
       const r = $('skills').getBoundingClientRect(), dock = $('bottom').getBoundingClientRect();
-      Object.assign($('tray').style, { left: `${r.left}px`, bottom: `${innerHeight - dock.top + 6}px` });
+      const z = Number(getComputedStyle($('hud')).zoom) || 1; // rects are screen px, the tray's style is in the HUD's zoomed px
+      Object.assign($('tray').style, { left: `${r.left / z}px`, bottom: `${(innerHeight - dock.top) / z + 6}px` });
     }
     text('gauge-label', gauge?.label ?? '');
     style('gauge-fill', 'height', gauge ? pct(gauge.fill) : '0');

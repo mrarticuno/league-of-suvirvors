@@ -9,7 +9,7 @@
     "test": "vitest run",
     "preview": "vite preview",
     "build:prod": "tsc --noEmit && VITE_IMG_EXT=webp vite build && node tools/optimize.mjs",
-    "deploy:cf": "pnpm build:prod && node tools/hash_assets.mjs && sh tools/deploy_cf.sh"
+    "deploy:cf": "NO_PRECOMPRESS=1 pnpm build:prod && node tools/hash_assets.mjs && sh tools/deploy_cf.sh"
   },
   "dependencies": {
     "three": "^0.186.1"

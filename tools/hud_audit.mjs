@@ -43,8 +43,8 @@ const AUDIT = `(() => {
     const o = { left: r.left < -1, top: r.top < -1, right: r.right > W + 1, bottom: r.bottom > H + 1 };
     if (o.left || o.top || o.right || o.bottom) out.push({ id: el.id || el.className.toString().slice(0, 40) || el.tagName, text: (el.textContent || '').trim().slice(0, 24), rect: [r.left, r.top, r.right, r.bottom].map(Math.round), over: Object.keys(o).filter((k) => o[k]).join(','), scroll: !!inOverlay(el) });
   }
-  const ov = [...document.querySelectorAll('.overlay')].find((o) => getComputedStyle(o).display !== 'none');
-  const scroll = ov && ov.scrollHeight > ov.clientHeight + 1 ? { id: ov.id, scrollHeight: ov.scrollHeight, clientHeight: ov.clientHeight } : null;
+  const scrollers = [...document.querySelectorAll('.overlay, #offers, .ioffer, #choices, #select-list, .col')].filter((o) => vis(o) && ['auto', 'scroll'].includes(getComputedStyle(o).overflowY) && o.scrollHeight > o.clientHeight + 1).map((o) => (o.id || o.className.toString().slice(0, 20)) + ' ' + o.scrollHeight + '>' + o.clientHeight);
+  const scroll = scrollers.length ? { id: scrollers.join('; '), scrollHeight: 0, clientHeight: 0 } : null;
   return { W, H, scroll, out };
 })()`;
 
@@ -57,7 +57,7 @@ for (const c of CONFIGS) {
   page.on('pageerror', (e) => console.log(c.name, 'pageerror:', e.message));
   const rep = (report[c.name] = {});
   const audit = async (screen) => {
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(1600);
     const r = await page.evaluate(AUDIT);
     rep[screen] = r;
     await page.screenshot({ path: path.join(shots, `${c.name}-${screen}.png`) });
@@ -111,7 +111,7 @@ fs.writeFileSync(path.join(shots, 'report.json'), JSON.stringify(report, null, 1
 for (const [name, screens] of Object.entries(report)) {
   for (const [screen, r] of Object.entries(screens)) {
     const lines = r.out.map((o) => `    ${o.id} "${o.text}" ${o.over} [${o.rect}]`);
-    if (r.scroll) lines.unshift(`    SCROLL ${r.scroll.id} ${r.scroll.scrollHeight}>${r.scroll.clientHeight}`);
+    if (r.scroll) lines.unshift(`    SCROLL ${r.scroll.id}`);
     if (lines.length) console.log(`${name} ${screen} (${r.W}x${r.H})\n${lines.join('\n')}`);
   }
 }

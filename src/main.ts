@@ -15,10 +15,14 @@ const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 document.getElementById('app')!.appendChild(renderer.domElement);
 const camera = new THREE.PerspectiveCamera(40, 1, 50, 10000);
+// UI scale (`--ui`, the CSS `zoom` of the HUD and menus): below the reference height everything shrinks to fit the
+// screen instead of scrolling. Phones have their own layouts, built for ~660px; landscape ones get at most 30% smaller.
+const UI_REF_HEIGHT = IS_TOUCH ? 660 : 720;
 const resize = () => {
   renderer.setSize(innerWidth, innerHeight);
   camera.aspect = innerWidth / innerHeight;
   camera.updateProjectionMatrix();
+  document.documentElement.style.setProperty('--ui', String(Math.max(IS_TOUCH ? 0.7 : 0, Math.min(1, innerHeight / UI_REF_HEIGHT))));
 };
 addEventListener('resize', resize);
 resize();

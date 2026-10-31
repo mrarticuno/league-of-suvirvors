@@ -68,7 +68,7 @@ const SKILLS = {
 const HITS = {
   Q: { type: 'physical', source: 'ability', skill: 'Q' },
   // Ricochet bounces are proc damage: neither on-hit nor spell effects, which is what 'item' triggers
-  W: { type: 'physical', source: 'item' },
+  W: { type: 'physical', source: 'item', lifesteal: true },
   execute: { type: 'true', source: 'item' },
 } as const satisfies Record<string, Hit>;
 
