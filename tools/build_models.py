@@ -27,6 +27,7 @@ MODELS = {
     # Noxious Trap's mushroom: own mesh and clips, wearing the mushroom texture of Teemo's folder (OWN_MESH)
     "teemomushroom": ("teemomushroom", "../teemo/teemo_base_mushroom_tx_cm.png", []),
     "lux": ("lux", "lux_base_cm_tx.png", []),
+    "sivir": ("sivir", "sivir.png", []),
     "aphelios_guns": ("aphelios", "../aphelios/aphelios_base_guns_tx_cm.png", []),
     # Crescendum's sentry: own mesh and clips, wearing Aphelios' gun texture (OWN_MESH)
     "apheliosturret": ("apheliosturret", "../aphelios/aphelios_base_guns_tx_cm.png", []),
@@ -66,6 +67,7 @@ SKIP_CLIPS = {
     "aurelionsol": re.compile(r"_to|_2|in2?$|onw_|lft90|rgt90|_add$|run2|runspin|haste|variation|newtst|dance|joke|laugh|taunt|respawn|recall"),
     "teemo": re.compile(r"_to|_in$|_in_|spell4_(-|[1-9])|homeguard|channel|knockup|stun|spawn|dance|joke|laugh|taunt|recall"),
     "aphelios": re.compile(r"_to_|_in$|homeguard|_fast$|nomove|_-?\d+$|dance|joke|laugh|taunt|respawn|recall|channel"),
+    "sivir": re.compile(r"channel|dance|joke|laugh|taunt|respawn|recall"),
 }
 
 # entries whose "../" texture belongs to another folder but that still have a mesh of their own

@@ -30,7 +30,7 @@
 
 ## 英雄
 
-七位可玩英雄，每位都移植了英雄联盟的完整技能组（详见[已实现的规则](#已实现的规则)）：
+八位可玩英雄，每位都移植了英雄联盟的完整技能组（详见[已实现的规则](#已实现的规则)）：
 
 | 英雄 | 定位 | 风格 |
 |---|---|---|
@@ -41,6 +41,7 @@
 | 奥瑞利安·索尔 | 法师 | 环绕的星星、飞越墙体、从天而降的陨星 |
 | 提莫 | 射手 · 法师 | 静止时提升攻速，普攻附带毒，会弹跳的蘑菇陷阱 |
 | 拉克丝 | 法师 · 辅助 | 光芒四射标记、禁锢、护盾与终极闪光激光 |
+| 希维尔 | 射手 | 去而复返的回旋之刃、弹射普攻、法术护盾与狩猎 |
 
 ## 截图
 
@@ -63,6 +64,10 @@
 | 厄斐琉斯 | 莎弥拉 |
 |---|---|
 | ![厄斐琉斯：武器技能、月相轮转与清辉夜凝](docs/media/aphelios.gif) | ![莎弥拉在峡谷迅捷蟹周围对抗怪潮](docs/media/samira.gif) |
+
+| 希维尔 | |
+|---|---|
+| ![希维尔：回旋之刃、弹射、法术护盾与狩猎对抗怪潮](docs/media/sivir.gif) | |
 
 | 纳什男爵（20:00） | 暂停菜单：属性、装备与鞋子 |
 |---|---|
@@ -95,7 +100,7 @@ pnpm dev        # http://localhost:5173（在第一个界面选择英雄）
 2. 哈希列表（游戏的 `.bin` 通过 xxh64 哈希引用纹理和动画）：
    ```bash
    curl -s https://raw.communitydragon.org/data/hashes/lol/hashes.game.txt \
-     | grep -E "assets/characters/(ezreal|samira|brand|aphelios|aurelionsol|lux|teemo|sru_|turret|inhibitor|nexus)" > assets-raw/hashes.filtered.txt
+     | grep -E "assets/characters/(ezreal|samira|brand|aphelios|aurelionsol|lux|teemo|sivir|sru_|turret|inhibitor|nexus)" > assets-raw/hashes.filtered.txt
    ```
 3. 从 WAD 中提取（`tools/extract_lol.py`）并转换为 `.glb`（`tools/build_models.py`）：
    ```bash
@@ -105,6 +110,7 @@ pnpm dev        # http://localhost:5173（在第一个界面选择英雄）
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt brand assets-raw/brand "$G/Champions/Brand.wad.client"
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt aurelionsol assets-raw/aurelionsol "$G/Champions/AurelionSol.wad.client"
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt teemo assets-raw/teemo "$G/Champions/Teemo.wad.client"
+   .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt sivir assets-raw/sivir "$G/Champions/Sivir.wad.client"
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt teemomushroom assets-raw/teemomushroom "$G/Champions/Teemo.wad.client"
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt lux assets-raw/lux "$G/Champions/Lux.wad.client"
    # 厄斐琉斯和折镜的驻灵（同一 WAD 中的独立角色）
@@ -130,7 +136,7 @@ pnpm dev        # http://localhost:5173（在第一个界面选择英雄）
    `pieces` 是一个有限的 `.mapgeo` v14 解析器：如果跳过或失败（格式版本不同、缺少 WAD），运行时会根据布局障碍物绘制深色方块/圆柱。不会出错。
 5. 技能特效：从皮肤的 `.bin` 读取伊泽瑞尔的粒子系统，以及它们使用的所有纹理和网格。使用第 4 步下载的哈希列表：
    ```bash
-   for c in ezreal samira brand aphelios aurelionsol lux teemo; do (cd tools && ../.venv-tools/bin/python build_vfx.py ../assets-raw/hashes $c ../public/assets/vfx/$c "$G"); done
+   for c in ezreal samira brand aphelios aurelionsol lux teemo sivir; do (cd tools && ../.venv-tools/bin/python build_vfx.py ../assets-raw/hashes $c ../public/assets/vfx/$c "$G"); done
    ```
    生成 `systems.json`（按 `ResourceResolver` 键索引的特效，例如 `Ezreal_Q_mis`）、`spells.json`（飞弹速度/宽度/射程）以及资源的 PNG/JSON。`tools/read_bin.py` 可以单独把任意 `.bin` 转为 JSON。发射器运行时位于 `src/particles.ts`；`src/vfx.ts` 只负责选择播放哪个系统以及在哪里播放。
 
@@ -221,6 +227,13 @@ pnpm dev        # http://localhost:5173（在第一个界面选择英雄）
   - **E（透光奇点）**：奇点飞向目标区域（射程 1100），使 310 码内的敌人减速 25–45%（离开后持续 1 秒）；再次按 E 将其引爆（若仍在飞行则抵达时引爆），否则 5 秒后自动引爆：65–265 + 80% 法术强度，并减速 1 秒。
   - **R（终极闪光）**：引导 1 秒后发射长 3340、宽 190 的激光，对直线上所有敌人造成 300/400/500 + 120% 法术强度的伤害；会引爆光芒四射并重新标记。
   - 非英雄联盟原版：Q 消耗 40，W 40–60，E 50–70，R 80；击杀被照亮敌人回复法力（使用皮肤中未使用的 `Lux_globalhit_mana` 闪光）；曲光屏障只为拉克丝提供护盾。
+- **希维尔**（技能 bin 的 DataValues，26.20 版本）：射程 500，十字刃以 1750 码/秒左右手交替掷出，暴击 175%。皮肤中所有玩法粒子系统均被使用（两种普攻刃与命中、回旋之刃的去程与回程、弹射的光效/刃/命中、护盾、格挡与治疗、速度线、狩猎的旋风与拖尾）。
+  - **被动（敏锐疾行）**：普攻（攻击时）与技能命中给予 55–75（随等级）固定移动速度，在 1.5 秒内衰减。
+  - **Q（回旋之刃）**：十字刃飞行 1250 码（速度 1450，宽 180）后返回她身边（速度 1200，宽 200），去程与回程各对每名敌人造成一次 60–160 + 70% 额外攻击力 + 60% 法术强度的物理伤害，并随暴击几率提高 0–40%（持有无尽之刃再 +12%）；每命中一名敌人伤害降低 15%，最低 40%，回程时重置。施法时间 0.25 秒，按额外攻速的一半缩短，最多 60%。
+  - **W（弹射）**：4 秒内 +20–40% 攻击速度，普攻在 500 码内的最近新目标之间弹射至多 8 次（每名敌人至多两次），造成 40–50% 攻击力伤害（暴击 ×2，持有无尽之刃再 +30%；对小兵 65%，并处决生命值低于 15 的小兵）。新施放时重置普攻计时。卢安娜的飓风的额外弹矢不会弹射。
+  - **E（法术护盾）**：1.5 秒法术护盾，无法力消耗；格挡一个敌方效果（敌方弹道、危险区域、男爵攻击；近战普攻不是法术）后治疗 60–80% 攻击力 + 50% 法术强度，并在 0.25 秒后触发敏锐疾行。
+  - **R（狩猎）**：8/10/12 秒内 +20/25/30% 移动速度；持续期间每次普攻使 Q、W、E 的冷却缩短 0.5 秒。
+  - 非英雄联盟原版：敏锐疾行对任何敌人生效（原版仅英雄）；狩猎由击杀精英和史诗怪物刷新（原版为 3 秒内参与击杀英雄），且没有友军光环；法力消耗与原版相同（Q 55–75、W 60、E 0、R 100）。
 - **两步升级**：
   1. 按英雄联盟规则提升一个技能等级：基础技能在 1/3/5/7/9 级，R 在 6/11/16 级（厄斐琉斯：属性点，见上文）。没有可升级的技能时跳过此步。
   2. 从随机的 3 件装备中选 1 件（出装完成后改为药水）。
@@ -229,7 +242,7 @@ pnpm dev        # http://localhost:5173（在第一个界面选择英雄）
   - 每件装备有 5 级。属性从 40%（1 级）成长到 100%（5 级）；被动在 3 级解锁，强度 60%，4 级 80%，5 级 100%。魔宗、大天使之杖和凛冬之临在 5 级获得转化后的被动（魔切、炽天使之拥、末日寒冬）。
   - 装备池：召唤师峡谷的全部传说装备，除了带主动效果的装备（中娅沙漏、幽梦之灵、九头蛇系列……）、辅助装备、重伤装备（凡性的提醒、炼金朋克链锯剑、莫雷洛秘典；荆棘之甲只保留反伤）以及需要视野或英雄护盾的被动（暗行者之爪、毒蛇之牙）。物理英雄获得攻击装备，法术英雄获得法强装备，坦克和混合装备两者都有。
   - 被动针对怪潮调整："英雄"触发改为击杀精英 / 史诗野怪；法术护盾格挡下一次受到的伤害。
-  - 每个英雄的推荐出装（OP.GG，16.21 版本）：出现概率为三倍，并标记为“推荐”。伊泽瑞尔：三相之力、魔宗、朔极之矛、赛瑞尔达的怨恨、无穷饥渴、守护天使。莎弥拉：收集者、无尽之刃、多米尼克领主的致意、不朽盾弓、饮血剑、守护天使。布兰德：黑焰火炬、瑞莱的冰晶节杖、兰德里的折磨、影焰、灭世者的死亡之帽、虚空之杖。厄斐琉斯：收集者、无尽之刃、多米尼克领主的致意、卢安娜的飓风、守护天使、饮血剑。 奥瑞利安·索尔：兰德里的折磨、瑞莱的冰晶节杖、灭世者的死亡之帽、虚空之杖、影焰、星界驱驰。 拉克丝：卢登的回声、影焰、灭世者的死亡之帽、视界专注、虚空之杖、残疫。 提莫：纳什之牙、兰德里的折磨、裂隙制造者、灭世者的死亡之帽、虚空之杖、影焰。
+  - 每个英雄的推荐出装（OP.GG，16.21 版本）：出现概率为三倍，并标记为“推荐”。伊泽瑞尔：三相之力、魔宗、朔极之矛、赛瑞尔达的怨恨、无穷饥渴、守护天使。莎弥拉：收集者、无尽之刃、多米尼克领主的致意、不朽盾弓、饮血剑、守护天使。布兰德：黑焰火炬、瑞莱的冰晶节杖、兰德里的折磨、影焰、灭世者的死亡之帽、虚空之杖。厄斐琉斯：收集者、无尽之刃、多米尼克领主的致意、卢安娜的飓风、守护天使、饮血剑。 奥瑞利安·索尔：兰德里的折磨、瑞莱的冰晶节杖、灭世者的死亡之帽、虚空之杖、影焰、星界驱驰。 拉克丝：卢登的回声、影焰、灭世者的死亡之帽、视界专注、虚空之杖、残疫。希维尔：精华掠夺者、纳沃利迅刃、无尽之刃、多米尼克领主的致意、饮血剑、守护天使。 提莫：纳什之牙、兰德里的折磨、裂隙制造者、灭世者的死亡之帽、虚空之杖、影焰。
   - 出装完成（6 件装备均为 5 级）：升级时提供生命药水或法力药水（恢复 5% 最大值），每次击杀有 1% 概率掉落图纸（蓝色卷轴，每局 1 张），使随机一件装备变为传说（属性 +50%；该格获得动态金色光环与“传说”标签）。
   - 鞋子：六格之外的第 7 格。5:00 获得鞋子（+25 移动速度）；击杀峡谷迅捷蟹后可选择一双二级鞋（镀甲之靴带镀层：物理攻击造成的伤害降低 10%）；击杀小龙后升级为三级鞋（仅属性）。
   - 节奏：整局游戏从 0:00 的 x1 逐渐加速到 5:00 的 x2，之后保持 x2。
@@ -288,6 +301,7 @@ pnpm dev        # http://localhost:5173（在第一个界面选择英雄）
 | 奥瑞利安·索尔 | Q 50–70、R 100、W 无激活消耗（每秒消耗 6–10） | 星星每次击杀回复 4–12 |
 | 提莫 | Q 40–60（70–90） | 无 |
 | 拉克丝 | Q 40、W 40–60、E 50–70、R 80 | 被照亮的敌人死亡时回复 10–30 |
+| 希维尔 | 与原版相同（Q 55–75、W 60、E 0、R 100）：靠普攻输出 | 无 |
 
 ## 架构（在哪里添加内容）
 

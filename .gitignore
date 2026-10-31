@@ -1,4 +1,4 @@
-node_modules/
+node_modules
 dist/
 .venv-tools
 # Riot Games assets: extracted locally by tools/, never committed (see README)
@@ -7,6 +7,6 @@ public/assets
 .playwright-mcp/
 __pycache__/
 .env
-l2g/
+l2g
 .claude/hooks/
 .claude/skills/post-update/SKILL.md

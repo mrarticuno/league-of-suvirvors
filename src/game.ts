@@ -810,6 +810,13 @@ export class Game {
   /** The next basic attack can start right away (an attack timer reset, e.g. a returning blade caught). */
   resetAttack() { this.attackTimer = 0; }
 
+  /** Plays a one-shot clip over the idle animation for its length (a kit's gesture, e.g. catching a returning blade); casts and attacks win. */
+  gesture(anim: string) {
+    if (this.castLock > 0 || this.windup >= 0 || !this.alive) return;
+    this.player.play(anim, { loop: false, restart: true, fade: 0.05 });
+    this.animLock = this.player.duration(anim);
+  }
+
   private fireAuto(target: Enemy) {
     const B = this.champ.base;
     const dmg = this.ad * (this.pendingCrit ? B.critDamage + this.items.critDamage : 1);
@@ -954,12 +961,16 @@ export class Game {
     this.kit.onDealt?.(e, hit, dealt);
   }
 
-  /** `nonLethal` damage leaves the champion at 1 HP at worst (Baron's whip); `magic` is reduced by MR instead of armor. */
+  /**
+   * `nonLethal` damage leaves the champion at 1 HP at worst (Baron's whip); `magic` is reduced by MR instead of armor.
+   * `spell` (default): the hit is an ability or projectile a spell shield (ChampionKit.blockSpell) can negate; melee basic attacks pass false.
+   */
   /** Damage taken multiplier for standing still: x1 while walking, up to x5 after CAMPING.ramp seconds. */
   get campingMult() { return 1 + (CAMPING.max - 1) * Math.min(1, this.stillFor / CAMPING.ramp); }
 
-  hurtPlayer(amount: number, nonLethal = false, magic = false) {
+  hurtPlayer(amount: number, nonLethal = false, magic = false, spell = true) {
     if (!this.alive || this.stasis > 0) return;
+    if (spell && this.kit?.blockSpell?.()) return;
     let taken = amount * (100 / (100 + Math.max(0, magic ? this.mr : this.armor))) * this.campingMult;
     if (!magic && this.boots && PLATING.has(this.boots)) taken *= 0.9;
     for (const fx of this.itemFx) if (fx.onHurt) taken = fx.onHurt(taken);
@@ -1210,7 +1221,7 @@ export class Game {
               damage: this.enemyHitDamage(e.def),
             });
           } else if (edge <= e.def.attackRange + 80) {
-            this.hurtPlayer(this.enemyHitDamage(e.def));
+            this.hurtPlayer(this.enemyHitDamage(e.def), false, false, false);
             for (const fx of this.itemFx) fx.onStruck?.(e);
           }
         }

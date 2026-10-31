@@ -592,5 +592,20 @@
  "champion.lux.Q.desc": "Dispara una esfera de luz que inflige daño mágico a los dos primeros enemigos alcanzados y los inmoviliza durante 2 s.",
  "champion.lux.W.desc": "Lanza su varita hasta 1175 unidades y vuelve volando hacia ella. Lux obtiene un Escudo durante 2,5 s al lanzarla y otro cuando regresa (se acumulan).",
  "champion.lux.E.desc": "Envía una singularidad a la zona objetivo que ralentiza un 25–45 % a los enemigos dentro (la Ralentización dura 1 s más tras salir). Pulsa de nuevo para detonarla e infligir daño mágico; detona sola tras 5 s.",
- "champion.lux.R.desc": "Tras 1 s, dispara un láser gigante de 3340 unidades que inflige daño mágico a todos los enemigos en la línea. Detona la Iluminación de los enemigos alcanzados y vuelve a iluminarlos."
+ "champion.lux.R.desc": "Tras 1 s, dispara un láser gigante de 3340 unidades que inflige daño mágico a todos los enemigos en la línea. Detona la Iluminación de los enemigos alcanzados y vuelve a iluminarlos.",
+ "champion.sivir.name": "Sivir",
+ "champion.sivir.title": "la Señora de la Batalla",
+ "champion.sivir.passive": "Pies Ligeros",
+ "champion.sivir.Q": "Cuchilla Búmeran",
+ "champion.sivir.W": "Rebote",
+ "champion.sivir.E": "Escudo Antihechizos",
+ "champion.sivir.R": "Cazadora",
+ "champion.sivir.hud": "Pies Ligeros +{ms} VM",
+ "champion.sivir.attackSpeed": "Velocidad de Ataque",
+ "champion.sivir.heal": "Curación (% DA)",
+ "champion.sivir.moveSpeed": "Velocidad de Movimiento",
+ "champion.sivir.Q.desc": "Lanza la cuchilla a 1250 unidades y vuelve a Sivir, infligiendo daño físico a cada enemigo que atraviesa a la ida y a la vuelta (el daño aumenta con la probabilidad de Golpe Crítico; 15 % menos por enemigo alcanzado, hasta 40 %, reiniciado a la vuelta).",
+ "champion.sivir.W.desc": "Durante 4 s sus ataques básicos ganan Velocidad de Ataque y rebotan hasta 8 veces a enemigos a 500 unidades, infligiendo daño físico (cada enemigo como máximo dos veces; 65 % contra súbditos, ejecutándolos por debajo de 15 de Vida). Reinicia el temporizador de ataque.",
+ "champion.sivir.E.desc": "Un escudo antihechizos de 1,5 s bloquea la siguiente habilidad o proyectil enemigo; bloquear la cura (% DA +50 % PH) y activa Pies Ligeros.",
+ "champion.sivir.R.desc": "Gana Velocidad de Movimiento durante 8/10/12 s. Mientras dura, cada ataque básico reduce los enfriamientos de Q, W y E en 0,5 s; matar a un monstruo élite o épico renueva la duración."
 }
