@@ -26,7 +26,7 @@ function poolsOf(s: ItemStats): ItemPool[] {
 }
 
 // names live in src/locales (`item.<id>`, written by tools/build_items.py)
-export const VAMP_MULT = 0.02; // item Life Steal / Omnivamp sustain too much against hordes: 10% in LoL gives 0.2% here
+export const VAMP_MULT = 0.1; // item Life Steal / Omnivamp sustain too much against hordes: 10% in LoL gives 1% here
 const toItems = (src: Record<string, { stats: ItemStats }>): Record<string, Item> => Object.fromEntries(Object.entries(src).map(([id, it]) => {
   const stats: ItemStats = { ...it.stats };
   if (stats.lifesteal) stats.lifesteal *= VAMP_MULT;

@@ -7,14 +7,14 @@ it('Golpe de Misericórdia: +8% below 40% HP only', () => {
   expect(f.damageMult!(enemy('minion', 41), AUTO)).toBe(1);
 });
 
-it('Conquistador: heals 0.16% of damage dealt only at 12 stacks', () => {
+it('Conquistador: heals 0.8% of damage dealt only at 12 stacks', () => {
   const g = stubGame();
   const f = fx('conqueror', g);
   const e = enemy();
   for (let i = 0; i < 11; i++) f.onDealt!(e, AUTO, 100);
   expect(g.heal).not.toHaveBeenCalled();
   f.onDealt!(e, AUTO, 100);
-  expect(g.heal.mock.calls[0][0]).toBeCloseTo(0.16);
+  expect(g.heal.mock.calls[0][0]).toBeCloseTo(0.8);
   expect(f.stat!('ad')).toBeGreaterThan(0);
 });
 

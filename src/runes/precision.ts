@@ -87,7 +87,7 @@ export const PRECISION = runeList('precision', [
   'presence-of-mind': (g) => ({ onKill: () => { g.mana = Math.min(g.maxMana, g.mana + 0.015 * g.maxMana); } }),
   'legend-alacrity': (g) => ({ stat: (k) => (k === 'as' ? 0.03 * tiers(g.kills, 300, 5) : 0) }),
   'legend-haste': (g) => ({ stat: (k) => (k === 'ah' ? 1.5 * tiers(g.kills, 500, 5) : 0) }),
-  'legend-bloodline': (g) => ({ stat: (k) => (k === 'lifesteal' ? 0.00005 * tiers(g.kills, 500, 6) : 0) }),
+  'legend-bloodline': (g) => ({ stat: (k) => (k === 'lifesteal' ? 0.0025 * VAMP_MULT * tiers(g.kills, 500, 6) : 0) }),
   'coup-de-grace': () => ({ damageMult: (e) => (e.hp / e.maxHp < 0.4 ? 1.08 : 1) }),
   'cut-down': () => ({ damageMult: (e) => (isBig(e) ? 1.08 : 1) }),
   'last-stand': (g) => ({
