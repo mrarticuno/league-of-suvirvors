@@ -88,9 +88,10 @@ export function chooseSecondary(page: Page, tree: TreeId): Page {
 }
 
 /** Reads and writes localStorage lazily, so a blocked storage only throws inside load/save's try blocks. */
-export const browserStorage: Store = {
+export const browserStorage: Store & Pick<Storage, 'removeItem'> = {
   getItem: (k) => localStorage.getItem(k),
   setItem: (k, v) => localStorage.setItem(k, v),
+  removeItem: (k) => localStorage.removeItem(k),
 };
 
 export function equipShard(page: Page, row: number, index: number, shardRows: number[]): Page {

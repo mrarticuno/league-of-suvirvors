@@ -27,6 +27,8 @@ export const RESOLVE = runeList('resolve', [
         hp += 5;
       },
       stat: (k) => (k === 'hp' ? hp : 0),
+      saved: () => hp,
+      restore: (v) => { hp = Number(v) || 0; },
     };
   },
   aftershock: (g) => {

@@ -333,12 +333,15 @@
       #choices .act:hover { border-color: var(--gold); }
       #choices .act small { opacity: 0.7; }
       /* sideways tree (root on the left, branches stacked) so wide lines grow down, not past the panel */
-      #continue, #menu button { background: var(--panel); border: 1px solid var(--gold-dim); padding: 12px; cursor: pointer; display: flex; gap: 10px; justify-content: center; }
+      #continue, #menu button, #resume button { background: var(--panel); border: 1px solid var(--gold-dim); padding: 12px; cursor: pointer; display: flex; gap: 10px; justify-content: center; }
       #choices button.skill-choice { background: var(--panel); border: 1px solid var(--gold-dim); padding: 10px 12px; text-align: left; cursor: pointer; display: flex; gap: 10px; align-items: flex-start; animation: rise 0.4s cubic-bezier(0.2, 0.8, 0.3, 1) both; }
       #choices button.skill-choice > img { width: 44px; height: 44px; flex: none; }
       #choices button.skill-choice div { display: flex; flex-direction: column; gap: 3px; }
-      #choices button.skill-choice:hover, #continue:hover, #menu button:hover { border-color: var(--gold); }
-      #menu button { width: min(280px, 80vw); }
+      #choices button.skill-choice:hover, #continue:hover, #menu button:hover, #resume button:hover { border-color: var(--gold); }
+      #menu button, #resume button { width: min(280px, 80vw); }
+      #menu button:disabled { opacity: 0.5; cursor: not-allowed; border-color: var(--gold-dim); }
+      #menu-quit[data-armed] { border-color: #c8443a; color: #ff9a8a; }
+      #resume p { margin: 0; color: var(--gold-hi); font-size: 16px; text-align: center; }
       #menu .vol { width: min(280px, 80vw); display: grid; gap: 6px; font-size: 14px; color: var(--gold-hi); }
       #menu .vol input { width: 100%; accent-color: var(--gold); cursor: pointer; }
       #menu #stats { display: grid; border: 0; padding: 0; }
@@ -850,12 +853,20 @@
     <div id="menu" class="overlay">
       <h2 data-i18n="static.paused"></h2>
       <button id="menu-resume" data-i18n="static.continue"></button>
+      <button id="menu-save" data-i18n="menu.save"></button>
+      <button id="menu-quit" data-i18n="menu.quit"></button>
       <div class="vols">
         <label class="vol"><span data-i18n="menu.music"></span><input id="menu-music" type="range" min="0" max="100" step="5"></label>
         <label class="vol"><span data-i18n="menu.sfx"></span><input id="menu-sfx" type="range" min="0" max="100" step="5"></label>
       </div>
       <div id="menu-info"></div>
       <div id="help" data-i18n="static.help"></div>
+    </div>
+    <div id="resume" class="overlay">
+      <h2 data-i18n="resume.title"></h2>
+      <p id="resume-info"></p>
+      <button id="resume-go" data-i18n="resume.continue"></button>
+      <button id="resume-discard" data-i18n="resume.discard"></button>
     </div>
     <div id="end" class="overlay">
       <div class="beam"></div>

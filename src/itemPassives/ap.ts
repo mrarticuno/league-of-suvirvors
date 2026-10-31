@@ -167,6 +167,8 @@ export const AP_PASSIVES: Record<string, ItemPassive> = {
       const stacks = () => Math.min(10, Math.floor(owned / 60));
       return {
         tick: (dt) => { owned += dt; },
+        saved: () => owned,
+        restore: (v) => { owned = Number(v) || 0; },
         stat: (k) => stacks() * power() * (k === 'hp' ? 10 : k === 'mana' ? 30 : k === 'ap' ? 3 : 0),
         onHurt: (amount) => {
           g.mana = Math.min(g.maxMana, g.mana + 0.1 * power() * amount);

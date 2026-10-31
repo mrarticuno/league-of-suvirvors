@@ -113,6 +113,19 @@ export interface MissileOpts {
   hitFx?: string; hitSound?: string; onHit?: Missile['onHit'];
 }
 
+/**
+ * What a run save keeps (src/runSave.ts): the champion's progress and the run's timeline. Enemies, missiles and the
+ * map are not kept: loading starts on a fresh map around the champion, the director spawns from the saved clock.
+ */
+export interface RunSnapshot {
+  time: number; kills: number; level: number; xp: number; hp: number; mana: number;
+  ranks: Record<SkillKey, number>; cooldowns: Record<SkillKey, number>;
+  slots: Slot[]; legendary: number; boots: string | null; dragonSlain: boolean; blueprintDropped: boolean;
+  buffs: Record<BuffKey, number>; buffSpawnAt: Record<BuffKey, number>; bonusRunePoints: number; flashReady: number;
+  nextEvent: number; nextHordeAt: number; dragon: string; pendingLevelUps: number; autoAttack: boolean;
+  fx: { items: Record<string, unknown>; runes: unknown[] }; // ItemEffect.saved of the owned items (by id) and runes (page order)
+}
+
 /** A popup a rune asks the player to pick from (shown between frames, like level ups). */
 export interface Choice { title: string; options: { name: string; text: string; icon: string; run: () => void }[] }
 
@@ -322,6 +335,43 @@ export class Game {
     this.hp = this.maxHp;
     this.mana = this.maxMana;
     this.player.play(this.moveAnims.idle);
+  }
+
+  /** The run's state for a save (RunSnapshot). */
+  snapshot(): RunSnapshot {
+    // an event monster still alive (a boss mid-fight) is fought again from full HP after loading
+    const live = EVENTS.findIndex((ev, i) => i < this.nextEvent
+      && this.enemies.some((e) => e.deadFor < 0 && e.def === ENEMIES[this.eventEnemy(ev.enemy)]));
+    // a buff monster alive now (spawn time Infinity, which JSON can't hold) respawns right after loading
+    const respawn = (at: number) => Math.min(at, this.time);
+    return {
+      time: this.time, kills: this.kills, level: this.level, xp: this.xp, hp: this.hp, mana: this.mana,
+      ranks: { ...this.ranks }, cooldowns: { ...this.cooldowns },
+      slots: this.slots, legendary: this.legendary, boots: this.boots, dragonSlain: this.dragonSlain,
+      blueprintDropped: this.blueprintDropped && !this.blueprint, // a scroll still on the ground drops again
+      buffs: { ...this.buffs }, buffSpawnAt: { blue: respawn(this.buffSpawnAt.blue), red: respawn(this.buffSpawnAt.red) },
+      bonusRunePoints: this.bonusRunePoints, flashReady: this.flashReady,
+      nextEvent: live < 0 ? this.nextEvent : live, nextHordeAt: this.nextHordeAt, dragon: this.dragon,
+      pendingLevelUps: this.pendingLevelUps, autoAttack: this.autoAttack,
+      fx: {
+        items: Object.fromEntries(this.slots.flatMap(({ id }) => {
+          const fx = this.fxCache.get(id);
+          return fx?.saved ? [[id, fx.saved()]] : [];
+        })),
+        runes: this.runeFx.map((fx) => fx.saved?.() ?? null),
+      },
+    };
+  }
+
+  /** Puts a saved run back, right after reset() with the run's rune page (same champion). */
+  restore(s: RunSnapshot) {
+    const { slots, fx, hp, mana, ...rest } = s;
+    Object.assign(this, rest);
+    this.setSlots(slots);
+    for (const [id, v] of Object.entries(fx.items)) this.fxCache.get(id)?.restore?.(v);
+    fx.runes.forEach((v, i) => { if (v !== null) this.runeFx[i]?.restore?.(v); });
+    this.hp = Math.max(1, Math.min(this.maxHp, hp));
+    this.mana = Math.min(this.maxMana, mana);
   }
 
   /** Idle and run clips right now (the kit's, e.g. per weapon, else the champion's). */

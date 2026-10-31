@@ -150,6 +150,8 @@ export const TANK_PASSIVES: Record<string, ItemPassive> = {
           return dmg;
         },
         stat: (k) => (k === 'hp' ? gained : 0),
+        saved: () => gained,
+        restore: (v) => { gained = Number(v) || 0; },
       };
     },
   },

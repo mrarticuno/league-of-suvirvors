@@ -1,10 +1,13 @@
 import * as THREE from 'three';
-import { Game } from './game';
+import { Game, type RunSnapshot } from './game';
 import { t, type Key } from './i18n';
 import { browserStorage, credit, loadProgress, saveProgress } from './progress';
 import { showChampionSelect, showRunePage } from './runePage';
 import { IS_TOUCH, TouchControls } from './touch';
-import { Hud } from './ui';
+import { fmt, Hud } from './ui';
+import { clearRun, loadRun, saveRun, type RunSave } from './runSave';
+import { CHAMPIONS } from './champions';
+import type { Page } from './progress';
 import { Cinematic } from './cinematic';
 import type { ChampionDef, SkillKey } from './champion';
 
@@ -92,21 +95,69 @@ function openMenus() {
 /** The rune page of `champ`; Jogar starts a fresh run with the page, Back returns to champion select. */
 function openRunes(champ: ChampionDef) {
   enterMenus();
-  showRunePage(champ, async (page) => {
-    loading.textContent = t('loading.champion', { champion: champ.name });
-    loading.style.display = '';
-    await game.setChampion(champ);
-    loading.style.display = 'none';
-    if (champ !== hudChamp) {
-      hud = new Hud(champ, toggleAuto);
-      hudChamp = champ;
-    }
-    document.body.classList.remove('menus');
-    game.reset(page);
-    credited = false;
-    inMenu = false;
-  }, openMenus);
+  showRunePage(champ, (page) => startRun(champ, page), openMenus);
 }
+
+/** A fresh run, or the saved one (`saved`) put back on a fresh map. */
+async function startRun(champ: ChampionDef, page: Page, saved?: RunSnapshot) {
+  loading.textContent = t('loading.champion', { champion: champ.name });
+  loading.style.display = '';
+  await game.setChampion(champ);
+  loading.style.display = 'none';
+  if (champ !== hudChamp) {
+    hud = new Hud(champ, toggleAuto);
+    hudChamp = champ;
+  }
+  document.body.classList.remove('menus');
+  game.reset(page);
+  if (saved) {
+    try {
+      game.restore(saved);
+    } catch {
+      game.reset(page); // a save the game no longer understands: start the run over instead of a half-restored one
+    }
+  } else clearRun(browserStorage); // a new run replaces any older save
+  credited = false;
+  inMenu = false;
+}
+
+/** On load, a saved run: continue it, or discard it and go to champion select. */
+function offerResume(s: RunSave) {
+  enterMenus();
+  const champ = CHAMPIONS[s.champ];
+  const el = document.getElementById('resume')!;
+  document.getElementById('resume-info')!.textContent = t('resume.info', { champion: champ.name, level: s.state.level, time: fmt(s.state.time) });
+  el.style.display = 'flex';
+  document.getElementById('resume-go')!.onclick = () => {
+    el.style.display = 'none';
+    startRun(champ, s.page, s.state);
+  };
+  document.getElementById('resume-discard')!.onclick = () => {
+    el.style.display = 'none';
+    clearRun(browserStorage);
+    openMenus();
+  };
+}
+
+// ESC menu: save the run in the browser (kept until the run ends), or abandon it (no rune points; second click confirms)
+const menuSave = document.getElementById('menu-save') as HTMLButtonElement;
+menuSave.onclick = () => {
+  const ok = saveRun({ champ: game.champ.id, page: game.page, state: game.snapshot() }, browserStorage);
+  menuSave.textContent = t(ok ? 'menu.saved' : 'menu.saveFailed');
+  menuSave.disabled = ok;
+};
+const menuQuit = document.getElementById('menu-quit')!;
+menuQuit.onclick = () => {
+  if (menuQuit.dataset.armed === undefined) {
+    menuQuit.dataset.armed = '';
+    menuQuit.textContent = t('menu.quitConfirm');
+    return;
+  }
+  clearRun(browserStorage);
+  hud.closePrompts();
+  hud.toggleMenu();
+  openMenus();
+};
 
 function enterMenus() {
   inMenu = true;
@@ -192,6 +243,7 @@ function checkPrompts() {
   if (game.over) {
     if (credited) return;
     credited = true; // once per run, however often this runs before Continuar
+    clearRun(browserStorage); // the run is over: nothing left to continue
     const r = credit(loadProgress(browserStorage), game.kills, game.bonusRunePoints);
     saveProgress(r.progress, browserStorage);
     hud.closePrompts();
@@ -237,7 +289,9 @@ game
   .then(() => {
     loading.style.display = 'none';
     frame();
-    openMenus();
+    const saved = loadRun(browserStorage);
+    if (saved) offerResume(saved);
+    else openMenus();
   });
 
 if (import.meta.env.DEV) Object.assign(window, { game, camera, CAMERA_OFFSET });

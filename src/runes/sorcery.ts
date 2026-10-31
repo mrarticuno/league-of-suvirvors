@@ -62,6 +62,8 @@ export const SORCERY = runeList('sorcery', [
     return {
       onDealt: (_e, hit) => { if (hit.source === 'ability') mana = Math.min(250, mana + 25); },
       stat: (k) => (k === 'mana' ? mana : 0),
+      saved: () => mana,
+      restore: (v) => { mana = Number(v) || 0; },
       tick: (dt) => {
         if (mana < 250 || (tick += dt) < 5) return;
         tick = 0;

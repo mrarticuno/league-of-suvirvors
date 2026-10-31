@@ -86,6 +86,8 @@ export const DOMINATION = runeList('domination', [
     return {
       onKill: (e) => { if (isBig(e)) ad = Math.min(20, ad + 2); },
       stat: (k) => (k === 'ad' ? ad : 0),
+      saved: () => ad,
+      restore: (v) => { ad = Number(v) || 0; },
     };
   },
   'deep-ward': (g) => ({ damageMult: (e) => (e.pos.distanceTo(g.pos) > 500 ? 1.06 : 1) }),

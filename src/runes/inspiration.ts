@@ -45,6 +45,12 @@ export const INSPIRATION = runeList('inspiration', [
         });
       },
       stat: (k) => (picked?.stat === k ? picked.value : 0),
+      saved: () => ({ next, picked: picked ? SPELLBOOK.indexOf(picked) : -1 }),
+      restore: (v) => {
+        const s = v as { next?: number; picked?: number };
+        next = Number(s?.next) || 0;
+        picked = SPELLBOOK[s?.picked ?? -1] ?? null;
+      },
     };
   },
   'first-strike': (g) => {
@@ -89,6 +95,12 @@ export const INSPIRATION = runeList('inspiration', [
         g.mana = Math.min(g.maxMana, g.mana + 0.08 * (g.maxMana - g.mana));
       },
       stat: (k) => (k === 'mana' ? mana : 0),
+      saved: () => ({ next, mana }),
+      restore: (v) => {
+        const s = v as { next?: number; mana?: number };
+        next = Number(s?.next) || 120;
+        mana = Number(s?.mana) || 0;
+      },
     };
   },
   'cosmic-insight': () => ({ stat: (k) => (k === 'ah' ? 18 : 0) }),

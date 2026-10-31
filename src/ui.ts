@@ -24,7 +24,7 @@ const shown = new Map<string, string>();
 const changed = (key: string, v: string) => shown.get(key) !== v && !!shown.set(key, v);
 const text = (id: string, v: string) => { if (changed(id, v)) $(id).textContent = v; };
 const style = (id: string, prop: 'width' | 'height' | 'display', v: string) => { if (changed(`${id}.${prop}`, v)) $(id).style[prop] = v; };
-const fmt = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+export const fmt = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 /** Numbers in the player's locale (1,5 in pt/es, 1.5 in en/zh; thousands grouped). */
 const formats = new Map<number, Intl.NumberFormat>();
 export const num = (v: number, digits = 0) => {
@@ -269,10 +269,18 @@ export class Hud {
     });
   }
 
-  /** ESC menu: pauses the game; music / sound effect volume sliders. */
+  /** ESC menu: pauses the game; music / sound effect volume sliders; save the run, or abandon it (main.ts wires both). */
   toggleMenu() {
     this.menuOpen = !this.menuOpen;
     if (this.menuOpen && this.game) $('menu-info').innerHTML = menuInfo(this.game);
+    // a popup on screen (level up, rune or boots pick) can't be saved: its options are closures
+    const blocked = this.choosing || !!this.game?.choices.length;
+    const save = $('menu-save') as HTMLButtonElement;
+    save.disabled = blocked;
+    save.textContent = t('menu.save');
+    save.title = blocked ? t('menu.saveBlocked') : '';
+    delete $('menu-quit').dataset.armed;
+    $('menu-quit').textContent = t('menu.quit');
     $('menu').style.display = this.menuOpen ? 'flex' : 'none';
     audio.setPaused(this.menuOpen);
     audio.play(this.menuOpen ? 'hud_open' : 'hud_close');
