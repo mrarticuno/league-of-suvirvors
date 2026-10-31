@@ -33,6 +33,7 @@ TE = "Play_sfx_Teemo_Teemo"
 TM = "Play_sfx_TeemoMushroom_TeemoRTrap_"
 LX = "Play_sfx_Lux_Lux"
 ZG = "Play_sfx_Ziggs_Ziggs"
+SV = "Play_sfx_Sivir_Sivir"
 
 # bank path (without _events/_audio) -> {sound key: event name candidates (first match wins) or an event id}
 BANKS: dict[str, dict[str, list[str] | int]] = {
@@ -167,6 +168,34 @@ BANKS: dict[str, dict[str, list[str] | int]] = {
         "aurelionsol_R_launch": [AS + "R2Missile_missilelaunch_super"],
         "aurelionsol_R_hit": [AS + "R2Missile_hit_super"],
         "aurelionsol_death": ["Play_sfx_AurelionSol_Death3D_cast"],
+    },
+    SFX + "characters/sivir/skins/base/sivir_base_sfx": {
+        "sivir_auto": [SV + "BasicAttack_OnCast"],
+        "sivir_auto2": [SV + "BasicAttack2_OnCast"],
+        "sivir_auto3": [SV + "BasicAttack3_OnCast"],
+        "sivir_auto4": [SV + "BasicAttack4_OnCast"],
+        "sivir_auto_launch": [SV + "BasicAttack_OnMissileLaunch"],
+        "sivir_auto_hit": [SV + "BasicAttack_OnHit"],
+        "sivir_crit": [SV + "CritAttack_OnCast"],
+        "sivir_crit_launch": [SV + "CritAttack_OnMissileLaunch"],
+        "sivir_crit_hit": [SV + "CritAttack_OnHit"],
+        "sivir_Q": [SV + "Q_OnCast"],
+        "sivir_Q_launch": [SV + "QMissile_OnMissileLaunch"],
+        "sivir_Q_return": [SV + "QMissileReturn_OnMissileLaunch"],
+        "sivir_Q_hit": [SV + "Q_hit"],
+        "sivir_W": [SV + "W_OnCast"],
+        "sivir_W_marker": [SV + "WMarker_OnBuffActivate"],
+        "sivir_W_attack": [SV + "WAttack_OnCast"],
+        "sivir_W_launch": [SV + "WAttack_OnMissileLaunch"],
+        "sivir_W_bounce_hit": [SV + "WBounce_hit"],
+        "sivir_E": [SV + "E_OnBuffActivate"],
+        "sivir_E_off": [SV + "E_OnBuffDeactivate"],
+        "sivir_R": [SV + "R_OnCast"],
+        "sivir_R_on": [SV + "R_OnBuffActivate"],
+        "sivir_R_off": [SV + "R_OnBuffDeactivate"],
+        "sivir_passive_on": [SV + "PassiveSpeed_OnBuffActivate"],
+        "sivir_passive_off": [SV + "PassiveSpeed_OnBuffDeactivate"],
+        "sivir_death": ["Play_sfx_Sivir_Death3D_cast"],
     },
     SFX + "characters/lux/skins/base/lux_base_sfx": {
         "lux_auto": [LX + "BasicAttack_OnCast"],
@@ -337,7 +366,7 @@ def render(txtp_path, mp3, music):
 
 def main(wwiser, out_dir, final_dir):
     final = Path(final_dir)
-    wads = [Wad(final / w) for w in ("Champions/Ezreal.wad.client", "Champions/Samira.wad.client", "Champions/Brand.wad.client", "Champions/Aphelios.wad.client", "Champions/AurelionSol.wad.client", "Champions/Lux.wad.client", "Champions/Teemo.wad.client", "Champions/Ziggs.wad.client", "Maps/Shipping/Map11.wad.client", "Maps/Shipping/Common.wad.client")]
+    wads = [Wad(final / w) for w in ("Champions/Ezreal.wad.client", "Champions/Samira.wad.client", "Champions/Brand.wad.client", "Champions/Aphelios.wad.client", "Champions/AurelionSol.wad.client", "Champions/Lux.wad.client", "Champions/Teemo.wad.client", "Champions/Ziggs.wad.client", "Champions/Sivir.wad.client", "Maps/Shipping/Map11.wad.client", "Maps/Shipping/Common.wad.client")]
     read = lambda p: next((d for d in (w.read(p) for w in wads) if d is not None), None)
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)

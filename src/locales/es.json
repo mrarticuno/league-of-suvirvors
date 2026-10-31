@@ -603,5 +603,20 @@
  "champion.ziggs.Q.desc": "Lanza una bomba que rebota hacia delante hasta dos veces y explota al caer cerca de un enemigo o en su último rebote, e inflige daño mágico a 240 unidades.",
  "champion.ziggs.W.desc": "Arroja una carga que detona tras 4 s o al pulsar de nuevo, inflige daño mágico a 325 unidades y repele a los enemigos. Si la explosión alcanza a Ziggs, sale despedido.",
  "champion.ziggs.E.desc": "Esparce 11 minas de proximidad que se activan tras 0,5 s y duran 10 s. Cada mina inflige daño mágico y una ralentización del 10–50 % durante 1,5 s; un enemigo recibe un 40 % del daño de las minas siguientes.",
- "champion.ziggs.R.desc": "Catapulta una bomba enorme a la zona objetivo que inflige daño mágico a 525 unidades, un 50 % más en su epicentro de 250 unidades."
+ "champion.ziggs.R.desc": "Catapulta una bomba enorme a la zona objetivo que inflige daño mágico a 525 unidades, un 50 % más en su epicentro de 250 unidades.",
+ "champion.sivir.name": "Sivir",
+ "champion.sivir.title": "la Señora de la Batalla",
+ "champion.sivir.passive": "Pies Ligeros",
+ "champion.sivir.Q": "Cuchilla Búmeran",
+ "champion.sivir.W": "Rebote",
+ "champion.sivir.E": "Escudo Antihechizos",
+ "champion.sivir.R": "Cazadora",
+ "champion.sivir.hud": "Pies Ligeros +{ms} VM",
+ "champion.sivir.attackSpeed": "Velocidad de Ataque",
+ "champion.sivir.heal": "Curación (% DA)",
+ "champion.sivir.moveSpeed": "Velocidad de Movimiento",
+ "champion.sivir.Q.desc": "Lanza la cuchilla a 1250 unidades y vuelve a Sivir, infligiendo daño físico a cada enemigo que atraviesa a la ida y a la vuelta (el daño aumenta con la probabilidad de Golpe Crítico; 15 % menos por enemigo alcanzado, hasta 40 %, reiniciado a la vuelta).",
+ "champion.sivir.W.desc": "Durante 4 s sus ataques básicos ganan Velocidad de Ataque y rebotan hasta 8 veces a enemigos a 500 unidades, infligiendo daño físico (cada enemigo como máximo dos veces; 65 % contra súbditos, ejecutándolos por debajo de 15 de Vida). Reinicia el temporizador de ataque.",
+ "champion.sivir.E.desc": "Un escudo antihechizos de 1,5 s bloquea la siguiente habilidad o proyectil enemigo; bloquear la cura (% DA +50 % PH) y activa Pies Ligeros.",
+ "champion.sivir.R.desc": "Gana Velocidad de Movimiento durante 8/10/12 s. Mientras dura, cada ataque básico reduce los enfriamientos de Q, W y E en 0,5 s; matar a un monstruo élite o épico renueva la duración."
 }

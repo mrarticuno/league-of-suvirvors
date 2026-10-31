@@ -30,7 +30,7 @@
 
 ## Champions
 
-Eight playable champions, each with a full kit ported from LoL (details in [Implemented rules](#implemented-rules)):
+Nine playable champions, each with a full kit ported from LoL (details in [Implemented rules](#implemented-rules)):
 
 | Champion | Roles | Style |
 |---|---|---|
@@ -42,6 +42,7 @@ Eight playable champions, each with a full kit ported from LoL (details in [Impl
 | Teemo | Marksman · Mage | Stand still for attack speed, poison on hit, bouncing mushroom traps |
 | Lux | Mage · Support | Illumination marks, roots, a shield and the Final Spark laser |
 | Ziggs | Mage | Lobbed bombs: a bouncing bomb, a satchel that blasts enemies (and Ziggs) away, a minefield and a map-wide nuke |
+| Sivir | Marksman | Boomerang blade out and back, ricocheting attacks, a spell shield and On the Hunt |
 
 ## Gallery
 
@@ -68,6 +69,10 @@ Eight playable champions, each with a full kit ported from LoL (details in [Impl
 | Aphelios | Samira |
 |---|---|
 | ![Aphelios: weapon abilities, Phase and Moonlight Vigil](docs/media/aphelios.gif) | ![Samira fighting a horde around the Rift Scuttler](docs/media/samira.gif) |
+
+| Sivir | |
+|---|---|
+| ![Sivir: Boomerang Blade, Ricochet, Spell Shield and On the Hunt against a horde](docs/media/sivir.gif) | |
 
 | Baron Nashor (20:00) | Pause menu: stats, items and boots |
 |---|---|
@@ -100,7 +105,7 @@ The models are **not in the repository** (they are Riot assets). Generate them l
 2. Hash list (the game's `.bin` files reference textures/animations by xxh64 hash):
    ```bash
    curl -s https://raw.communitydragon.org/data/hashes/lol/hashes.game.txt \
-     | grep -E "assets/characters/(ezreal|samira|brand|aphelios|aurelionsol|lux|teemo|ziggs|sru_|turret|inhibitor|nexus)" > assets-raw/hashes.filtered.txt
+     | grep -E "assets/characters/(ezreal|samira|brand|aphelios|aurelionsol|lux|teemo|ziggs|sivir|sru_|turret|inhibitor|nexus)" > assets-raw/hashes.filtered.txt
    ```
 3. Extract from the WADs (`tools/extract_lol.py`) and convert to `.glb` (`tools/build_models.py`):
    ```bash
@@ -110,6 +115,7 @@ The models are **not in the repository** (they are Riot assets). Generate them l
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt brand assets-raw/brand "$G/Champions/Brand.wad.client"
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt aurelionsol assets-raw/aurelionsol "$G/Champions/AurelionSol.wad.client"
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt teemo assets-raw/teemo "$G/Champions/Teemo.wad.client"
+   .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt sivir assets-raw/sivir "$G/Champions/Sivir.wad.client"
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt teemomushroom assets-raw/teemomushroom "$G/Champions/Teemo.wad.client"
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt lux assets-raw/lux "$G/Champions/Lux.wad.client"
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt ziggs assets-raw/ziggs "$G/Champions/Ziggs.wad.client"
@@ -136,7 +142,7 @@ The models are **not in the repository** (they are Riot assets). Generate them l
    `pieces` is a limited `.mapgeo` v14 parser: if it is skipped or fails (different format version, missing WAD), the runtime draws dark boxes/cylinders from the layout obstacles. Nothing breaks.
 5. Ability VFX: Ezreal's particle systems read from the skin `.bin`, with every texture and mesh they use. Uses the hash lists downloaded in step 4:
    ```bash
-   for c in ezreal samira brand aphelios aurelionsol lux teemo ziggs; do (cd tools && ../.venv-tools/bin/python build_vfx.py ../assets-raw/hashes $c ../public/assets/vfx/$c "$G"); done
+   for c in ezreal samira brand aphelios aurelionsol lux teemo ziggs sivir; do (cd tools && ../.venv-tools/bin/python build_vfx.py ../assets-raw/hashes $c ../public/assets/vfx/$c "$G"); done
    ```
    Generates `systems.json` (effects indexed by `ResourceResolver` keys, e.g. `Ezreal_Q_mis`), `spells.json` (missile speed/width/range) and the asset PNG/JSON files. `tools/read_bin.py` alone converts any `.bin` into JSON. The emitter runtime lives in `src/particles.ts`; `src/vfx.ts` only picks which system to play and where.
 
@@ -234,6 +240,13 @@ WASD is not used because it clashes with Q/W/E.
   - **E (Hexplosive Minefield)**: a cluster (900 range) scatters 11 mines (3 inner, 8 on a 200 ring, random turn) that arm after 0.5 s and last 10 s; each explodes on an enemy within 135: 30–190 + 25–45% AP and a 10–50% slow for 1.5 s; an enemy already hit by the cast takes 40% from later mines.
   - **R (Mega Inferno Bomb)**: 5000 range; lands after 1.2 s within 2700, else distance / 2250: 300/500/700 + 100% AP within the 250 epicenter, 65% of that out to 525. Landing-zone indicator from the cast, the closing ring 0.65 s before the blast.
   - Not from LoL: costs Q 30–40, W 55, E 50–75, R 80 (Brand's cuts); ability kills restore 10–30 mana (level; 1 s cooldown against minions and small monsters); the Minefield's inner ring radius (100) and the thresholds between R's long-range missiles are estimates (script-side, not in the bin); no turret execute (no turrets).
+- **Sivir** (the DataValues of her spell bins, patch 26.20): 500 range, 1750 u/s blades thrown from alternating hands, 175% crit. Every gameplay particle system of the skin is used (both attack blades and impacts, the boomerang out and back, the Ricochet glow/blade/hit, the barrier, block and heal, the speed lines, the On the Hunt swirl and trail).
+  - **Passive (Fleet of Foot)**: basic attacks (on attack) and ability hits grant 55–75 (level) flat Move Speed decaying over 1.5 s.
+  - **Q (Boomerang Blade)**: the crossblade flies 1250 units (1450 speed, 180 wide) and returns to her (1200 speed, 200 wide), dealing 60–160 + 70% bonus AD + 60% AP physical damage to every enemy on each pass (once per pass), increased by 0–40% by critical strike chance (+12% with Infinity Edge); each enemy hit reduces the damage by 15%, down to 40%, reset on the way back. Cast time 0.25 s, cut by half the bonus attack speed up to 60%.
+  - **W (Ricochet)**: for 4 s, +20–40% attack speed and the basic attacks bounce up to 8 times to the nearest new enemy within 500 (each enemy at most twice) for 40–50% AD (×2 on a crit, +30% with Infinity Edge; 65% against minions, executing them below 15 health). Resets the attack timer on a fresh buff. Runaan's bolts do not ricochet.
+  - **E (Spell Shield)**: 1.5 s spell shield, no mana cost; blocking a hostile effect (enemy missile, hazard, Baron attack; melee hits are not spells) heals 60–80% AD + 50% AP and triggers Fleet of Foot after 0.25 s.
+  - **R (On the Hunt)**: +20/25/30% Move Speed for 8/10/12 s; while active, every basic attack cuts Q, W and E's cooldowns by 0.5 s.
+  - Not from LoL: Fleet of Foot counts every enemy (champions only in LoL); On the Hunt is refreshed by elite and epic takedowns (champion takedowns within 3 s in LoL) and has no ally aura; mana costs are LoL's (Q 55–75, W 60, E 0, R 100).
 - **Two-step level-up**:
   1. One ability rank, by LoL's rule: basic abilities at levels 1/3/5/7/9, R at levels 6/11/16 (Aphelios: stat points, see above). The step is skipped when no rank is available.
   2. One item out of 3 rolled (or a potion, once the build is complete).
@@ -242,7 +255,7 @@ WASD is not used because it clashes with Q/W/E.
   - Every item has 5 levels. Stats grow from 40% (level 1) to 100% (level 5); the passive unlocks at level 3 at 60% strength, 80% at level 4, 100% at level 5. Manamune, Archangel's Staff and Winter's Approach gain their transformed passive (Muramana, Seraph's Embrace, Fimbulwinter) at level 5.
   - Pool: every Summoner's Rift legendary except items with an active (Zhonya's, Youmuu's, the Hydras...), support items, anti-heal items (Mortal Reminder, Chempunk, Morellonomicon; Thornmail keeps only its reflect) and passives that need vision or champion shields (Umbral Glaive, Serpent's Fang). AD champions get attack items, AP champions ability power items, both get tanks and hybrids.
   - Passives adapted to hordes: "champion" triggers become elite/epic monster kills; spell shields block the next damage taken.
-  - Recommended build per champion (OP.GG, patch 16.21): offered three times as often and tagged "Recommended". Ezreal: Trinity Force, Manamune, Spear of Shojin, Serylda's Grudge, Endless Hunger, Guardian Angel. Samira: The Collector, Infinity Edge, Lord Dominik's Regards, Immortal Shieldbow, Bloodthirster, Guardian Angel. Brand: Blackfire Torch, Rylai's, Liandry's, Shadowflame, Rabadon's, Void Staff. Aphelios: The Collector, Infinity Edge, Lord Dominik's Regards, Runaan's Hurricane, Guardian Angel, Bloodthirster. Aurelion Sol: Liandry's, Rylai's, Rabadon's, Void Staff, Shadowflame, Cosmic Drive. Teemo: Nashor's Tooth, Liandry's Torment, Riftmaker, Rabadon's Deathcap, Void Staff, Shadowflame. Lux: Luden's Echo, Shadowflame, Rabadon's, Horizon Focus, Void Staff, Malignance. Ziggs: Luden's Echo, Shadowflame, Rabadon's Deathcap, Void Staff, Banshee's Veil, Horizon Focus.
+  - Recommended build per champion (OP.GG, patch 16.21): offered three times as often and tagged "Recommended". Ezreal: Trinity Force, Manamune, Spear of Shojin, Serylda's Grudge, Endless Hunger, Guardian Angel. Samira: The Collector, Infinity Edge, Lord Dominik's Regards, Immortal Shieldbow, Bloodthirster, Guardian Angel. Brand: Blackfire Torch, Rylai's, Liandry's, Shadowflame, Rabadon's, Void Staff. Aphelios: The Collector, Infinity Edge, Lord Dominik's Regards, Runaan's Hurricane, Guardian Angel, Bloodthirster. Aurelion Sol: Liandry's, Rylai's, Rabadon's, Void Staff, Shadowflame, Cosmic Drive. Teemo: Nashor's Tooth, Liandry's Torment, Riftmaker, Rabadon's Deathcap, Void Staff, Shadowflame. Lux: Luden's Echo, Shadowflame, Rabadon's, Horizon Focus, Void Staff, Malignance. Ziggs: Luden's Echo, Shadowflame, Rabadon's Deathcap, Void Staff, Banshee's Veil, Horizon Focus. Sivir: Essence Reaver, Navori Flickerblade, Infinity Edge, Lord Dominik's Regards, Bloodthirster, Guardian Angel.
   - Complete build (6 items at level 5): level-ups offer a Health or Mana Potion (5% of max), and each kill has a 1% chance to drop a blueprint (blue scroll, 1 per run) that makes a random item Legendary (+50% stats; its slot gets an animated gold ring and a "Legendary" ribbon).
   - Boots: a 7th slot outside the six. Boots (+25 Move Speed) at 5:00; killing the Rift Scuttler offers a pick of Berserker's Greaves, Boots of Swiftness, Sorcerer's Shoes, Plated Steelcaps (Plating: physical hits deal 10% less), Mercury's Treads or Ionian Boots of Lucidity; killing the dragon turns them into their tier 3 (Gunmetal Greaves, Swiftmarch, Spellslinger's Shoes, Armored Advance, Chainlaced Crushers, Crimson Lucidity: stats only).
   - Pace: the enemy side (movement, attacks, animations, boss attacks, enemy projectiles, spawn rate) speeds up from x1 at 0:00 to x1.5 at 5:00, then stays at x1.5. The clock, cooldowns, buffs and the champion keep real time.
@@ -302,6 +315,7 @@ Mages cast nonstop against hordes, so their LoL mana costs are lowered and their
 | Teemo | Q 40–60 (70–90) | none |
 | Lux | Q 40, W 40–60, E 50–70, R 80 | 10–30 when an illuminated enemy dies |
 | Ziggs | Q 30–40 (50–70), W 55 (80), E 50–75 (70–110), R 80 (100) | 10–30 on ability kills |
+| Sivir | LoL's (Q 55–75, W 60, E 0, R 100): she lives off basic attacks | none |
 
 ## Architecture (where to add content)
 

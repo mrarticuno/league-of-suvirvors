@@ -603,5 +603,20 @@
  "champion.ziggs.Q.desc": "扔出一枚炸弹，向前弹跳至多两次，在敌人附近落地或最后一次弹跳时爆炸，对240码内的敌人造成魔法伤害。",
  "champion.ziggs.W.desc": "扔出一个炸药包，4秒后或再次按下时引爆，对325码内的敌人造成魔法伤害并将其击退。若爆炸命中吉格斯，他会被炸飞。",
  "champion.ziggs.E.desc": "散布11颗感应地雷，0.5秒后启动，持续10秒。每颗地雷造成魔法伤害并减速10–50%，持续1.5秒；敌人受到后续地雷的伤害为40%。",
- "champion.ziggs.R.desc": "向目标区域投掷一枚巨型炸弹，对525码内的敌人造成魔法伤害，250码中心区域的伤害提高50%。"
+ "champion.ziggs.R.desc": "向目标区域投掷一枚巨型炸弹，对525码内的敌人造成魔法伤害，250码中心区域的伤害提高50%。",
+ "champion.sivir.name": "希维尔",
+ "champion.sivir.title": "战争女神",
+ "champion.sivir.passive": "敏锐疾行",
+ "champion.sivir.Q": "回旋之刃",
+ "champion.sivir.W": "弹射",
+ "champion.sivir.E": "法术护盾",
+ "champion.sivir.R": "狩猎",
+ "champion.sivir.hud": "敏锐疾行 +{ms} 移速",
+ "champion.sivir.attackSpeed": "攻击速度",
+ "champion.sivir.heal": "治疗（% 攻击力）",
+ "champion.sivir.moveSpeed": "移动速度",
+ "champion.sivir.Q.desc": "掷出十字刃飞行1250码后返回希维尔，去程与回程各对途经的每名敌人造成一次物理伤害（伤害随暴击几率提高；每命中一名敌人减少15%，最低40%，回程时重置）。",
+ "champion.sivir.W.desc": "4秒内普攻获得攻击速度并在500码内的敌人之间弹射至多8次，造成物理伤害（每名敌人至多两次；对小兵造成65%伤害，并处决生命值低于15的小兵）。重置普攻计时。",
+ "champion.sivir.E.desc": "1.5秒内的法术护盾会格挡下一个敌方技能或弹道；格挡成功后治疗希维尔（% 攻击力 +50% 法强）并触发敏锐疾行。",
+ "champion.sivir.R.desc": "获得移动速度，持续8/10/12秒。持续期间每次普攻使Q、W、E的冷却缩短0.5秒；击杀精英或史诗怪物可刷新持续时间。"
 }

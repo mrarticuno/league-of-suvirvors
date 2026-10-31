@@ -175,6 +175,8 @@ export interface ChampionKit {
   ghost?(): boolean;
   /** True while the champion's own mechanics forbid basic attacks (e.g. a channel that replaces them). */
   disarmed?(): boolean;
+  /** A hostile ability (missile, hazard, boss attack; not a melee basic attack) is about to hurt the champion: true negates it (a spell shield). */
+  blockSpell?(): boolean;
   /** True when the basic attack about to start on `target` is the champion's melee one (`ChampionDef.melee`). */
   meleeAuto?(target: Enemy): boolean;
   /** Target for the next basic attack given the default pick (null: none in range); may be out of range (long-range marks). */

@@ -603,5 +603,20 @@
  "champion.ziggs.Q.desc": "Throws a bomb that bounces forward up to two times and explodes on landing near an enemy or on its last bounce, dealing magic damage within 240 units.",
  "champion.ziggs.W.desc": "Hurls a charge that detonates after 4s or when pressed again, dealing magic damage within 325 units and knocking enemies back. If the blast hits Ziggs, he is thrown away from it.",
  "champion.ziggs.E.desc": "Scatters 11 proximity mines that arm after 0.5s and last 10s. Each mine deals magic damage and Slows by 10–50% for 1.5s; an enemy takes 40% damage from later mines.",
- "champion.ziggs.R.desc": "Catapults a huge bomb to the target area that deals magic damage within 525 units, 50% more in its 250-unit epicenter."
+ "champion.ziggs.R.desc": "Catapults a huge bomb to the target area that deals magic damage within 525 units, 50% more in its 250-unit epicenter.",
+ "champion.sivir.name": "Sivir",
+ "champion.sivir.title": "the Battle Mistress",
+ "champion.sivir.passive": "Fleet of Foot",
+ "champion.sivir.Q": "Boomerang Blade",
+ "champion.sivir.W": "Ricochet",
+ "champion.sivir.E": "Spell Shield",
+ "champion.sivir.R": "On The Hunt",
+ "champion.sivir.hud": "Fleet of Foot +{ms} MS",
+ "champion.sivir.attackSpeed": "Attack Speed",
+ "champion.sivir.heal": "Heal (% AD)",
+ "champion.sivir.moveSpeed": "Move Speed",
+ "champion.sivir.Q.desc": "Hurls the crossblade 1250 units and it flies back to her, dealing physical damage to every enemy it passes on each way (damage grows with Critical Strike chance; 15% less per enemy hit, down to 40%, reset on the way back).",
+ "champion.sivir.W.desc": "For 4s her basic attacks gain Attack Speed and bounce up to 8 times to enemies within 500 units for physical damage (each enemy at most twice; 65% against minions, executing them below 15 Health). Resets her attack timer.",
+ "champion.sivir.E.desc": "A spell shield for 1.5s blocks the next enemy ability or projectile; blocking heals her (% AD +50% AP) and triggers Fleet of Foot.",
+ "champion.sivir.R.desc": "Gains Move Speed for 8/10/12s. While active, every basic attack cuts the cooldowns of Q, W and E by 0.5s; killing an elite or epic monster refreshes the duration."
 }

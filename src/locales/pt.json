@@ -603,5 +603,20 @@
  "champion.ziggs.Q.desc": "Arremessa uma bomba que quica para frente até duas vezes e explode ao cair perto de um inimigo ou no último quique, causando dano mágico em até 240 unidades.",
  "champion.ziggs.W.desc": "Arremessa uma carga que detona após 4s ou ao apertar de novo, causando dano mágico em até 325 unidades e arremessando os inimigos para longe. Se a explosão atingir Ziggs, ele é lançado para longe dela.",
  "champion.ziggs.E.desc": "Espalha 11 minas de proximidade que se armam após 0,5s e duram 10s. Cada mina causa dano mágico e Lentidão de 10–50% por 1,5s; um inimigo sofre 40% do dano das minas seguintes.",
- "champion.ziggs.R.desc": "Catapulta uma bomba enorme na área alvo, causando dano mágico em até 525 unidades e 50% a mais no epicentro de 250 unidades."
+ "champion.ziggs.R.desc": "Catapulta uma bomba enorme na área alvo, causando dano mágico em até 525 unidades e 50% a mais no epicentro de 250 unidades.",
+ "champion.sivir.name": "Sivir",
+ "champion.sivir.title": "a Mestra da Batalha",
+ "champion.sivir.passive": "Pés Ligeiros",
+ "champion.sivir.Q": "Lâmina Bumerangue",
+ "champion.sivir.W": "Ricochete",
+ "champion.sivir.E": "Escudo de Feitiço",
+ "champion.sivir.R": "Na Caçada",
+ "champion.sivir.hud": "Pés Ligeiros +{ms} VM",
+ "champion.sivir.attackSpeed": "Velocidade de Ataque",
+ "champion.sivir.heal": "Cura (% DdA)",
+ "champion.sivir.moveSpeed": "Velocidade de Movimento",
+ "champion.sivir.Q.desc": "Arremessa a lâmina a 1250 unidades e ela volta para a Sivir, causando dano físico a todo inimigo que atravessa na ida e na volta (o dano cresce com a chance de Acerto Crítico; 15% a menos por inimigo atingido, até 40%, reiniciado na volta).",
+ "champion.sivir.W.desc": "Por 4s os ataques básicos ganham Velocidade de Ataque e ricocheteiam até 8 vezes em inimigos a 500 unidades, causando dano físico (cada inimigo no máximo duas vezes; 65% contra tropas, executando-as abaixo de 15 de Vida). Reinicia o tempo do ataque.",
+ "champion.sivir.E.desc": "Um escudo de feitiço por 1,5s bloqueia a próxima habilidade ou projétil inimigo; bloquear cura a Sivir (% DdA +50% PdH) e ativa Pés Ligeiros.",
+ "champion.sivir.R.desc": "Ganha Velocidade de Movimento por 8/10/12s. Enquanto durar, cada ataque básico reduz as recargas de Q, W e E em 0,5s; abater um monstro elite ou épico renova a duração."
 }

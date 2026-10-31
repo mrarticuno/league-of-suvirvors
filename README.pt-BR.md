@@ -30,7 +30,7 @@
 
 ## Campeões
 
-Oito campeões jogáveis, cada um com o kit completo do LoL adaptado (detalhes em [Regras implementadas](#regras-implementadas)):
+Nove campeões jogáveis, cada um com o kit completo do LoL adaptado (detalhes em [Regras implementadas](#regras-implementadas)):
 
 | Campeão | Funções | Estilo |
 |---|---|---|
@@ -42,6 +42,7 @@ Oito campeões jogáveis, cada um com o kit completo do LoL adaptado (detalhes e
 | Teemo | Atirador · Mago | Parado ganha velocidade de ataque, veneno no ataque, cogumelos que quicam |
 | Lux | Maga · Suporte | Marcas de Iluminação, enraizamento, escudo e o laser da Centelha Final |
 | Ziggs | Mago | Bombas arremessadas: bomba que quica, carga que arremessa inimigos (e o Ziggs), campo minado e uma bomba que cruza o mapa |
+| Sivir | Atirador | Lâmina bumerangue na ida e na volta, ataques que ricocheteiam, escudo de feitiço e Na Caçada |
 
 ## Galeria
 
@@ -68,6 +69,10 @@ Oito campeões jogáveis, cada um com o kit completo do LoL adaptado (detalhes e
 | Aphelios | Samira |
 |---|---|
 | ![Aphelios: habilidades das armas, Fase e Vigília do Plenilúnio](docs/media/aphelios.gif) | ![Samira enfrentando uma horda em volta do Aronguejo](docs/media/samira.gif) |
+
+| Sivir | |
+|---|---|
+| ![Sivir: Lâmina Bumerangue, Ricochete, Escudo de Feitiço e Na Caçada contra uma horda](docs/media/sivir.gif) | |
 
 | Barão Na'Shor (20:00) | Menu de pausa: atributos, itens e botas |
 |---|---|
@@ -100,7 +105,7 @@ Os modelos **não estão no repositório** (são assets da Riot). Gere-os localm
 2. Lista de hashes (os `.bin` do jogo referenciam texturas/animações por hash xxh64):
    ```bash
    curl -s https://raw.communitydragon.org/data/hashes/lol/hashes.game.txt \
-     | grep -E "assets/characters/(ezreal|samira|brand|aphelios|aurelionsol|lux|teemo|ziggs|sru_|turret|inhibitor|nexus)" > assets-raw/hashes.filtered.txt
+     | grep -E "assets/characters/(ezreal|samira|brand|aphelios|aurelionsol|lux|teemo|ziggs|sivir|sru_|turret|inhibitor|nexus)" > assets-raw/hashes.filtered.txt
    ```
 3. Extrair dos WADs (`tools/extract_lol.py`) e converter para `.glb` (`tools/build_models.py`):
    ```bash
@@ -110,6 +115,7 @@ Os modelos **não estão no repositório** (são assets da Riot). Gere-os localm
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt brand assets-raw/brand "$G/Champions/Brand.wad.client"
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt aurelionsol assets-raw/aurelionsol "$G/Champions/AurelionSol.wad.client"
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt teemo assets-raw/teemo "$G/Champions/Teemo.wad.client"
+   .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt sivir assets-raw/sivir "$G/Champions/Sivir.wad.client"
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt teemomushroom assets-raw/teemomushroom "$G/Champions/Teemo.wad.client"
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt lux assets-raw/lux "$G/Champions/Lux.wad.client"
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt ziggs assets-raw/ziggs "$G/Champions/Ziggs.wad.client"
@@ -136,7 +142,7 @@ Os modelos **não estão no repositório** (são assets da Riot). Gere-os localm
    O `pieces` é um parser limitado do `.mapgeo` v14: se for pulado ou falhar (versão diferente do formato, WAD ausente), o runtime desenha caixas/cilindros escuros a partir dos obstáculos do layout — nada quebra.
 5. VFX das habilidades: sistemas de partículas do Ezreal lidos do `.bin` da skin, com todas as texturas e malhas que eles usam. Usa as listas de hashes baixadas no passo 4:
    ```bash
-   for c in ezreal samira brand aphelios aurelionsol lux teemo ziggs; do (cd tools && ../.venv-tools/bin/python build_vfx.py ../assets-raw/hashes $c ../public/assets/vfx/$c "$G"); done
+   for c in ezreal samira brand aphelios aurelionsol lux teemo ziggs sivir; do (cd tools && ../.venv-tools/bin/python build_vfx.py ../assets-raw/hashes $c ../public/assets/vfx/$c "$G"); done
    ```
    Gera `systems.json` (efeitos indexados pelas chaves do `ResourceResolver`, ex. `Ezreal_Q_mis`), `spells.json` (velocidade/largura/alcance dos mísseis) e os PNG/JSON dos assets. `tools/read_bin.py` sozinho converte qualquer `.bin` em JSON. O runtime dos emissores fica em `src/particles.ts`; `src/vfx.ts` só escolhe qual sistema tocar e onde.
 
@@ -234,6 +240,13 @@ WASD não é usado porque colide com Q/W/E.
   - **E (Campo Minado de Hexplosivos)**: um cacho (alcance 900) espalha 11 minas (3 no anel interno, 8 num anel de 200, giro aleatório) que se armam após 0,5 s e duram 10 s; cada uma explode num inimigo a até 135: 30–190 + 25–45% PdH e Lentidão de 10–50% por 1,5 s; um inimigo já atingido pela conjuração sofre 40% das minas seguintes.
   - **R (Bomba Megainfernal)**: alcance 5000; cai após 1,2 s até 2700, senão distância / 2250: 300/500/700 + 100% PdH no epicentro de 250, 65% disso até 525. Indicador da área de queda desde a conjuração, o anel que fecha 0,65 s antes da explosão.
   - Fora do LoL: custos Q 30–40, W 55, E 50–75, R 80 (os cortes do Brand); abates por habilidade restauram 10–30 de mana (nível; recarga de 1 s contra tropas e monstros pequenos); o raio do anel interno do Campo Minado (100) e os limites entre os mísseis de longo alcance do R são estimativas (ficam nos scripts, não no bin); sem execução de torre (não há torres).
+- **Sivir** (DataValues dos bins de feitiço, patch 26.20): alcance 500, lâminas a 1750 u/s lançadas alternando as mãos, crítico 175%. Todos os sistemas de partícula de gameplay da skin são usados (as duas lâminas do ataque e seus impactos, o bumerangue na ida e na volta, o brilho/lâmina/impacto do Ricochete, a barreira, o bloqueio e a cura, as linhas de velocidade, o redemoinho e o rastro de Na Caçada).
+  - **Passiva (Pés Ligeiros)**: ataques básicos (ao atacar) e acertos de habilidade dão 55–75 (nível) de Velocidade de Movimento fixa decaindo em 1,5 s.
+  - **Q (Lâmina Bumerangue)**: a lâmina voa 1250 unidades (velocidade 1450, largura 180) e volta para ela (velocidade 1200, largura 200), causando 60–160 + 70% DdA bônus + 60% PdH de dano físico a cada inimigo em cada passagem (uma vez por passagem), aumentado em 0–40% pela chance de crítico (+12% com Lâmina do Infinito); cada inimigo atingido reduz o dano em 15%, até 40%, reiniciado na volta. Tempo de conjuração 0,25 s, reduzido pela metade da velocidade de ataque bônus até 60%.
+  - **W (Ricochete)**: por 4 s, +20–40% de velocidade de ataque e os ataques básicos ricocheteiam até 8 vezes no inimigo novo mais próximo a 500 (cada inimigo no máximo duas vezes) por 40–50% DdA (×2 em crítico, +30% com Lâmina do Infinito; 65% contra tropas, executando-as abaixo de 15 de vida). Reinicia o tempo de ataque num buff novo. Os projéteis do Furacão de Runaan não ricocheteiam.
+  - **E (Escudo de Feitiço)**: escudo de feitiço por 1,5 s, sem custo de mana; bloquear um efeito hostil (projétil inimigo, área de perigo, ataque do Barão; golpes corpo a corpo não são feitiços) cura 60–80% DdA + 50% PdH e ativa Pés Ligeiros após 0,25 s.
+  - **R (Na Caçada)**: +20/25/30% de Velocidade de Movimento por 8/10/12 s; enquanto durar, cada ataque básico reduz as recargas de Q, W e E em 0,5 s.
+  - Fora do LoL: Pés Ligeiros conta qualquer inimigo (só campeões no LoL); Na Caçada é renovado por abates de elite e épico (abates de campeão em 3 s no LoL) e não tem aura para aliados; os custos de mana são os do LoL (Q 55–75, W 60, E 0, R 100).
 - **Level-up em duas etapas**:
   1. Um rank de habilidade, pela regra do LoL: básicas nos níveis 1/3/5/7/9, R nos níveis 6/11/16 (Aphelios: pontos de atributo, ver acima). A etapa é pulada quando não há rank disponível.
   2. Um item entre 3 sorteados (ou uma poção, com a build completa).
@@ -242,7 +255,7 @@ WASD não é usado porque colide com Q/W/E.
   - Cada item tem 5 níveis. Os atributos crescem de 40% (nível 1) a 100% (nível 5); a passiva é liberada no nível 3 com 60% da força, 80% no nível 4 e 100% no nível 5. Manamune, Cajado do Arcanjo e Aproximação do Inverno ganham a passiva transformada (Muramana, Abraço do Serafim, Fimbulwinter) no nível 5.
   - Catálogo: todos os lendários do Summoner's Rift, menos itens com ativa (Zhonya, Youmuu, as Hidras...), itens de suporte, itens de corta-cura (Lembrete Mortal, Serrespada Quimtec, Morellonomicon; a Armadura de Espinhos fica só com o reflexo) e passivas que dependem de visão ou de escudos de campeão (Glaive Umbral, Presa da Serpente). Campeões AD recebem itens de ataque, campeões AP itens de poder de habilidade, e os dois recebem tanques e híbridos.
   - Passivas adaptadas às hordas: gatilhos de "campeão" viram abates de monstro elite/épico; escudos de feitiço bloqueiam o próximo dano sofrido.
-  - Build recomendada por campeão (OP.GG, patch 16.21): ofertada três vezes mais e marcada como "Recomendado". Ezreal: Força da Trindade, Manamune, Lança de Shojin, Rancor de Serylda, Fome Eterna, Anjo Guardião. Samira: O Coletor, Gume do Infinito, Lembranças do Lorde Dominik, Arco-escudo Imortal, Sanguinária, Anjo Guardião. Brand: Tocha de Fogo Negro, Rylai, Liandry, Chama Sombria, Rabadon, Cajado do Vazio. Aphelios: A Coletora, Gume do Infinito, Lembranças do Lorde Dominik, Furacão de Runaan, Anjo Guardião, Sedenta por Sangue. Aurelion Sol: Liandry, Rylai, Rabadon, Cajado do Vazio, Chama Sombria, Ímpeto Cósmico. Teemo: Dente de Na'Shor, Tormento de Liandry, Criafendas, Capuz da Morte de Rabadon, Cajado do Vazio, Chama Sombria. Lux: Eco de Luden, Chama Sombria, Rabadon, Foco do Horizonte, Cajado do Vazio, Malevolência. Ziggs: Eco de Luden, Chama Sombria, Capuz da Morte de Rabadon, Cajado do Vazio, Véu da Banshee, Foco do Horizonte.
+  - Build recomendada por campeão (OP.GG, patch 16.21): ofertada três vezes mais e marcada como "Recomendado". Ezreal: Força da Trindade, Manamune, Lança de Shojin, Rancor de Serylda, Fome Eterna, Anjo Guardião. Samira: O Coletor, Gume do Infinito, Lembranças do Lorde Dominik, Arco-escudo Imortal, Sanguinária, Anjo Guardião. Brand: Tocha de Fogo Negro, Rylai, Liandry, Chama Sombria, Rabadon, Cajado do Vazio. Aphelios: A Coletora, Gume do Infinito, Lembranças do Lorde Dominik, Furacão de Runaan, Anjo Guardião, Sedenta por Sangue. Aurelion Sol: Liandry, Rylai, Rabadon, Cajado do Vazio, Chama Sombria, Ímpeto Cósmico. Teemo: Dente de Na'Shor, Tormento de Liandry, Criafendas, Capuz da Morte de Rabadon, Cajado do Vazio, Chama Sombria. Lux: Eco de Luden, Chama Sombria, Rabadon, Foco do Horizonte, Cajado do Vazio, Malevolência. Ziggs: Eco de Luden, Chama Sombria, Capuz da Morte de Rabadon, Cajado do Vazio, Véu da Banshee, Foco do Horizonte. Sivir: Ceifador de Essência, Lâmina Fugaz de Navori, Lâmina do Infinito, Lembrete Mortal de Lorde Dominik, Sedenta por Sangue, Anjo Guardião.
   - Build completa (6 itens no nível 5): o level-up oferece Poção de Vida ou de Mana (5% do máximo), e cada abate tem 1% de chance de derrubar um blueprint (pergaminho azul, 1 por run) que torna um item aleatório Lendário (+50% dos atributos; o slot ganha um anel dourado animado e a faixa "Lendário").
   - Botas: um 7º slot fora dos seis. Botas (+25 de Velocidade de Movimento) aos 5:00; abater o Aronguejo oferece Grevas do Berserker, Botas da Rapidez, Sapatos do Feiticeiro, Botas Galvanizadas de Aço (Blindagem: golpes físicos causam 10% menos dano), Passos de Mercúrio ou Botas Ionianas da Lucidez; abater o dragão as transforma no nível 3 (só atributos).
   - Ritmo: o lado dos inimigos (movimento, ataques, animações, ataques dos chefes, projéteis inimigos, ritmo de spawn) acelera de x1 aos 0:00 até x1,5 aos 5:00 e fica em x1,5. O relógio, as recargas, os buffs e o campeão seguem o tempo real.
@@ -302,6 +315,7 @@ Magos conjuram sem parar contra hordas, então os custos de mana do LoL foram re
 | Teemo | Q 40–60 (70–90) | nenhuma |
 | Lux | Q 40, W 40–60, E 50–70, R 80 | 10–30 quando um inimigo iluminado morre |
 | Ziggs | Q 30–40 (50–70), W 55 (80), E 50–75 (70–110), R 80 (100) | 10–30 em abates por habilidade |
+| Sivir | os do LoL (Q 55–75, W 60, E 0, R 100): ela vive de ataques básicos | nenhuma |
 
 ## Arquitetura (onde adicionar conteúdo)
 
