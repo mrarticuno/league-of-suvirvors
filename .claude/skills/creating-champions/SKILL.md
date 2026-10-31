@@ -142,6 +142,7 @@ Dump de um bin para consulta: `read_linked(Names('../assets-raw/hashes'), [Wad(.
 - **Marcas que expiram**: emissores de marca duram uma aplicação. Marca reaplicada precisa renovar o sistema (Lux: a cada 1 s, `renewFx`).
 - **Não suportado** (não gaste tempo forçando; deixe de fora e comente no kit): partículas de malha com `uvMode` 2 e textura de multiplicação com rolagem (anéis de constelação da Lux ficam fracos); beams entre dois ossos com UV repetido (os `BodyBeam` do Aurelion Sol viraram retângulos azuis chapados e foram tirados); campos orbitais/ruído; distorção. Quads de chão (`isGroundLayer`) ficam a `GROUND = 2`: a plataforma elevada do spawn os corta, então confira efeitos de chão longe do spawn.
 - Nunca entregue VFX que você não comparou com o jogo: pegue uma referência (vídeo/screenshot do LoL) de cada skill e compare com o seu screenshot. O usuário compara.
+- Impactos repetidos numa multidão já são ralados pelo `Vfx` (8 cópias cheias por chave, depois 8/n; teto global de 6000 partículas): não precisa de limite próprio para eles. Materiais de emissor são **compartilhados** por definição e nunca descartados (descartar apaga o programa de shader e a próxima rajada recompila: engasgo); nunca altere `mesh.material` de um emissor por instância.
 - Orçamento: marcas por inimigo em horda custam caro. Limite as simultâneas (Brand: 40 marcas, 12 anéis); acima disso a mecânica roda sem o visual. Impactos por cast numa multidão também (Lux: 30 por cast, `maxHitFx`).
 
 ## Desempenho (obrigatório)

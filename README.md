@@ -232,7 +232,7 @@ WASD is not used because it clashes with Q/W/E.
   - Recommended build per champion (OP.GG, patch 16.21): offered three times as often and tagged "Recommended". Ezreal: Trinity Force, Manamune, Spear of Shojin, Serylda's Grudge, Endless Hunger, Guardian Angel. Samira: The Collector, Infinity Edge, Lord Dominik's Regards, Immortal Shieldbow, Bloodthirster, Guardian Angel. Brand: Blackfire Torch, Rylai's, Liandry's, Shadowflame, Rabadon's, Void Staff. Aphelios: The Collector, Infinity Edge, Lord Dominik's Regards, Runaan's Hurricane, Guardian Angel, Bloodthirster. Aurelion Sol: Liandry's, Rylai's, Rabadon's, Void Staff, Shadowflame, Cosmic Drive. Teemo: Nashor's Tooth, Liandry's Torment, Riftmaker, Rabadon's Deathcap, Void Staff, Shadowflame. Lux: Luden's Echo, Shadowflame, Rabadon's, Horizon Focus, Void Staff, Malignance.
   - Complete build (6 items at level 5): level-ups offer a Health or Mana Potion (5% of max), and each kill has a 1% chance to drop a blueprint (blue scroll, 1 per run) that makes a random item Legendary (+50% stats; its slot gets an animated gold ring and a "Legendary" ribbon).
   - Boots: a 7th slot outside the six. Boots (+25 Move Speed) at 5:00; killing the Rift Scuttler offers a pick of Berserker's Greaves, Boots of Swiftness, Sorcerer's Shoes, Plated Steelcaps (Plating: physical hits deal 10% less), Mercury's Treads or Ionian Boots of Lucidity; killing the dragon turns them into their tier 3 (Gunmetal Greaves, Swiftmarch, Spellslinger's Shoes, Armored Advance, Chainlaced Crushers, Crimson Lucidity: stats only).
-  - Pace: the whole game speeds up from x1 at 0:00 to x2 at 5:00, then stays at x2.
+  - Pace: the enemy side (movement, attacks, animations, boss attacks, enemy projectiles, spawn rate) speeds up from x1 at 0:00 to x1.5 at 5:00, then stays at x1.5. The clock, cooldowns, buffs and the champion keep real time.
   - Standing still: damage taken grows (after armor) up to x5 after 5 seconds without moving.
   - ESC menu: every champion stat and each item with its stats and passive.
   - Resistances: physical damage is reduced by the enemy's armor (armor penetration, lethality), magic damage by its magic resist (magic penetration; monsters have half their armor as MR, minions none). Ranged enemies' projectiles deal magic damage (reduced by your MR), melee hits physical damage.
@@ -272,7 +272,7 @@ Current tuning, in one place (the full rules are above):
 
 | What | Value | Where |
 |---|---|---|
-| Game pace | x1 at 0:00 to x2 at 5:00, then x2 | `PACE` (`src/game.ts`) |
+| Game pace (enemies only) | x1 at 0:00 to x1.5 at 5:00, then x1.5 | `PACE` (`src/game.ts`) |
 | Standing still | damage taken up to x5 after 5 s without moving | `CAMPING` (`src/game.ts`) |
 | Baron Nashor | 70k health (fixed, no time scaling) | `ENEMIES.baron` (`src/data.ts`) |
 | Potions (complete build) | 5% of max health or mana | `POTION` (`src/items.ts`) |
@@ -299,7 +299,7 @@ Mages cast nonstop against hordes, so their LoL mana costs are lowered and their
   - Projectiles: `game.spawnMissile(vfx, from, to, { hit, target | pierce, onHit, ... })`. Without `onHit`, the default impact applies VFX, sound and damage.
 - **Item passives** (`src/itemEffects.ts` hooks, entries in `src/itemPassives/ad.ts`, `ap.ts`, `tank.ts`): each entry has the description (max-level numbers) and a hook factory `effect(g, power)` (`onHit`, `onHitMagic`, `onAttack`, `onCast`, `onDealt`, `onKill`, `onHurt`, `onStruck`, `onOverheal`, `tick`, `onLethal`, `stat`, `damageMult`...). `power()` is the passive's strength at the item's level (0.6/0.8/1): effects multiply their numbers by it, all-or-nothing ones (revive, spell shield) stretch their cooldown. Shared mechanics in `src/itemPassives/shared.ts`: Spellblade, Lifeline, spell shield, burns, Energized. `unique` + `rank` reproduce LoL's UNIQUE passives (only the best one works). Stats stay in `items.json`.
 - **Enemies** (`src/data.ts` + `src/enemies/`): a regular enemy only needs an `EnemyDef`. Custom behavior registers an AI in `AI`; timeline events with special rules (rolled dragon, Baron arena) register a spawner in `SPAWNERS`. `src/hazards.ts` has the ground markers and eruptions for bosses.
-- **Performance**: enemies live in a spatial grid (`src/spatial.ts`), so unit collision, targeting, projectiles and auras only query neighbors (collision used to be O(n²)). Per-frame lists are filtered in place (`compact`), spawn/kill windows are amortized O(1), the map rebuilds nothing while the player stays in the same chunk, and the HUD only writes to the DOM when a value changes. Enemies far from the champion update their animation every 3 frames.
+- **Performance**: enemies live in a spatial grid (`src/spatial.ts`), so unit collision, targeting, projectiles and auras only query neighbors (collision used to be O(n²)). Per-frame lists are filtered in place (`compact`), spawn/kill windows are amortized O(1), the map rebuilds nothing while the player stays in the same chunk, and the HUD only writes to the DOM when a value changes. Enemies far from the champion update their animation every 3 frames, and enemies outside the camera view are neither drawn nor animated (their animation time catches up when they come back). Particle emitters share one material per definition, so a burst never recompiles a shader, and reuse pooled geometry that uploads only the vertices written; overlapping copies of a one-shot effect (impacts on a crowd) thin out: the first 8 emit everything, the n-th 8/n of it, and past 6000 live particles every new one-shot thins too (`src/vfx.ts`).
 
 ## Known limitations / next steps
 
@@ -307,6 +307,7 @@ Mages cast nonstop against hordes, so their LoL mana costs are lowered and their
 - The source `.glb` files are heavy (Ezreal 29 MB, Baron 45 MB); `pnpm build:prod` (`tools/optimize.mjs`) drops clips the code never names, resamples and meshopt-compresses them (Ezreal 1.9 MB, Baron 1.9 MB).
 - Each enemy is a SkinnedMesh with its own mixer, capped at 260 alive (`MAX_ENEMIES`). For bigger hordes: texture-baked animation + instancing.
 - Dragons: animations shared from `sru_dragon`. Infernal and Mountain use the Cloud mesh (`sru_dragon_air`) with their own texture, as in the game (`EnemyDef.mesh`).
+- Next champions (chosen for wave clear): Sivir, Ziggs, Orianna, Viktor, Tristana, Jinx, Garen, Gangplank, Darius, Irelia, Olaf, Xerath, Karthus, Cassiopeia, Malzahar.
 
 ## Legal notice
 

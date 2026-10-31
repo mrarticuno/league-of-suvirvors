@@ -232,7 +232,7 @@ WASD não é usado porque colide com Q/W/E.
   - Build recomendada por campeão (OP.GG, patch 16.21): ofertada três vezes mais e marcada como "Recomendado". Ezreal: Força da Trindade, Manamune, Lança de Shojin, Rancor de Serylda, Fome Eterna, Anjo Guardião. Samira: O Coletor, Gume do Infinito, Lembranças do Lorde Dominik, Arco-escudo Imortal, Sanguinária, Anjo Guardião. Brand: Tocha de Fogo Negro, Rylai, Liandry, Chama Sombria, Rabadon, Cajado do Vazio. Aphelios: A Coletora, Gume do Infinito, Lembranças do Lorde Dominik, Furacão de Runaan, Anjo Guardião, Sedenta por Sangue. Aurelion Sol: Liandry, Rylai, Rabadon, Cajado do Vazio, Chama Sombria, Ímpeto Cósmico. Teemo: Dente de Na'Shor, Tormento de Liandry, Criafendas, Capuz da Morte de Rabadon, Cajado do Vazio, Chama Sombria. Lux: Eco de Luden, Chama Sombria, Rabadon, Foco do Horizonte, Cajado do Vazio, Malevolência.
   - Build completa (6 itens no nível 5): o level-up oferece Poção de Vida ou de Mana (5% do máximo), e cada abate tem 1% de chance de derrubar um blueprint (pergaminho azul, 1 por run) que torna um item aleatório Lendário (+50% dos atributos; o slot ganha um anel dourado animado e a faixa "Lendário").
   - Botas: um 7º slot fora dos seis. Botas (+25 de Velocidade de Movimento) aos 5:00; abater o Aronguejo oferece Grevas do Berserker, Botas da Rapidez, Sapatos do Feiticeiro, Botas Galvanizadas de Aço (Blindagem: golpes físicos causam 10% menos dano), Passos de Mercúrio ou Botas Ionianas da Lucidez; abater o dragão as transforma no nível 3 (só atributos).
-  - Ritmo: o jogo inteiro acelera de x1 aos 0:00 até x2 aos 5:00 e fica em x2.
+  - Ritmo: o lado dos inimigos (movimento, ataques, animações, ataques dos chefes, projéteis inimigos, ritmo de spawn) acelera de x1 aos 0:00 até x1,5 aos 5:00 e fica em x1,5. O relógio, as recargas, os buffs e o campeão seguem o tempo real.
   - Parado: o dano recebido cresce (após a armadura) até x5 depois de 5 segundos sem se mover.
   - Menu ESC: todos os atributos do campeão e cada item com seus atributos e passiva.
   - Resistências: dano físico é reduzido pela armadura do inimigo (penetração de armadura, letalidade), dano mágico pela resistência mágica (penetração mágica; monstros têm metade da armadura em RM, tropas nenhuma). Projéteis de inimigos à distância causam dano mágico (reduzido pela sua RM), golpes corpo a corpo dano físico.
@@ -272,7 +272,7 @@ Os ajustes atuais num lugar só (as regras completas estão acima):
 
 | O quê | Valor | Onde |
 |---|---|---|
-| Ritmo do jogo | x1 em 0:00 até x2 em 5:00, depois x2 | `PACE` (`src/game.ts`) |
+| Ritmo do jogo (só inimigos) | x1 em 0:00 até x1,5 em 5:00, depois x1,5 | `PACE` (`src/game.ts`) |
 | Ficar parado | dano recebido até x5 após 5 s sem se mover | `CAMPING` (`src/game.ts`) |
 | Barão Na'Shor | 70 mil de Vida (fixa, sem escala por tempo) | `ENEMIES.baron` (`src/data.ts`) |
 | Poções (build completa) | 5% da Vida ou Mana máxima | `POTION` (`src/items.ts`) |
@@ -299,7 +299,7 @@ Magos conjuram sem parar contra hordas, então os custos de mana do LoL foram re
   - Projéteis: `game.spawnMissile(vfx, de, para, { hit, target | pierce, onHit, ... })`. Sem `onHit`, o impacto padrão aplica VFX, som e dano.
 - **Passivas de itens** (hooks em `src/itemEffects.ts`, entradas em `src/itemPassives/ad.ts`, `ap.ts`, `tank.ts`): cada entrada tem a descrição (números do nível máximo) e uma fábrica de hooks `effect(g, power)` (`onHit`, `onHitMagic`, `onAttack`, `onCast`, `onDealt`, `onKill`, `onHurt`, `onStruck`, `onOverheal`, `tick`, `onLethal`, `stat`, `damageMult`...). `power()` é a força da passiva no nível do item (0,6/0,8/1): efeitos multiplicam seus números por ela, os de tudo-ou-nada (reviver, escudo de feitiço) esticam a recarga. Mecânicas comuns em `src/itemPassives/shared.ts`: Lâmina Arcana, Linha da Vida, escudo de feitiço, queimaduras, Energizado. `unique` + `rank` reproduzem as passivas ÚNICAS do LoL (só a melhor funciona). Stats continuam em `items.json`.
 - **Inimigos** (`src/data.ts` + `src/enemies/`): inimigo comum só precisa do `EnemyDef`. Comportamento próprio registra uma IA em `AI`; eventos da linha do tempo com regra especial (dragão sorteado, arena do Barão) registram um spawner em `SPAWNERS`. `src/hazards.ts` tem os marcadores de chão e erupções para chefes.
-- **Desempenho**: inimigos ficam numa grade espacial (`src/spatial.ts`), então colisão entre unidades, alvos, projéteis e auras consultam só os vizinhos (antes, colisão era O(n²)). Listas por frame são filtradas no lugar (`compact`), janelas de spawn/kill são O(1) amortizado, o mapa não refaz nada enquanto o jogador está no mesmo chunk, e o HUD só escreve no DOM quando um valor muda. Inimigos longe do campeão atualizam a animação a cada 3 frames.
+- **Desempenho**: inimigos ficam numa grade espacial (`src/spatial.ts`), então colisão entre unidades, alvos, projéteis e auras consultam só os vizinhos (antes, colisão era O(n²)). Listas por frame são filtradas no lugar (`compact`), janelas de spawn/kill são O(1) amortizado, o mapa não refaz nada enquanto o jogador está no mesmo chunk, e o HUD só escreve no DOM quando um valor muda. Inimigos longe do campeão atualizam a animação a cada 3 frames, e inimigos fora da visão da câmera não são desenhados nem animados (o tempo da animação é compensado quando voltam). Emissores de partícula compartilham um material por definição, então uma rajada nunca recompila shader, e reaproveitam geometria de um pool que envia só os vértices escritos; cópias sobrepostas de um efeito curto (impactos numa multidão) ficam mais ralas: as 8 primeiras emitem tudo, a n-ésima 8/n, e acima de 6000 partículas vivas todo efeito curto novo fica mais ralo (`src/vfx.ts`).
 
 ## Limitações conhecidas / próximos passos
 
@@ -307,6 +307,7 @@ Magos conjuram sem parar contra hordas, então os custos de mana do LoL foram re
 - Os `.glb` de origem são pesados (Ezreal 29 MB, Barão 45 MB); `pnpm build:prod` (`tools/optimize.mjs`) remove os clips que o código não usa, faz resample e comprime com meshopt (Ezreal 1,9 MB, Barão 1,9 MB).
 - Cada inimigo é um SkinnedMesh com o próprio mixer, com limite de 260 vivos (`MAX_ENEMIES`). Para hordas maiores: animação baked em textura + instancing.
 - Dragões: animações compartilhadas do `sru_dragon`. Infernal e Montanha usam a malha do Nuvens (`sru_dragon_air`) com a própria textura, como no jogo (`EnemyDef.mesh`).
+- Próximos campeões (escolhidos pelo clear de wave): Sivir, Ziggs, Orianna, Viktor, Tristana, Jinx, Garen, Gangplank, Darius, Irelia, Olaf, Xerath, Karthus, Cassiopeia, Malzahar.
 
 ## Aviso legal
 

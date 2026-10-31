@@ -130,7 +130,17 @@ void main() {
   gl_FragColor = c;
 }`;
 
+// one material per emitter definition, kept for the run: disposing it would delete its shader program once no
+// instance is alive, and the next burst of that effect would compile and link it again (a frame hitch)
+const materials = new WeakMap<Bin, THREE.ShaderMaterial>();
+const overlays = new WeakMap<Bin, THREE.ShaderMaterial[]>(); // attached-mesh materials of finished particles, per emitter
 function material(e: Bin) {
+  let m = materials.get(e);
+  if (!m) materials.set(e, (m = newMaterial(e)));
+  return m;
+}
+
+function newMaterial(e: Bin) {
   const defines: Record<string, string> = {};
   const uniforms: Record<string, THREE.IUniform> = {
     map: { value: textures.get(e.texture) ?? null },
@@ -200,10 +210,30 @@ class Buffers {
   }
 
   commit() {
-    for (const name of ['position', 'uv', 'aColor', 'aLife', 'aErode']) this.geo.getAttribute(name).needsUpdate = true;
-    this.geo.index!.needsUpdate = true;
+    // upload only the vertices written this frame (pooled buffers can be much larger)
+    for (const name of ['position', 'uv', 'aColor', 'aLife', 'aErode']) {
+      const a = this.geo.getAttribute(name) as THREE.BufferAttribute;
+      a.clearUpdateRanges();
+      a.addUpdateRange(0, this.nv * a.itemSize);
+      a.needsUpdate = true;
+    }
+    const idx = this.geo.index!;
+    idx.clearUpdateRanges();
+    idx.addUpdateRange(0, this.ni);
+    idx.needsUpdate = true;
     this.geo.setDrawRange(0, this.ni);
   }
+}
+
+// geometry of finished emitters, reused by new ones: an effect burst would otherwise create (and the driver
+// allocate) six GL buffers per emitter
+const pool: Buffers[] = [];
+const POOL_MAX = 512;
+function takeBuffers() {
+  const b = pool.pop() ?? new Buffers();
+  b.begin();
+  b.geo.setDrawRange(0, 0);
+  return b;
 }
 
 // ---- emitters ----
@@ -233,7 +263,7 @@ const GROUND = 2; // ground-layer geometry, just above the (flat) terrain
 class Emitter {
   particles: Particle[] = [];
   mesh: THREE.Mesh;
-  private buf = new Buffers();
+  private buf = takeBuffers();
   private age = 0;
   private acc = 0; // fractional particles waiting to spawn
   private burst = false;
@@ -283,7 +313,9 @@ class Emitter {
     for (const c of p.children ?? []) { c.sys.stop(); this.orphans.push(c.sys); }
     if (!p.overlay) return;
     for (const m of this.mesh.children.filter((m) => (m as THREE.Mesh).material === p.overlay)) m.removeFromParent();
-    p.overlay.dispose();
+    const free = overlays.get(this.e) ?? [];
+    free.push(p.overlay); // recycled, not disposed: see `materials`
+    overlays.set(this.e, free);
   }
 
   update(dt: number, delta: THREE.Matrix4) {
@@ -296,9 +328,9 @@ class Emitter {
     if (this.active && t0 >= 0) {
       if (e.isSingleParticle) {
         // single-particle emitters fire `rate` particles at once
-        if (!this.burst) { this.burst = true; for (let i = Math.max(1, Math.round(val(e.rate, 0) ?? 1)); i > 0; i--) this.spawn(et); }
+        if (!this.burst) { this.burst = true; for (let i = Math.max(1, Math.round((val(e.rate, 0) ?? 1) * this.sys.density)); i > 0; i--) this.spawn(et); }
       } else {
-        this.acc += (val(e.rate, et) ?? 0) * dt;
+        this.acc += (val(e.rate, et) ?? 0) * this.sys.density * dt;
         for (; this.acc >= 1 && this.particles.length < 600; this.acc--) this.spawn(et);
       }
     }
@@ -361,6 +393,7 @@ class Emitter {
       if (!def) return;
       const sys = new ParticleSystem(def, this.sys.scene!, p.pos, p.quat, { owner: this.sys.owner, size: this.sys.size, depth: this.sys.depth + 1 });
       sys.persistent = this.sys.persistent;
+      sys.density = this.sys.density;
       p.children!.push({ sys, at: vec3(bones?.[set.boneToSpawnAt?.[i]]) });
     });
   }
@@ -455,7 +488,7 @@ class Emitter {
     const e = this.e;
     // bins and models disagree on submesh case (BODY / Body)
     const names = (e.primitive.mMesh?.mSubmeshesToDraw as string[] | undefined)?.map((n) => n.toLowerCase());
-    const mat = new THREE.ShaderMaterial({
+    const mat = overlays.get(e)?.pop() ?? new THREE.ShaderMaterial({
       vertexShader: overlayVertex, fragmentShader: overlayFragment,
       uniforms: { map: { value: textures.get(e.texture) }, color: { value: new THREE.Vector4(1, 1, 1, 1) } },
       transparent: true, depthWrite: false, side: e.disableBackfaceCull ? THREE.DoubleSide : THREE.FrontSide,
@@ -678,8 +711,8 @@ class Emitter {
     for (const c of this.orphans) c.dispose();
     this.orphans = [];
     this.mesh.removeFromParent();
-    this.buf.geo.dispose();
-    (this.mesh.material as THREE.Material).dispose();
+    if (pool.length < POOL_MAX) pool.push(this.buf);
+    else this.buf.geo.dispose();
   }
 }
 
@@ -712,6 +745,7 @@ export class ParticleSystem {
   targetQuat?: THREE.Quaternion;
   scale = 1; // live size multiplier: particle sizes and new birth offsets (an area that grows, e.g. Starsurge)
   persistent = false; // kept until stopped (marks, glows, missiles): -1-lifetime particles live that long
+  density = 1; // fraction of the authored particles emitted (thinned when many copies of an effect overlap)
 
   constructor(def: Bin, scene: THREE.Scene, pos: THREE.Vector3, quat: THREE.Quaternion, opts: SystemOpts = {}) {
     this.owner = opts.owner;
@@ -743,6 +777,7 @@ export class ParticleSystem {
   /** Stops and cuts every particle short to its emitter's `particleLinger` (missile destroyed). */
   kill() { this.stopped = true; for (const e of this.emitters) e.kill(); }
   get done() { return this.emitters.every((e) => e.done); }
+  get particleCount() { let n = 0; for (const e of this.emitters) n += e.particles.length; return n; }
 
   update(dt: number) {
     this.delta.copy(this.prev).invert().premultiply(this.matrix);

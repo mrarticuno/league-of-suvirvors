@@ -207,12 +207,15 @@ function checkPrompts() {
 }
 
 let last = performance.now();
+const view = new THREE.Frustum(), viewMatrix = new THREE.Matrix4();
 function frame(now = last) {
   const dt = Math.min((now - last) / 1000, 0.05);
   last = now;
   requestAnimationFrame(frame);
   if (inMenu) return renderer.clear(); // black behind champion select and the rune page
-  if (!hud.menuOpen) game.update(dt * (cine?.timeScale ?? 1) * game.pace, moveInput()); // the ESC menu pauses the simulation
+  // last frame's camera view: enemies outside it are neither drawn nor animated
+  game.view = view.setFromProjectionMatrix(viewMatrix.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse));
+  if (!hud.menuOpen) game.update(dt * (cine?.timeScale ?? 1), moveInput()); // the ESC menu pauses the simulation
   checkPrompts();
   if (cine) cine.update();
   else {

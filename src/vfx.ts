@@ -10,13 +10,20 @@ export const loadVfx = loadParticles;
  * A running system, optionally following an object (missile root, W mark) until that object leaves the scene,
  * or a bone of an animated model (cast effects at the hand or weapon), keeping its facing.
  */
-interface Live { sys: ParticleSystem; follow?: THREE.Object3D; bone?: THREE.Object3D; dir?: THREE.Vector3; until?: number; killOnStop?: boolean }
+interface Live { sys: ParticleSystem; follow?: THREE.Object3D; bone?: THREE.Object3D; dir?: THREE.Vector3; until?: number; killOnStop?: boolean; shot?: string }
 type PlayOpts = Partial<Omit<Live, 'sys'>> & SystemOpts;
 const _p = new THREE.Vector3();
+// Overlapping copies of a one-shot effect (impacts on a crowd: a piercing ult, Infernum's bolts) thin out instead of
+// multiplying the particle count: the first SAME_FULL copies emit everything, the n-th SAME_FULL/n of it; past
+// PARTICLE_BUDGET live particles every new one-shot thins too. Every hit still shows its effect.
+const SAME_FULL = 8;
+const PARTICLE_BUDGET = 6000;
 
 export class Vfx {
   private live: Live[] = [];
   private time = 0;
+  private shots = new Map<string, number>(); // live one-shot systems per key
+  private particles = 0; // live particles, counted each update
   private flashes: { s: THREE.Sprite; age: number }[] = [];
   private enemyTex = glowTexture(); // drawn in code: enemy skillshots look the same for every champion
   constructor(private scene: THREE.Scene) {}
@@ -26,6 +33,13 @@ export class Vfx {
     for (const f of this.flashes) f.s.removeFromParent();
     this.live = [];
     this.flashes = [];
+    this.shots.clear();
+  }
+
+  private end(l: Live) {
+    l.sys.dispose();
+    if (l.shot) this.shots.set(l.shot, this.shots.get(l.shot)! - 1);
+    return false;
   }
 
   update(dt: number) {
@@ -39,7 +53,7 @@ export class Vfx {
     compact(this.live, (l) => {
       if (l.follow) {
         if (!l.follow.parent) {
-          if (l.killOnStop) { l.sys.dispose(); return false; }
+          if (l.killOnStop) return this.end(l);
           l.sys.kill(); // the followed object (missile) is gone: only lingering particles stay
         }
         else {
@@ -51,17 +65,25 @@ export class Vfx {
       if (l.until !== undefined && this.time >= l.until) l.sys.stop();
       l.sys.update(dt);
       if (!l.sys.done) return true;
-      l.sys.dispose();
-      return false;
+      return this.end(l);
     });
+    let n = 0;
+    for (const l of this.live) n += l.sys.particleCount;
+    this.particles = n;
   }
 
   play(key: string, at: THREE.Vector3, quat: THREE.Quaternion, { owner, size, target, targetQuat, bind, ...extra }: PlayOpts = {}) {
     const sys = createSystem(key, this.scene, at, quat, { owner, size, target, targetQuat, bind });
     // one-shot effects stop emitting after a while even if an emitter loops forever
     if (!sys) return sys;
-    const live = { sys, until: extra.follow ? undefined : this.time + 3, ...extra };
+    const live: Live = { sys, until: extra.follow ? undefined : this.time + 3, ...extra };
     sys.persistent = live.until === undefined;
+    if (live.until !== undefined && !live.bone) { // short-lived and free-standing: marks, glows and missiles keep full density
+      const same = (this.shots.get(key) ?? 0) + 1;
+      this.shots.set(key, same);
+      live.shot = key;
+      sys.density = Math.min(1, SAME_FULL / same, PARTICLE_BUDGET / Math.max(PARTICLE_BUDGET, this.particles));
+    }
     this.live.push(live);
     return sys;
   }

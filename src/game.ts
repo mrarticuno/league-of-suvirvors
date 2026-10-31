@@ -27,7 +27,9 @@ import { loadVfx, Vfx, type MissileFx } from './vfx';
 const SPAWN_RADIUS = 1800;
 const BASIC_LEVELS = [1, 3, 5, 7, 9], ULT_LEVELS = [6, 11, 16]; // LoL skill point rules (ChampionDef.rankLevels)
 const FLASH = { range: 400, cooldown: 120 };
-const PACE = { ramp: 300, max: 2 }; // the whole simulation speeds up from x1 at 0:00 to x2 at 5:00, then stays
+// the enemy side (movement, attacks, animations, boss AIs and hazards, enemy missiles, spawn rate) speeds up from x1 at
+// 0:00 to x1.5 at 5:00, then stays; the clock, cooldowns, buffs and the champion keep real time
+const PACE = { ramp: 300, max: 1.5 };
 const CAMPING = { ramp: 5, max: 5 }; // standing still: damage taken grows to x5 (after armor) over 5 s
 const BASE_MR = 30, BASE_MR_PER_LEVEL = 1.3; // LoL marksmen and mages: no champion file lists MR
 const DESPAWN_RADIUS = 3600;
@@ -39,6 +41,12 @@ const GRID_SLACK = 60; // enemies keep moving after the grid is built; queries w
 // advance their mixer every ANIM_LOD_STEP frames with the accumulated time
 const ANIM_LOD_DIST = 1400;
 const ANIM_LOD_STEP = 3;
+// view culling: an enemy whose bounding sphere (radius × VIEW_RADIUS + VIEW_MARGIN around its body) is outside the
+// camera view is neither drawn nor animated (its animation time accumulates for when it comes back into view)
+const VIEW_HEIGHT = 100;
+const VIEW_RADIUS = 3;
+const VIEW_MARGIN = 200;
+const _sphere = new THREE.Sphere();
 /** Sound key prefix of an enemy: the drakes share one bank for spawn/death. */
 const voice = (def: EnemyDef) => (def.model.startsWith('dragon_') ? 'dragon' : def.model);
 const PREFETCH = 60; // seconds before the timeline can first spawn an enemy that its model starts downloading
@@ -162,6 +170,7 @@ export class Game {
   private blueprint: THREE.Object3D | null = null; // scroll lying on the ground
   autoAttack = true;
   focus: Enemy | null = null; // right-click focus target
+  view: THREE.Frustum | null = null; // the camera's last view (main.ts), for culling enemies; null draws them all
   manualTarget: Enemy | null = null; // left-click target when auto attack is off
   pendingLevelUps = 1; // LoL grants a skill point at level 1
   private attackTimer = 0;
@@ -574,14 +583,15 @@ export class Game {
     }
     this.map.ensureChunks(this.pos);
     this.time += dt;
-    this.spawn(dt);
+    const fast = dt * this.pace; // enemy-side time (PACE)
+    this.spawn(fast);
     this.horde();
     this.respawnBuffMonsters();
     this.updatePlayer(dt, move);
-    this.updateEnemies(dt);
+    this.updateEnemies(fast);
     this.updateMissiles(dt);
     this.kit.update?.(dt);
-    this.hazards.update(dt, this.alive && this.stasis <= 0);
+    this.hazards.update(fast, this.alive && this.stasis <= 0);
     this.updateBlueprint(dt);
     if (!this.boots && this.time >= BOOTS_AT) this.setBoots(BOOTS_FIRST);
     this.updateBuffDrops(dt);
@@ -597,7 +607,7 @@ export class Game {
     }
   }
 
-  /** Simulation speed (main.ts scales the frame time by it): x1 at the start, PACE.max from PACE.ramp seconds on. */
+  /** Enemy-side speed: x1 at the start, PACE.max from PACE.ramp seconds on. */
   get pace() { return 1 + (PACE.max - 1) * Math.min(1, this.time / PACE.ramp); }
 
   /** Puts `id` in the boot slot (BOOTS), keeping HP/mana in step like an item. */
@@ -862,7 +872,7 @@ export class Game {
         if (m.target.deadFor >= 0) return this.removeMesh(m.mesh);
         m.dir.copy(m.target.pos).setY(m.pos.y).sub(m.pos).normalize();
       }
-      const step = m.speed * dt;
+      const step = m.speed * (m.hit ? dt : dt * this.pace); // enemy missiles (no `hit`) fly on enemy time
       m.pos.addScaledVector(m.dir, step);
       m.travelled += step;
       m.mesh.position.copy(m.pos);
@@ -1178,7 +1188,9 @@ export class Game {
     for (const e of this.enemies) {
       e.animDt += dt;
       const far = Math.abs(e.pos.x - this.pos.x) + Math.abs(e.pos.z - this.pos.z) > ANIM_LOD_DIST;
-      if (!far || (frame + e.id) % ANIM_LOD_STEP === 0) {
+      const seen = this.inView(e);
+      e.actor.root.visible = seen;
+      if (seen && (!far || (frame + e.id) % ANIM_LOD_STEP === 0)) {
         e.actor.update(e.animDt);
         e.animDt = 0;
       }
@@ -1249,6 +1261,14 @@ export class Game {
       if (e.def.tier === 'epic') compact(this.epics, (x) => x !== e);
       return false;
     });
+  }
+
+  /** Whether an enemy is inside the camera view (epic monsters always count: big models, arena effects). */
+  private inView(e: Enemy) {
+    if (!this.view || e.def.tier === 'epic') return true;
+    _sphere.center.set(e.pos.x, VIEW_HEIGHT, e.pos.z);
+    _sphere.radius = e.def.radius * VIEW_RADIUS + VIEW_MARGIN;
+    return this.view.intersectsSphere(_sphere);
   }
 
   /** Grid of the alive enemies on their positions after this frame's movement. */
