@@ -72,7 +72,7 @@
  "touch.autoOff": "MANUAL",
  "touch.autoOn": "AUTO",
  "item.3004.passive": "Asombro: obtienes DA adicional igual al 2,5% del Maná máximo. Impacto (nivel 5): los ataques infligen el 1,5% del Maná máximo como daño físico adicional.",
- "item.3026.passive": "Renacimiento: al recibir daño letal, entras en estasis durante 4 s y revives con el 50% de la Vida base y el Maná lleno (enfriamiento de 300 s).",
+ "item.3026.passive": "Renacimiento: al recibir daño letal, entras en estasis durante 4 s y revives con el 50% de la Vida base y el Maná lleno; los enemigos cercanos desaparecen sin dar XP (los monstruos épicos se quedan). Enfriamiento de 300 s.",
  "item.3031.passive": "+30% de daño de Golpe Crítico.",
  "item.3068.passive": "Inmolar: inflige 15 (+3 por nivel) (+2% de la Vida de objetos) de daño mágico por segundo a los enemigos a menos de 400 unidades.",
  "item.3071.passive": "Cortar: el daño físico reduce la Armadura del objetivo un 6% durante 6 s (se acumula 5 veces). Fervor: infligir daño físico otorga un 6% de Velocidad de Movimiento durante 2 s.",

@@ -1164,6 +1164,14 @@ export class Game {
     e.actor.play(e.def.anims.death, { loop: false, fade: 0.08 });
   }
 
+  /** Alive non-epic enemies within `radius` of the champion die without rewards (no XP, kills nor procs): a revive's breathing room. */
+  banish(radius: number) {
+    for (const e of this.enemies) {
+      if (e.deadFor >= 0 || e.def.tier === 'epic') continue;
+      if (e.pos.distanceTo(this.pos) - e.def.radius <= radius) this.markDead(e);
+    }
+  }
+
   /** Every alive enemy dies without rewards and hostile missiles vanish (a boss arena clearing the map). */
   despawnAll() {
     for (const e of this.enemies) if (e.deadFor < 0) this.markDead(e);

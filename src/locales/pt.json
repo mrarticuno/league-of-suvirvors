@@ -72,7 +72,7 @@
  "touch.autoOff": "MANUAL",
  "touch.autoOn": "AUTO",
  "item.3004.passive": "Fascínio: recebe DdA adicional igual a 2,5% da Mana máxima. Choque (nível 5): ataques causam 1,5% da Mana máxima como dano físico adicional.",
- "item.3026.passive": "Renascimento: ao sofrer dano letal, entra em estase por 4s e revive com 50% da Vida base e Mana cheia (recarga de 300s).",
+ "item.3026.passive": "Renascimento: ao sofrer dano letal, entra em estase por 4s e revive com 50% da Vida base e Mana cheia; inimigos próximos somem sem dar XP (monstros épicos ficam). Recarga de 300s.",
  "item.3031.passive": "+30% de dano de Acerto Crítico.",
  "item.3068.passive": "Imolar: causa 15 (+3 por nível) (+2% da Vida de itens) de dano mágico por segundo a inimigos a até 400 unidades.",
  "item.3071.passive": "Talhar: dano físico reduz a Armadura do alvo em 6% por 6s (acumula 5 vezes). Fervor: causar dano físico concede 6% de Velocidade de Movimento por 2s.",

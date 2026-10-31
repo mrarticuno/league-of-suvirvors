@@ -11,6 +11,7 @@ const critMult = (g: Game) => g.champ.base.critDamage + g.items.critDamage;
 /** LoL "a–b based on level" (levels 1..18). */
 const byLevel = (g: Game, a: number, b: number) => a + ((b - a) * (Math.min(g.level, 18) - 1)) / 17;
 const bonusHp = (g: Game) => g.maxHp - g.baseHp;
+const GA_CLEAR_RADIUS = 700; // about an ADC's attack range plus a step: room to walk out after the revive
 // lets an ability spend Voltaic's Energized charge through its on-hit
 const AUTO_PROBE: Hit = { type: 'physical', source: 'auto' };
 
@@ -71,7 +72,7 @@ export const AD_PASSIVES: Record<string, ItemPassive> = {
       };
     },
   },
-  '3026': { // Guardian Angel
+  '3026': { // Guardian Angel: enemies around the revive vanish without XP (epics stay)
     desc: t('item.3026.passive'),
     effect: (g, power) => {
       let readyAt = 0;
@@ -80,6 +81,7 @@ export const AD_PASSIVES: Record<string, ItemPassive> = {
           if (g.time < readyAt) return false;
           readyAt = g.time + scaledCooldown(300, power);
           g.enterStasis(4, () => {
+            g.banish(GA_CLEAR_RADIUS); // otherwise the revive lands inside the pile that killed us
             g.hp = 0.5 * g.baseHp;
             g.mana = g.maxMana;
           });

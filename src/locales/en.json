@@ -72,7 +72,7 @@
  "touch.autoOff": "MANUAL",
  "touch.autoOn": "AUTO",
  "item.3004.passive": "Awe: gain bonus AD equal to 2.5% of max Mana. Shock (level 5): attacks deal 1.5% of max Mana as bonus physical damage.",
- "item.3026.passive": "Rebirth: on taking lethal damage, enter stasis for 4s and revive with 50% base Health and full Mana (300s cooldown).",
+ "item.3026.passive": "Rebirth: on taking lethal damage, enter stasis for 4s, then revive with 50% base Health and full Mana; enemies nearby vanish without giving XP (epic monsters stay). 300s cooldown.",
  "item.3031.passive": "+30% Critical Strike damage.",
  "item.3068.passive": "Immolate: deal 15 (+3 per level) (+2% item Health) magic damage per second to enemies within 400 units.",
  "item.3071.passive": "Carve: physical damage reduces the target's Armor by 6% for 6s (stacks 5 times). Fervor: dealing physical damage grants 6% Move Speed for 2s.",
