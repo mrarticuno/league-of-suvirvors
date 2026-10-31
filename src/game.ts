@@ -79,6 +79,7 @@ export interface Enemy {
   mrShredUntil: number;
   slowPct: number; // movement slow while time < slowUntil
   slowUntil: number;
+  slowFade: number; // > 0: the slow fades linearly to nothing over its last slowFade seconds
   stunUntil: number; // no moving nor attacking while time < stunUntil (generic loop only: EnemyAI bosses ignore it)
   rootUntil: number; // no moving (still attacks) while time < rootUntil (generic loop only, like stunUntil)
   blindUntil: number; // basic attacks miss while time < blindUntil (generic loop only, like stunUntil)
@@ -509,11 +510,24 @@ export class Game {
     this.shieldUntil = Math.max(this.shieldUntil, this.time + seconds);
     for (const fx of this.itemFx) fx.onShield?.();
   }
-  slow(e: Enemy, pct: number, seconds: number) {
+  /** `fade`: the slow decays to nothing over `seconds` instead of holding (e.g. Command: Dissonance after leaving its field). */
+  slow(e: Enemy, pct: number, seconds: number, fade = false) {
+    if (fade || e.slowFade > 0) {
+      if (pct < this.slowAmount(e)) return; // a stronger slow is running
+      e.slowPct = pct;
+      e.slowUntil = this.time + seconds;
+      e.slowFade = fade ? seconds : 0;
+      return;
+    }
     e.slowPct = Math.max(this.isSlowed(e) ? e.slowPct : 0, pct);
     e.slowUntil = Math.max(e.slowUntil, this.time + seconds);
   }
   isSlowed(e: Enemy) { return e.slowUntil > this.time; }
+  /** Movement slow of `e` right now (0..1). */
+  slowAmount(e: Enemy) {
+    if (!this.isSlowed(e)) return 0;
+    return e.slowFade > 0 ? e.slowPct * Math.min(1, (e.slowUntil - this.time) / e.slowFade) : e.slowPct;
+  }
   /** Root: the enemy cannot move for `seconds` but still attacks (generic loop only, like stunEnemy). */
   rootEnemy(e: Enemy, seconds: number) { e.rootUntil = Math.max(e.rootUntil, this.time + seconds); }
   /** Blind: the enemy's basic attacks miss for `seconds` (generic loop only, like stunEnemy). */
@@ -1229,7 +1243,7 @@ export class Game {
     const e: Enemy = {
       id: this.nextId++, def, actor, pos: at ?? new THREE.Vector3(this.pos.x + Math.cos(a) * r, 0, this.pos.z + Math.sin(a) * r),
       hp, maxHp: hp, attackTimer: 0, windup: -1, deadFor: -1, animDt: 0,
-      armor: (def.armor ?? ENEMY_ARMOR[def.tier]) * (epic ? 1 : enemyArmorScale(this.time)), shred: 0, shredUntil: 0, slowPct: 0, slowUntil: 0, stunUntil: 0, rootUntil: 0, blindUntil: 0, airUntil: 0, airFor: 0,
+      armor: (def.armor ?? ENEMY_ARMOR[def.tier]) * (epic ? 1 : enemyArmorScale(this.time)), shred: 0, shredUntil: 0, slowPct: 0, slowUntil: 0, slowFade: 0, stunUntil: 0, rootUntil: 0, blindUntil: 0, airUntil: 0, airFor: 0,
       mr: ENEMY_MR[def.tier] * (epic ? 1 : enemyArmorScale(this.time)), mrShred: 0, mrShredUntil: 0,
     };
     e.ai = AI[def.model]?.(this, e);
@@ -1323,7 +1337,7 @@ export class Game {
         // movement stays on real time (dt / pace): PACE made mobs outrun the champion; non-epic mobs are also capped
         // below the champion's base move speed so kiting always works
         const speed = e.def.tier === 'epic' ? e.def.speed : Math.min(e.def.speed, ENEMY_SPEED_CAP * B.moveSpeed);
-        e.pos.addScaledVector(toPlayer.normalize(), speed * (this.isSlowed(e) ? 1 - e.slowPct : 1) * dt / this.pace);
+        e.pos.addScaledVector(toPlayer.normalize(), speed * (1 - this.slowAmount(e)) * dt / this.pace);
         e.actor.play(e.def.anims.run, { fade: 0.2 });
       }
       e.actor.root.rotation.y = Math.atan2(this.pos.x - e.pos.x, this.pos.z - e.pos.z);

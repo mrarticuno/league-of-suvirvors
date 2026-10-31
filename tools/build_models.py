@@ -29,6 +29,9 @@ MODELS = {
     "lux": ("lux", "lux_base_cm_tx.png", []),
     "ziggs": ("ziggs", "ziggs_base_tx_cm.png", []),
     "sivir": ("sivir", "sivir.png", []),
+    "orianna": ("orianna", "orianna_base_tx_cm.png", []),
+    # The Ball parked on the ground or riding Orianna's shield: the OriannaBall character (own mesh, one idle clip)
+    "oriannaball": ("oriannaball", "orianna_base_tx_cm.png", []),
     "aphelios_guns": ("aphelios", "../aphelios/aphelios_base_guns_tx_cm.png", []),
     # Crescendum's sentry: own mesh and clips, wearing Aphelios' gun texture (OWN_MESH)
     "apheliosturret": ("apheliosturret", "../aphelios/aphelios_base_guns_tx_cm.png", []),
@@ -70,6 +73,7 @@ SKIP_CLIPS = {
     "teemo": re.compile(r"_to|_in$|_in_|spell4_(-|[1-9])|homeguard|channel|knockup|stun|spawn|dance|joke|laugh|taunt|recall"),
     "aphelios": re.compile(r"_to_|_in$|homeguard|_fast$|nomove|_-?\d+$|dance|joke|laugh|taunt|respawn|recall|channel"),
     "sivir": re.compile(r"channel|dance|joke|laugh|taunt|respawn|recall"),
+    "orianna": re.compile(r"channel|dance|joke|laugh|taunt"),
 }
 
 # entries whose "../" texture belongs to another folder but that still have a mesh of their own

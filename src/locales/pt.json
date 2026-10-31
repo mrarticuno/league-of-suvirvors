@@ -628,5 +628,19 @@
  "champion.sivir.Q.desc": "Arremessa a lâmina a 1250 unidades e ela volta para a Sivir, causando dano físico a todo inimigo que atravessa na ida e na volta (o dano cresce com a chance de Acerto Crítico; 15% a menos por inimigo atingido, até 40%, reiniciado na volta).",
  "champion.sivir.W.desc": "Por 4s os ataques básicos ganham Velocidade de Ataque e ricocheteiam até 8 vezes em inimigos a 500 unidades, causando dano físico (cada inimigo no máximo duas vezes; 65% contra tropas, executando-as abaixo de 15 de Vida). Reinicia o tempo do ataque.",
  "champion.sivir.E.desc": "Um escudo de feitiço por 1,5s bloqueia a próxima habilidade ou projétil inimigo; bloquear cura a Sivir (% DdA +50% PdH) e ativa Pés Ligeiros.",
- "champion.sivir.R.desc": "Ganha Velocidade de Movimento por 8/10/12s. Enquanto durar, cada ataque básico reduz as recargas de Q, W e E em 0,5s; abater um monstro elite ou épico renova a duração."
+ "champion.sivir.R.desc": "Ganha Velocidade de Movimento por 8/10/12s. Enquanto durar, cada ataque básico reduz as recargas de Q, W e E em 0,5s; abater um monstro elite ou épico renova a duração.",
+ "champion.orianna.name": "Orianna",
+ "champion.orianna.title": "a Donzela Mecânica",
+ "champion.orianna.passive": "Dando Corda",
+ "champion.orianna.Q": "Comando: Atacar",
+ "champion.orianna.W": "Comando: Dissonância",
+ "champion.orianna.E": "Comando: Proteger",
+ "champion.orianna.R": "Comando: Onda de Choque",
+ "champion.orianna.hud": "Corda {stacks}/{max}",
+ "champion.orianna.speed": "Velocidade de Movimento / Lentidão",
+ "champion.orianna.shield": "Escudo",
+ "champion.orianna.Q.desc": "Ordena que a Bola voe até o local alvo (até 825 unidades) e fique lá, causando dano mágico aos inimigos por onde passa e aos inimigos a até 175 do ponto onde para. Os inimigos atingidos depois do primeiro sofrem 70%.",
+ "champion.orianna.W.desc": "A Bola emite um pulso elétrico que causa dano mágico aos inimigos a até 225 e deixa um campo por 3s: inimigos dentro dele sofrem 20–40% de Lentidão e Orianna dentro dele ganha o mesmo em Velocidade de Movimento, os dois diminuindo ao longo de 2s depois de sair.",
+ "champion.orianna.E.desc": "Ordena que a Bola volte voando até Orianna e se prenda a ela, causando dano mágico aos inimigos por onde passa e concedendo a ela um Escudo por 2,5s. Enquanto presa, a Bola concede 6–30 de Armadura e Resistência Mágica.",
+ "champion.orianna.R.desc": "Após 0,5s, a Bola libera uma onda de choque que causa dano mágico aos inimigos a até 415, os arremessa 325 unidades em direção a ela e os atordoa por 0,75s."
 }

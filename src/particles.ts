@@ -251,6 +251,23 @@ interface Particle {
 
 const PRIMITIVES = new Set([undefined, 'VfxPrimitiveArbitraryQuad', 'VfxPrimitiveMesh', 'VfxPrimitiveArbitraryTrail', 'VfxPrimitiveCameraTrail',
   'VfxPrimitiveRay', 'VfxPrimitiveAttachedMesh', 'VfxPrimitiveBeam']);
+const _n = new THREE.Vector3();
+const normalCache = new WeakMap<object, number[]>();
+/** Flat normals of a particle mesh (a triangle soup: three positions per face), per vertex. */
+function faceNormals(m: { pos: number[] }) {
+  let out = normalCache.get(m);
+  if (out) return out;
+  out = new Array(m.pos.length).fill(0);
+  const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3();
+  for (let i = 0; i + 8 < m.pos.length; i += 9) {
+    a.fromArray(m.pos, i); b.fromArray(m.pos, i + 3); c.fromArray(m.pos, i + 6);
+    c.sub(b); b.sub(a);
+    const nrm = b.cross(c).normalize();
+    for (let k = 0; k < 3; k++) nrm.toArray(out, i + k * 3);
+  }
+  normalCache.set(m, out);
+  return out;
+}
 /** Simple (.scb/.sco) or skinned (.skn) particle mesh. */
 const meshName = (e: Bin): string | undefined => e.primitive?.mMesh?.mSimpleMeshName ?? e.primitive?.mMesh?.mMeshName;
 // particle rotations (degrees): yaw last, around the world up (Lux's rune rings lie flat, then spin)
@@ -459,7 +476,8 @@ class Emitter {
     const frames = e.numFrames ?? texDiv[0] * texDiv[1];
     const life = birth(e.particleLifetime, et);
     this.particles.push({
-      age: 0, life: life > 0 ? life : Infinity, // -1: lives as long as the system
+      // -1: lives as long as the system; with a known `duration` (a buff's) it lives and animates over what is left of it
+      age: 0, life: life > 0 ? life : sys.duration ? Math.max(0.05, sys.duration - this.age) : Infinity,
       pos: local.applyMatrix4(sys.matrix),
       vel: vel.applyQuaternion(sys.quat),
       acc: vec3(birth(e.birthAcceleration, et)).applyQuaternion(sys.quat),
@@ -560,10 +578,22 @@ class Emitter {
         const n = m.pos.length / 3;
         b.reserve(n, n);
         _q.copy(p.quat).multiply(new THREE.Quaternion().setFromEuler(_e.set(r.x * DEG, r.y * DEG, r.z * DEG, 'YXZ')));
+        const rim = e.reflectionDefinition?.fresnelColor && camera ? e.reflectionDefinition : null;
+        const normals = rim ? faceNormals(m) : null;
+        const cv = rim ? [0, 0, 0, 0] : c;
         for (let i = 0; i < n; i++) {
           _w.set(m.pos[i * 3], m.pos[i * 3 + 1], m.pos[i * 3 + 2]).multiply(s).applyQuaternion(_q).add(p.pos);
           const [u, v] = uv(m.uv[i * 2], m.uv[i * 2 + 1]);
-          b.idx[b.ni++] = b.vert(_w, u, v, c, pt, erode);
+          if (rim) {
+            // Fresnel rim (VfxReflectionDefinitionData): fresnelColor (its alpha the strength) added where the surface turns
+            // away from the camera. League's exact curve is unknown: (1 - |N·V|)^(1/Fresnel) (Fresnel 0.5: squared)
+            const nv = Math.abs(_n.fromArray(normals!, i * 3).applyQuaternion(_q).dot(_v.setFromMatrixPosition(camera!.matrixWorld).sub(_w).normalize()));
+            const f = Math.pow(1 - nv, 1 / Math.max(0.05, rim.Fresnel ?? 1));
+            const fc = rim.fresnelColor;
+            for (let k = 0; k < 3; k++) cv[k] = c[k] + fc[k] * fc[3] * f * c[3];
+            cv[3] = c[3];
+          }
+          b.idx[b.ni++] = b.vert(_w, u, v, cv, pt, erode);
         }
         continue;
       }
@@ -722,8 +752,10 @@ class Emitter {
  * `owner`: the model attached-mesh emitters redraw; `size`: the bound object's size, for FlexShape emitters;
  * `target`: where beams end (kept live: move the vector), `targetQuat` the frame of their target offset.
  * `bind`: every particle follows the system's frame (effects authored static that a kit moves).
+ * `duration`: seconds the effect is bound to (League plays it on a buff of that length): -1-lifetime particles live and
+ * run their over-life curves over it instead of sitting at their first key (e.g. Command: Dissonance's field).
  */
-export interface SystemOpts { owner?: THREE.Object3D; size?: number; target?: THREE.Vector3; targetQuat?: THREE.Quaternion; depth?: number; bind?: boolean }
+export interface SystemOpts { owner?: THREE.Object3D; size?: number; target?: THREE.Vector3; targetQuat?: THREE.Quaternion; depth?: number; bind?: boolean; duration?: number }
 
 export class ParticleSystem {
   readonly matrix = new THREE.Matrix4();
@@ -737,6 +769,7 @@ export class ParticleSystem {
   readonly owner?: THREE.Object3D;
   readonly size?: number;
   readonly bind: boolean; // every particle rides the system (an effect authored static, moved by a kit)
+  readonly duration?: number; // SystemOpts.duration
   readonly afterimage: boolean;
   readonly scene?: THREE.Scene;
   readonly depth: number; // child systems nest: a bound on runaway sets
@@ -751,6 +784,7 @@ export class ParticleSystem {
     this.owner = opts.owner;
     this.size = opts.size;
     this.bind = !!opts.bind;
+    this.duration = opts.duration;
     this.scene = scene;
     this.depth = opts.depth ?? 0;
     this.name = def.particleName ?? '';

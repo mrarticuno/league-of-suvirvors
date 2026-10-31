@@ -628,5 +628,19 @@
  "champion.sivir.Q.desc": "掷出十字刃飞行1250码后返回希维尔，去程与回程各对途经的每名敌人造成一次物理伤害（伤害随暴击几率提高；每命中一名敌人减少15%，最低40%，回程时重置）。",
  "champion.sivir.W.desc": "4秒内普攻获得攻击速度并在500码内的敌人之间弹射至多8次，造成物理伤害（每名敌人至多两次；对小兵造成65%伤害，并处决生命值低于15的小兵）。重置普攻计时。",
  "champion.sivir.E.desc": "1.5秒内的法术护盾会格挡下一个敌方技能或弹道；格挡成功后治疗希维尔（% 攻击力 +50% 法强）并触发敏锐疾行。",
- "champion.sivir.R.desc": "获得移动速度，持续8/10/12秒。持续期间每次普攻使Q、W、E的冷却缩短0.5秒；击杀精英或史诗怪物可刷新持续时间。"
+ "champion.sivir.R.desc": "获得移动速度，持续8/10/12秒。持续期间每次普攻使Q、W、E的冷却缩短0.5秒；击杀精英或史诗怪物可刷新持续时间。",
+ "champion.orianna.name": "奥莉安娜",
+ "champion.orianna.title": "发条魔灵",
+ "champion.orianna.passive": "发条协奏",
+ "champion.orianna.Q": "指令：攻击",
+ "champion.orianna.W": "指令：杂音",
+ "champion.orianna.E": "指令：防卫",
+ "champion.orianna.R": "指令：冲击波",
+ "champion.orianna.hud": "发条 {stacks}/{max}",
+ "champion.orianna.speed": "移动速度 / 减速",
+ "champion.orianna.shield": "护盾",
+ "champion.orianna.Q.desc": "命令魔偶飞向目标地点（最远825码）并停留在那里，对途经的敌人和落点175码内的敌人造成魔法伤害。第一个之后被命中的敌人受到70%的伤害。",
+ "champion.orianna.W.desc": "魔偶释放电脉冲，对225码内的敌人造成魔法伤害，并留下持续3秒的力场：其中的敌人受到20–40%的减速，其中的奥莉安娜获得等量的移动速度，离开后两者在2秒内逐渐消失。",
+ "champion.orianna.E.desc": "命令魔偶飞回奥莉安娜并附着在她身上，对途经的敌人造成魔法伤害，并为她提供持续2.5秒的护盾。附着时，魔偶为她提供6–30点护甲和魔法抗性。",
+ "champion.orianna.R.desc": "0.5秒后，魔偶释放冲击波，对415码内的敌人造成魔法伤害，将其朝魔偶抛掷325码并眩晕0.75秒。"
 }

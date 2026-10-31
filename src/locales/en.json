@@ -628,5 +628,19 @@
  "champion.sivir.Q.desc": "Hurls the crossblade 1250 units and it flies back to her, dealing physical damage to every enemy it passes on each way (damage grows with Critical Strike chance; 15% less per enemy hit, down to 40%, reset on the way back).",
  "champion.sivir.W.desc": "For 4s her basic attacks gain Attack Speed and bounce up to 8 times to enemies within 500 units for physical damage (each enemy at most twice; 65% against minions, executing them below 15 Health). Resets her attack timer.",
  "champion.sivir.E.desc": "A spell shield for 1.5s blocks the next enemy ability or projectile; blocking heals her (% AD +50% AP) and triggers Fleet of Foot.",
- "champion.sivir.R.desc": "Gains Move Speed for 8/10/12s. While active, every basic attack cuts the cooldowns of Q, W and E by 0.5s; killing an elite or epic monster refreshes the duration."
+ "champion.sivir.R.desc": "Gains Move Speed for 8/10/12s. While active, every basic attack cuts the cooldowns of Q, W and E by 0.5s; killing an elite or epic monster refreshes the duration.",
+ "champion.orianna.name": "Orianna",
+ "champion.orianna.title": "the Lady of Clockwork",
+ "champion.orianna.passive": "Clockwork Windup",
+ "champion.orianna.Q": "Command: Attack",
+ "champion.orianna.W": "Command: Dissonance",
+ "champion.orianna.E": "Command: Protect",
+ "champion.orianna.R": "Command: Shockwave",
+ "champion.orianna.hud": "Clockwork Winding {stacks}/{max}",
+ "champion.orianna.speed": "Move Speed / Slow",
+ "champion.orianna.shield": "Shield",
+ "champion.orianna.Q.desc": "Commands the Ball to fly to the target location (up to 825 units) and stay there, dealing magic damage to enemies it passes through and to enemies within 175 of where it lands. Enemies hit after the first take 70%.",
+ "champion.orianna.W.desc": "The Ball emits an electric pulse that deals magic damage to enemies within 225 and leaves a field for 3s: enemies inside are slowed by 20–40% and Orianna inside gains as much Move Speed, both fading over 2s after leaving it.",
+ "champion.orianna.E.desc": "Commands the Ball to fly back to Orianna and attach to her, dealing magic damage to enemies it passes through and granting her a Shield for 2.5s. While attached, the Ball grants her 6–30 Armor and Magic Resist.",
+ "champion.orianna.R.desc": "After 0.5s, the Ball unleashes a shockwave that deals magic damage to enemies within 415, tosses them 325 units toward it and stuns them for 0.75s."
 }

@@ -72,8 +72,8 @@ export class Vfx {
     this.particles = n;
   }
 
-  play(key: string, at: THREE.Vector3, quat: THREE.Quaternion, { owner, size, target, targetQuat, bind, ...extra }: PlayOpts = {}) {
-    const sys = createSystem(key, this.scene, at, quat, { owner, size, target, targetQuat, bind });
+  play(key: string, at: THREE.Vector3, quat: THREE.Quaternion, { owner, size, target, targetQuat, bind, duration, ...extra }: PlayOpts = {}) {
+    const sys = createSystem(key, this.scene, at, quat, { owner, size, target, targetQuat, bind, duration });
     // one-shot effects stop emitting after a while even if an emitter loops forever
     if (!sys) return sys;
     const live: Live = { sys, until: extra.follow ? undefined : this.time + 3, ...extra };

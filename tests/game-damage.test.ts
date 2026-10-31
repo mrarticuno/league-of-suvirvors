@@ -63,3 +63,18 @@ it('standing still multiplies damage taken (after armor) up to x5 after 5 second
   expect(taken(player(30))).toBeCloseTo(250);
   expect(taken(player(0, '3047'))).toBeCloseTo(45); // Plating: physical hits deal 10% less
 });
+
+it('a fading slow decays to nothing over its length; a held slow stays whole', () => {
+  const g = { time: 0, slow: Game.prototype.slow, isSlowed: Game.prototype.isSlowed, slowAmount: Game.prototype.slowAmount };
+  const e = { slowPct: 0, slowUntil: 0, slowFade: 0 } as unknown as Enemy;
+  g.slow(e, 0.4, 2, true);
+  g.time = 1;
+  expect(g.slowAmount(e)).toBeCloseTo(0.2);
+  g.slow(e, 0.1, 1); // weaker than what is left: ignored
+  expect(g.slowAmount(e)).toBeCloseTo(0.2);
+  g.time = 2.1;
+  expect(g.slowAmount(e)).toBe(0);
+  g.slow(e, 0.3, 1);
+  g.time = 2.9;
+  expect(g.slowAmount(e)).toBeCloseTo(0.3);
+});
