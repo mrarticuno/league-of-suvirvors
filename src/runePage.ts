@@ -172,7 +172,7 @@ export function showRunePage(champ: ChampionDef, onPlay: (page: Page) => void, o
     const sCount = page.secondary === secondaryView ? page.secondaryRunes.length : 0;
     const summary = [page.keystone, ...page.primaryRunes, ...page.secondaryRunes].filter((x): x is string => !!x).map((id) =>
       `<img class="${RUNES[id].row === 0 ? 'k' : ''}" src="${RUNES[id].icon}" alt="${RUNES[id].name}" title="${RUNES[id].name}" style="--c:${TREE_COLOR[RUNES[id].tree]}">`).join('');
-    root.innerHTML = `<div class="rp-bg"></div>${WHEEL}${MOTES}
+    root.innerHTML = `<div class="rp-bg">${WHEEL}${MOTES}</div>
       <header class="rp-head">
         <button class="cta ghost" data-back aria-label="${t('runes.back')}">${CHEVRON('M15 5l-7 7 7 7')}<span>${t('runes.back')}</span></button>
         <div class="rp-title"><span class="kicker">${champ.name}</span><h1>${t('runes.heading')}</h1></div>

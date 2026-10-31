@@ -10,3 +10,4 @@ __pycache__/
 l2g
 .claude/hooks/
 .claude/skills/post-update/SKILL.md
+.hud-audit/
