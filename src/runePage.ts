@@ -4,7 +4,7 @@ import { ROLES, SKILL_KEYS, type ChampionDef, type Role } from './champion';
 import { CHAMPIONS } from './champions';
 import { t, type Key } from './i18n';
 import {
-  browserStorage, choosePrimary, chooseSecondary, emptyPage, equipRune, equipShard, KILLS_PER_POINT, loadProgress, nodeCost,
+  browserStorage, choosePrimary, chooseSecondary, emptyPage, equipRune, equipShard, KILLS_PER_POINT, loadProgress, NODE_COST_STEP, nodeCost,
   saveProgress, SHARD_ROW_COST, unlockRune, unlockShardRow, type Page, type Progress,
 } from './progress';
 import { RUNES, runesOf, SHARDS, TREE_IDS, TREES, type RuneDef, type TreeId } from './runes';
@@ -60,7 +60,7 @@ export function showChampionSelect(onPick: (champ: ChampionDef) => void) {
     const q = query.trim().toLowerCase();
     const list = all.filter((c) => (role === 'all' || c.roles.includes(role)) && (!q || c.name.toLowerCase().includes(q)));
     const soon = role === 'all' && !q;
-    $('sel-filters').innerHTML = (['all', ...ROLES] as const).map((r) => {
+    $('sel-filters').innerHTML = (['all', ...ROLES.filter((r) => all.some((c) => c.roles.includes(r)))] as const).map((r) => {
       const n = r === 'all' ? all.length : all.filter((c) => c.roles.includes(r)).length;
       return `<button class="chip ${role === r ? 'on' : ''}" data-role="${r}" aria-pressed="${role === r}">${roleIcon(r)}${r === 'all' ? t('select.all') : roleName(r)}<b>${n}</b></button>`;
     }).join('');
@@ -155,12 +155,13 @@ export function showRunePage(champ: ChampionDef, onPlay: (page: Page) => void, o
     const short = st === 'locked' ? `<div class="short"><div><span>${t('runes.progress', { have: progress.points, cost })}</span></div>
       <div class="track"><i style="width:${Math.min(100, (progress.points / cost) * 100).toFixed(0)}%"></i></div>
       <span>${t('runes.earn', { n: KILLS_PER_POINT })}</span></div>` : '';
+    const rule = st === 'on' || st === 'open' ? '' : `<p class="rule">${t('runes.costRule', { n: NODE_COST_STEP })}</p>`;
     return `<div class="in" style="--dc:${TREE_COLOR[r.tree]}">
       <div class="d-top"><div class="big"><span class="halo"></span><div class="art ${st === 'on' || st === 'open' ? '' : 'dim'} ${burst && fx!.kind === 'unseal' ? 'unseal' : ''}"><img src="${r.icon}" alt=""></div>${burst ? rings : ''}</div>
         <div><div class="tags"><span>${TREES[r.tree].name}</span>${r.row === 0 ? `<span class="k">${t('runes.keystoneTag')}</span>` : ''}</div>
         <h3 class="d-name">${r.name}</h3><span class="d-state ${st}">${t(state[st])}</span></div></div>
       <p class="d-desc">${r.desc}</p>
-      <div class="d-act">${short}${button}<button id="runes-play-m" class="cta gold" data-play>${t('static.play')}</button></div></div>`;
+      <div class="d-act">${short}${rule}${button}<button id="runes-play-m" class="cta gold" data-play>${t('static.play')}</button></div></div>`;
   };
 
   const render = () => {

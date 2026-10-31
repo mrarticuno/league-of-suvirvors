@@ -5,7 +5,7 @@ import { dpsGain, SKILL_KEYS, skillNumbers, skillScore, type ChampionDef, type S
 import { ENEMIES, HORDE, xpToNext } from './data';
 import { t, type Key } from './i18n';
 import type { Choice, Game } from './game';
-import { KILLS_PER_POINT, nodeCost, type Progress } from './progress';
+import { KILLS_PER_POINT, nodeCost, type Page, type Progress } from './progress';
 import { PASSIVES, type FxStat } from './itemEffects';
 import {
   BOOTS, BOOTS_AT, buildComplete, describeStats, itemIcon, ITEMS, LEGENDARY_BONUS, MAX_ITEMS, PLATING, MAX_LEVEL, offerScore, PASSIVE_LEVEL, PASSIVE_POWER, POTIONS, rollOffers, statsAt, statValue,
@@ -494,7 +494,7 @@ export class Hud {
     $('end-runes').textContent = t('end.runes', { kills: KILLS_PER_POINT - progress.killRemainder });
     countUp($('end-kills'), g.kills, 1200, 900);
     countUp($('end-points'), gained, 1300, 1300, '+');
-    $('end-hook').innerHTML = hook(progress);
+    $('end-hook').innerHTML = hook(progress, page);
     $('end-fx').innerHTML = Array.from({ length: 24 }, () =>
       `<i class="ember" style="left:${(Math.random() * 100).toFixed(1)}%;top:${(won ? 55 + Math.random() * 45 : Math.random() * 30).toFixed(1)}%;animation-duration:${(5 + Math.random() * 5).toFixed(1)}s;animation-delay:${(Math.random() * 6).toFixed(1)}s"></i>`).join('');
     $('restart').textContent = t(won ? 'end.again' : 'end.retry');
@@ -517,9 +517,12 @@ function countUp(el: HTMLElement, to: number, ms: number, delay: number, prefix 
   requestAnimationFrame(step);
 }
 
-/** The cheapest locked rune: "you can unlock it now", else how many points it still takes. */
-function hook(p: Progress) {
-  const locked = Object.values(RUNES).filter((r) => !p.unlocked.includes(r.id))
+/** The cheapest locked rune of the page's trees (any tree once those are done): "you can unlock it now", else how many points it still takes. */
+function hook(p: Progress, page: Page) {
+  const trees = [page.primary, page.secondary].filter(Boolean);
+  const all = Object.values(RUNES).filter((r) => !p.unlocked.includes(r.id));
+  const own = all.filter((r) => trees.includes(r.tree));
+  const locked = (own.length ? own : all)
     .map((r) => ({ r, cost: nodeCost(p, r.tree) }))
     .sort((a, b) => a.cost - b.cost || a.r.row - b.r.row);
   const next = locked[0];

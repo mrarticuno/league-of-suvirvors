@@ -547,6 +547,7 @@
       .d-act .cta { width: 100%; height: 60px; font-size: 17px; }
       .short { display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: var(--muted); }
       .short div:first-child { display: flex; justify-content: space-between; }
+      .d-act .rule { margin: 0; font-size: 12px; color: var(--muted); }
       .short .track { height: 8px; background: #05080f; box-shadow: inset 0 0 0 1px #1e2a40; }
       .short .track i { display: block; height: 100%; background: linear-gradient(90deg, #4a7fc0, #8fc7ff); }
       .rp-foot { position: sticky; bottom: 0; z-index: 1; width: 100%; margin-top: auto; display: flex; align-items: center; justify-content: space-between; }
@@ -578,7 +579,7 @@
         .detail > .in { clip-path: none; padding: 16px 16px max(16px, env(safe-area-inset-bottom)); gap: 10px; background: linear-gradient(180deg, rgba(10, 17, 32, 0.97), #05080f); box-shadow: 0 -1px 0 var(--gold-dim), 0 -20px 40px rgba(0, 0, 0, 0.6); }
         .big { width: 52px; height: 52px; } .big .halo { inset: -6px; } .d-top { gap: 14px; } .d-name { font-size: 18px; margin: 2px 0; } .tags { display: none; }
         .d-desc { font-size: 13px; min-height: 0; max-height: clamp(36px, 7vh / var(--ui-scale, 1), 58px); overflow: hidden; }
-        .d-act { flex-direction: row; gap: 8px; } .d-act .cta { flex: 1; width: auto; height: 46px; padding: 0 8px; font-size: 14px; } .short { display: none; }
+        .d-act { flex-direction: row; gap: 8px; } .d-act .cta { flex: 1; width: auto; height: 46px; padding: 0 8px; font-size: 14px; } .short, .d-act .rule { display: none; }
         .rp-foot { display: none; }
         .detail #runes-play-m { display: flex; }
       }

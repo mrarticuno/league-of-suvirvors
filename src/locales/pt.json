@@ -281,6 +281,7 @@
  "runes.missing": "Faltam {n} pontos",
  "runes.progress": "{have} / {cost} pontos",
  "runes.earn": "1 ponto a cada {n} abates.",
+  "runes.costRule": "Cada runa desbloqueada numa árvore aumenta o custo da próxima em {n} pontos.",
  "runes.yourPage": "Sua página",
  "shard.adaptive": "Força adaptativa +9",
  "shard.ah": "Aceleração de habilidade +8",

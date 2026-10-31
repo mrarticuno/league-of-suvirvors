@@ -281,6 +281,7 @@
  "runes.missing": "还差{n}点",
  "runes.progress": "{have} / {cost} 点",
  "runes.earn": "每{n}次击杀获得1点。",
+  "runes.costRule": "每在一棵符文树中解锁一个符文，下一个的花费增加{n}点。",
  "runes.yourPage": "你的符文页",
  "shard.adaptive": "适应之力 +9",
  "shard.ah": "技能急速 +8",
