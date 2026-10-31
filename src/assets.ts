@@ -66,7 +66,8 @@ async function fetchModel(id: string, hide: readonly string[], mesh: string, { t
     mesh.frustumCulled = false; // skinned bounds don't follow animation
   });
   for (const clip of gltf.animations) {
-    const kept = clip.tracks.filter((t) => !isUnkeyed(t, gltf.scene));
+    // tracks of bones the mesh does not have (fingers of a shared rig) would make every mixer warn on bind
+    const kept = clip.tracks.filter((t) => !isUnkeyed(t, gltf.scene) && gltf.scene.getObjectByName(THREE.PropertyBinding.parseTrackName(t.name).nodeName));
     // The drakes' flying_attack1/spell1 also store keyed translations as offsets from the bind pose
     // (Root y ~0 instead of ~84 sinks the drake into the ground). Other clips with unkeyed bones, e.g. murkwolf death, are absolute.
     if (clip.name === 'sru_dragon_flying_attack1' || clip.name === 'sru_dragon_flying_spell1') {
@@ -123,6 +124,13 @@ function isUnkeyed(track: THREE.KeyframeTrack, scene: THREE.Object3D) {
   return true;
 }
 
+/** The loaded model (shared, never mutate): its scene and clips. */
+export function template(id: string): Template {
+  const t = templates.get(id);
+  if (!t) throw new Error(`model ${id} not loaded`);
+  return t;
+}
+
 /** A static (unanimated) clone of a loaded model, for scenery. */
 export function propModel(id: string): THREE.Object3D {
   const t = templates.get(id);
@@ -152,8 +160,8 @@ export class Actor {
   /** Detached rig: the bone hierarchy lives outside `root` (not in the scene), so moving the actor costs one matrix and the
    *  bones only recompute when `update` runs. Bone world positions are then rig-local (unusable for world VFX). */
   private rig: THREE.Object3D | null = null;
-  private skeletons: THREE.Skeleton[] = [];
-  private poseDirty = true;
+  private skeletons: THREE.Skeleton[] = []; // one per skinned mesh (SkeletonUtils.clone), all over the same bones
+  private dirty = new Set<THREE.Skeleton>(); // skeletons whose bone matrices lag the rig's pose
 
   constructor(id: string, scale = 1, opts: { detachedRig?: boolean } = {}) {
     const t = templates.get(id);
@@ -195,7 +203,8 @@ export class Actor {
     }
     for (const sk of this.skeletons) {
       const update = sk.update.bind(sk);
-      sk.update = () => { if (this.poseDirty) { update(); this.poseDirty = false; } };
+      sk.update = () => { if (this.dirty.delete(sk)) update(); };
+      this.dirty.add(sk);
     }
     this.rig = model;
     return true;
@@ -279,7 +288,7 @@ export class Actor {
   update(dt: number) {
     this.mixer.update(dt);
     for (const b of this.collapsed) b.scale.setScalar(0);
-    if (this.rig) { this.rig.updateMatrixWorld(true); this.poseDirty = true; }
+    if (this.rig) { this.rig.updateMatrixWorld(true); for (const sk of this.skeletons) this.dirty.add(sk); }
     if (this.path) this.followPath(this.path);
     const evs = this.events?.[this.currentName];
     if (!evs || !this.current || !this.onEvent) return;

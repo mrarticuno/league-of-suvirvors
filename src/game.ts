@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { Actor, loadModel, modelLoaded } from './assets';
+import { Horde, InstancedActor } from './horde';
 import { audio } from './audio';
 import { BUFF, buffEffects, isBuffMonster, type BuffKey } from './buffs';
 import { MAX_CHAMPION_LEVEL, SKILL_KEYS, type AttackProp, type BoneVfx, type ChampionDef, type ChampionKit, type Hit, type SkillKey } from './champion';
@@ -38,14 +39,10 @@ const AIR_HEIGHT = 220; // peak of an enemy knock-up arc (Game.knockUp)
 const AIM_FAR = 5000; // 'move' aim: farther than any dash or blink
 const GRID_CELL = 150;
 const GRID_SLACK = 60; // enemies keep moving after the grid is built; queries widen by this much
-const TOUCH = 1.1; // two enemies within this × their radii count as touching (Enemy.near)
-const TOUCH2 = (TOUCH / 0.8) ** 2; // touching, relative to the squared push-apart distance
 // animation LOD: skinning is most of the frame, so enemies this far from the champion (screen edge and beyond)
 // advance their mixer every ANIM_LOD_STEP frames with the accumulated time
 const ANIM_LOD_DIST = 1400;
 const ANIM_LOD_STEP = 3;
-// buried in a pile: an alive enemy touching this many others is not animated (nobody can see it); attacking ones still are
-const PACKED_NEIGHBOURS = 5;
 // view culling: an enemy whose bounding sphere (radius × VIEW_RADIUS + VIEW_MARGIN around its body) is outside the
 // camera view is neither drawn nor animated (its animation time accumulates for when it comes back into view)
 const VIEW_HEIGHT = 100;
@@ -68,13 +65,12 @@ const grow = (base: number, perLevel: number, level: number) => {
 export interface Enemy {
   id: number; // spawn order: unit collision visits each pair once
   def: EnemyDef;
-  actor: Actor;
+  actor: Actor | InstancedActor;
   pos: THREE.Vector3;
   hp: number;
   maxHp: number;
   attackTimer: number;
   windup: number; // seconds left in attack windup, <0 when not attacking
-  near: number; // alive enemies touching this one last frame (unit collision): deep in a pile, nobody sees it animate
   deadFor: number; // seconds since death, <0 while alive
   armor: number;
   shred: number; // Black Cleaver stacks
@@ -193,6 +189,7 @@ export class Game {
   focus: Enemy | null = null; // right-click focus target
   view: THREE.Frustum | null = null; // the camera's last view (main.ts), for culling enemies; null draws them all
   enemyCap = MAX_ENEMIES; // alive enemies at most; the frame governor (main.ts) lowers it on a device that drops frames
+  private hordes = new Map<string, Horde>(); // instanced non-epic enemies, one per model
   manualTarget: Enemy | null = null; // left-click target when auto attack is off
   pendingLevelUps = 1; // LoL grants a skill point at level 1
   private attackTimer = 0;
@@ -1274,11 +1271,12 @@ export class Game {
     const a = Math.random() * Math.PI * 2;
     const r = SPAWN_RADIUS + Math.random() * 200;
     const epic = def.tier === 'epic';
-    const actor = new Actor(def.model, def.scale, { detachedRig: true }); // enemies never need bone world positions
+    // epics keep a full Actor (bone-attached VFX, one of each); everything else is an instance of its model's horde
+    const actor = epic ? new Actor(def.model, def.scale, { detachedRig: true }) : this.hordeOf(def.model).actor(def.scale ?? 1);
     const hp = def.hp * (epic ? 1 : enemyHpScale(this.time, this.level));
     const e: Enemy = {
       id: this.nextId++, def, actor, pos: at ?? new THREE.Vector3(this.pos.x + Math.cos(a) * r, 0, this.pos.z + Math.sin(a) * r),
-      hp, maxHp: hp, attackTimer: 0, windup: -1, near: 0, deadFor: -1, animDt: 0,
+      hp, maxHp: hp, attackTimer: 0, windup: -1, deadFor: -1, animDt: 0,
       armor: (def.armor ?? ENEMY_ARMOR[def.tier]) * (epic ? 1 : enemyArmorScale(this.time)), shred: 0, shredUntil: 0, slowPct: 0, slowUntil: 0, slowFade: 0, stunUntil: 0, rootUntil: 0, blindUntil: 0, airUntil: 0, airFor: 0,
       mr: ENEMY_MR[def.tier] * (epic ? 1 : enemyArmorScale(this.time)), mrShred: 0, mrShredUntil: 0,
     };
@@ -1296,6 +1294,12 @@ export class Game {
     return e;
   }
 
+  private hordeOf(model: string) {
+    let h = this.hordes.get(model);
+    if (!h) this.hordes.set(model, (h = new Horde(model, this.scene, MAX_ENEMIES * 2))); // the dying keep their slot for 2s
+    return h;
+  }
+
   private enemyHitDamage(def: EnemyDef) {
     if (def.damageMax) return def.damage + Math.random() * (def.damageMax - def.damage);
     return def.damage * enemyDamageScale(this.time, this.crowd);
@@ -1311,8 +1315,7 @@ export class Game {
       const far = Math.abs(e.pos.x - this.pos.x) + Math.abs(e.pos.z - this.pos.z) > ANIM_LOD_DIST;
       const seen = this.inView(e);
       e.actor.root.visible = seen;
-      const buried = e.near >= PACKED_NEIGHBOURS && e.deadFor < 0 && e.windup < 0 && !e.ai;
-      if (seen && !buried && (!far || (frame + e.id) % ANIM_LOD_STEP === 0)) {
+      if (seen && (!far || (frame + e.id) % ANIM_LOD_STEP === 0)) {
         e.actor.update(e.animDt);
         e.animDt = 0;
       }
@@ -1387,6 +1390,7 @@ export class Game {
       e.actor.root.position.copy(e.pos);
       if (e.airUntil > this.time) e.actor.root.position.y = Math.sin((1 - (e.airUntil - this.time) / e.airFor) * Math.PI) * AIR_HEIGHT;
     }
+    for (const h of this.hordes.values()) h.sync();
     compact(this.enemies, (e) => {
       if (e.deadFor < 2) return true;
       e.actor.dispose();
@@ -1410,25 +1414,23 @@ export class Game {
     let r = 0;
     for (const e of this.enemies) {
       if (e.deadFor >= 0) continue;
-      e.near = 0;
       this.grid.insert(e);
       if (e.def.radius > r) r = e.def.radius;
     }
     this.maxEnemyRadius = r;
   }
 
-  /** Push overlapping units apart (and out of the champion), like LoL unit collision. Grid neighbours only. Also counts `near`. */
+  /** Push overlapping units apart (and out of the champion), like LoL unit collision. Grid neighbours only. */
   private separate() {
     const B = this.champ.base;
     const ghost = this.kit.ghost?.() ?? false;
     for (const a of this.enemies) {
       if (a.deadFor >= 0) continue;
-      for (const b of this.grid.query(a.pos.x, a.pos.z, (a.def.radius + this.maxEnemyRadius) * TOUCH + GRID_SLACK, this.nearSep)) {
+      for (const b of this.grid.query(a.pos.x, a.pos.z, (a.def.radius + this.maxEnemyRadius) * 0.8 + GRID_SLACK, this.nearSep)) {
         if (b.id <= a.id || b.deadFor >= 0) continue; // each pair once
         const dx = b.pos.x - a.pos.x, dz = b.pos.z - a.pos.z;
         const min = (a.def.radius + b.def.radius) * 0.8;
         const d2 = dx * dx + dz * dz;
-        if (d2 < min * min * TOUCH2) { a.near++; b.near++; }
         if (d2 >= min * min || d2 === 0) continue;
         const ka = a.def.immovable ? 0 : b.def.immovable ? 1 : 0.5; // share of the push each side takes
         if (a.def.immovable && b.def.immovable) continue;
