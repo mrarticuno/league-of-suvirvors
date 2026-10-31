@@ -1,5 +1,6 @@
 import type { Enemy } from '../game';
 import { ADAPTIVE_AD, isBig, isOwnHit, RUNE_HIT, runeList } from './def';
+import { VAMP_MULT } from '../items';
 
 const tiers = (kills: number, every: number, max: number) => Math.min(max, Math.floor(kills / every));
 
@@ -67,7 +68,7 @@ export const PRECISION = runeList('precision', [
         if (!isOwnHit(hit)) return;
         stacks = Math.min(12, active() + (hit.source === 'ability' ? 2 : 1));
         until = g.time + 5;
-        if (stacks === 12) g.heal(0.0008 * dealt); // vamp is 1% of LoL's, like items (src/items.ts VAMP_MULT)
+        if (stacks === 12) g.heal(0.08 * VAMP_MULT * dealt); // vamp scaled like items
       },
       stat: (k) => (k === 'ad' ? active() * ADAPTIVE_AD * (2 + 0.12 * (g.level - 1)) : 0),
     };

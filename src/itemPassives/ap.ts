@@ -4,6 +4,7 @@ import type { Hit } from '../champion';
 import type { Enemy, Game } from '../game';
 import { t } from '../i18n';
 import type { ItemPassive } from '../itemEffects';
+import { VAMP_MULT } from '../items';
 import { ITEM_MAGIC, burns, combat, isBig, lifeline, spellShield, spellblade } from './shared';
 
 const isAbility = (hit: Hit) => hit.source === 'ability';
@@ -156,7 +157,7 @@ export const AP_PASSIVES: Record<string, ItemPassive> = {
         tick: fight.tick,
         onDealt: fight.onDealt,
         damageMult: () => 1 + Math.min(0.08, 0.02 * Math.floor(fight.seconds())) * power(),
-        stat: (k) => (k === 'ap' ? 0.02 * power() * g.items.hp : k === 'omnivamp' && fight.seconds() >= 4 ? 0.001 * power() : 0),
+        stat: (k) => (k === 'ap' ? 0.02 * power() * g.items.hp : k === 'omnivamp' && fight.seconds() >= 4 ? 0.1 * VAMP_MULT * power() : 0),
       };
     },
   },

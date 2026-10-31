@@ -3,9 +3,10 @@ import type { Hit } from '../champion';
 import type { Enemy, Game } from '../game';
 import { t } from '../i18n';
 import type { ItemPassive } from '../itemEffects';
+import { VAMP_MULT } from '../items';
 import { combat, energized, isAuto, isBig, ITEM_MAGIC, ITEM_PHYSICAL, ITEM_TRUE, lifeline, scaledCooldown, spellblade, spellShield } from './shared';
 
-const VAMP = 0.01; // passive vamp is 1% of LoL's, like item vamp stats (items.ts VAMP_MULT)
+const VAMP = VAMP_MULT; // passive vamp is scaled like item vamp stats
 const critMult = (g: Game) => g.champ.base.critDamage + g.items.critDamage;
 /** LoL "a–b based on level" (levels 1..18). */
 const byLevel = (g: Game, a: number, b: number) => a + ((b - a) * (Math.min(g.level, 18) - 1)) / 17;
