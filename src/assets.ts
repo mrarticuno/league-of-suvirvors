@@ -195,6 +195,9 @@ export class Actor {
     this.root.add(body);
     model.updateMatrixWorld(true); // model at the origin: matrixWorld is the mesh's transform relative to the model root
     for (const m of meshes) {
+      // a single-mesh export parents the bone tree under the mesh itself: it has to stay behind in the rig, or it leaves
+      // with the mesh (no animation binds, and the bones carry the root's transform a second time: the model renders far away)
+      for (const c of [...m.children]) if ((c as THREE.Bone).isBone) model.attach(c);
       m.bindMode = THREE.DetachedBindMode; // bindMatrix stays the loader's (mesh transform at bind), now applied in rig space
       m.bindMatrixInverse.copy(m.bindMatrix).invert();
       m.matrix.copy(m.matrixWorld);

@@ -296,7 +296,9 @@
       .sk-lock { margin-top: auto; padding: 12px; text-align: center; font-size: 12px; color: var(--muted); border: 1px dashed #2a3650; }
       .skc .iact { margin-top: auto; }
       .ioffer.skc { align-self: stretch; }
-      .ioffer.skc.off { opacity: 0.55; filter: saturate(0.6); }
+      /* the entrance keyframe ends dim too, or the card looks enabled for its first half second */
+      .ioffer.skc.off { opacity: 0.4; filter: saturate(0.4); cursor: not-allowed; animation-name: rise-off; }
+      @keyframes rise-off { 0% { opacity: 0; transform: translateY(18px); } 100% { opacity: 0.4; transform: none; } }
       .ioffer.skc.off.dismiss { opacity: 0; }
       body.touch .iact kbd { display: none; }
       body.touch .iact { grid-template-columns: 1fr; } body.touch .ia-meta { grid-column: 1; }

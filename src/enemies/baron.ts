@@ -78,7 +78,7 @@ export function baronAI(g: Game, e: Enemy): EnemyAI {
         g.stun(k.stun);
       });
     }
-    return k.cast;
+    return k.cast + k.stun; // the next (lethal) telegraph only starts once the stun is over, so it can be dodged
   };
 
   /** A tentacle bursts out of the ground where the champion stood. Lethal. */
