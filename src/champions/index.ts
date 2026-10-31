@@ -1,7 +1,7 @@
 // Playable champions. Register new ones here (see src/champion.ts for the contract).
 import type { ChampionDef } from '../champion';
 import { APHELIOS } from './aphelios';
-import { AURELIONSOL } from './aurelionsol';
+// import { AURELIONSOL } from './aurelionsol'; // disabled: re-add to CHAMPIONS to enable
 import { BRAND } from './brand';
 import { EZREAL } from './ezreal';
 import { GANGPLANK } from './gangplank';
@@ -13,5 +13,5 @@ import { TEEMO } from './teemo';
 import { TWITCH } from './twitch';
 import { ZIGGS } from './ziggs';
 
-export const CHAMPIONS: Record<string, ChampionDef> = { ezreal: EZREAL, samira: SAMIRA, brand: BRAND, aphelios: APHELIOS, aurelionsol: AURELIONSOL, lux: LUX, teemo: TEEMO, ziggs: ZIGGS, sivir: SIVIR, twitch: TWITCH, orianna: ORIANNA, gangplank: GANGPLANK };
+export const CHAMPIONS: Record<string, ChampionDef> = { ezreal: EZREAL, samira: SAMIRA, brand: BRAND, aphelios: APHELIOS, lux: LUX, teemo: TEEMO, ziggs: ZIGGS, sivir: SIVIR, twitch: TWITCH, orianna: ORIANNA, gangplank: GANGPLANK };
 export const DEFAULT_CHAMPION = EZREAL;
