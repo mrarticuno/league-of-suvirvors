@@ -75,14 +75,14 @@ it('Noxious Trap: 3 charges recharged one at a time; a mushroom waits for an ene
   expect(kit.canCast!('R')).toBe(false);
   expect(g.cooldowns.R).toBe(0);
   step(0.05, true);
-  expect(g.cooldowns.R).toBeGreaterThan(29); // out of charges: the slot shows the recharge
+  expect(g.cooldowns.R).toBeGreaterThan(14); // out of charges: the slot shows the recharge
   step(10, true);
   expect(g.hurtEnemy).not.toHaveBeenCalled(); // no fuse: it waits
   e.pos.set(300, 0, 100); // steps on it
   step(0.1, true);
   expect(g.hurtEnemy).toHaveBeenCalledWith(e, 200, expect.objectContaining({ skill: 'R' }));
   expect(g.slow).toHaveBeenCalledWith(e, 0.3, 4);
-  step(20, true);
+  step(5, true); // ~15.3s since the cast: one charge back
   expect(kit.skillView!('R')?.badge).toBe('1');
   step(60, true);
   expect(kit.skillView!('R')?.badge).toBe('3'); // capped

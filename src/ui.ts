@@ -57,7 +57,7 @@ export class Hud {
 
   /** `onAuto`: the auto attack chip (desktop), same as the T key. */
   constructor(champ: ChampionDef, onAuto: () => void) {
-    $('floaters').replaceChildren(); // a champion change builds a new Hud: drop the old one's pooled labels, still shown
+    $('floaters').replaceChildren($('overhead')); // a champion change builds a new Hud: drop the old one's pooled labels, still shown (the overhead bar lives in the layer: keep it)
     $('menu-resume').onclick = () => this.toggleMenu();
     const slider = (id: string, value: number, set: (v: number) => void) => {
       const el = $(id) as HTMLInputElement;

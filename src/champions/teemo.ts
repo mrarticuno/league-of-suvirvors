@@ -4,7 +4,7 @@
 // Blinding Dart costs less (40-60 mana instead of 70-90) and always blinds for the doubled minion/monster duration,
 // since every enemy here is one (the bosses' own AI ignores it, like stuns). Move Quick's passive speed is never lost
 // (no enemy champions nor turrets). Toxic Shot is a passive skill (the E key casts nothing).
-// Noxious Trap holds up to 3 charges at every rank (LoL: 3/4/5), recharged one after the other in 30/25/20s (ability
+// Noxious Trap holds up to 3 charges at every rank (LoL: 3/4/5), recharged one after the other in 15/12.5/10s (LoL: 30/25/20s, halved like Gangplank's kegs; ability
 // haste shortens it). A mushroom arms 1s after landing, lasts 5 min and explodes when an enemy steps on it: its full
 // damage at once in a 400 radius (LoL: a 4s poison), slowing for 4s. Landing on another mushroom bounces it forward.
 import * as THREE from 'three';
@@ -49,7 +49,7 @@ const SKILLS = {
   R: {
     name: t('champion.teemo.R'), desc: t('champion.teemo.R.desc'), damageType: 'magic', maxRank: 3, anim: 'spell4_0', icon: `${ICON}/spell/TeemoR.png`,
     cooldown: [0.25, 0.25, 0.25], cost: [75, 55, 35], // lockout between casts; charges recharge on their own
-    charges: 3, recharge: [30, 25, 20], extra: { label: t('champion.teemo.recharge'), values: [30, 25, 20] },
+    charges: 3, recharge: [15, 12.5, 10], extra: { label: t('champion.teemo.recharge'), values: [15, 12.5, 10] },
     damage: [200, 325, 450], apRatio: 0.5, slow: [0.3, 0.4, 0.5], slowDuration: 4,
     range: [600, 750, 900], aim: 900, speed: 1000, arc: 250, radius: 400, castTime: 0.25,
     arm: 1, life: 300, trigger: 135, // the trigger ring's authored radius
