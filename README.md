@@ -48,7 +48,7 @@ Nine playable champions, each with a full kit ported from LoL (details in [Imple
 
 | Champion select | Rune page |
 |---|---|
-| ![Champion select with Lux's splash art and the seven champions](docs/media/champion-select.jpg) | ![Rune page: Precision + Sorcery with shards](docs/media/rune-page.jpg) |
+| ![Champion select with Lux's splash art and the nine champions](docs/media/champion-select.jpg) | ![Rune page: Sorcery + Domination with shards](docs/media/rune-page.jpg) |
 
 | Level-up: abilities | Level-up: items |
 |---|---|
