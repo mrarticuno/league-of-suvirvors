@@ -237,6 +237,7 @@ WASD is not used because it clashes with Q/W/E.
   - **E (Toxic Shot)**: passive. Basic attacks deal 9–65 + 30% AP on-hit magic damage and poison for 6–30 + 10% AP per second over 4 s (145% against monsters).
   - **R (Noxious Trap)**: up to 3 charges, recharged one after the other (30/25/20 s, shortened by ability haste). Tosses a mushroom (600/750/900 range) that arms after 1 s and lasts 5 min; an enemy stepping on it (135) sets it off: 200/325/450 + 50% AP within 400 and a 30–50% slow for 4 s. A mushroom landing on another bounces 350/450/550 further, again while it keeps landing on mushrooms.
   - Not from LoL: no invisibility; Q costs 40–60 (was 70–90) and always blinds for the doubled minion/monster duration; W's passive is never lost (no enemy champions nor turrets); R keeps 3 charges at every rank (was 3/4/5) and deals its damage at once (was a 4 s poison).
+  - Buffed for wave clear (not from LoL): Deadly Venom deals twice the damage (2/4/6/8/10 + 3% AP per stack) and a poisoned enemy's death spreads its stacks to every enemy within 300; Contaminate deals 40–120 + 25–55 (+50% bonus AD) physical and +50% AP magic per stack, 9–5 s cooldown, 40–60 mana; Venom Cask 10–6 s cooldown.
 - **Lux**: 550 range.
   - **Passive (Illumination)**: damaging abilities mark the enemies they hit for 6 s; Lux's next basic attack or Final Spark on a marked enemy consumes the mark for 30–200 (level) + 30% AP bonus magic damage. An illuminated enemy dying restores 10–30 mana (level; 1 s cooldown against minions and small monsters).
   - **Q (Light Binding)**: a sphere of light (1200 speed, 1175 range) deals 80–240 + 65% AP to the first two enemies hit and roots them for 2 s.
@@ -349,7 +350,7 @@ Mages cast nonstop against hordes, so their LoL mana costs are lowered and their
 | Ziggs | Q 30–40 (50–70), W 55 (80), E 50–75 (70–110), R 80 (100) | 10–30 on ability kills |
 | Sivir | LoL's (Q 55–75, W 60, E 0, R 100): she lives off basic attacks | none |
 | Orianna | LoL's (Q 35, W 60–80, E 60, R 100) | none |
-| Twitch | LoL's (Q 40, W 70, E 50–90, R 100): he lives off basic attacks | none |
+| Twitch | LoL's except E 40–60 (50–90): Q 40, W 70, R 100; he lives off basic attacks | none |
 | Gangplank | Q 30–18 (50–30), W 40–70 (60–100), E charges, R 80 (100) | 10–30 on kills by Parrrley or a keg |
 
 ## Architecture (where to add content)

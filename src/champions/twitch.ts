@@ -15,7 +15,12 @@
 // Spray and Pray: 6s of +30/45/60 AD and +300 attack range; basic attacks become bolts (5000 u/s, 120 wide) flying to
 // the attack range + 250 (League: 1100 + bonus range) that hit every enemy in line with on-hit effects, 10% less per
 // enemy hit, down to 60%. Runaan's bolts keep the bonus range but do not pierce.
-// Twitch_E_Range_Indicator (a range ring of the HUD) and the recall systems are left out. Mana costs are League's.
+// Twitch_E_Range_Indicator (a range ring of the HUD) and the recall systems are left out. Mana costs are League's
+// except Contaminate's.
+// Buffed for wave clear (not from LoL): Deadly Venom deals twice League's damage (2/4/6/8/10 +3% AP per stack) and
+// spreads when a poisoned enemy dies: its stacks go to every enemy within 300. Contaminate hits harder (40-120
+// physical +25-55 (+50% bonus AD) physical and +50% AP magic per stack; League: 20-60, 15-35, 35%, 35%), recharges in
+// 9/8/7/6/5s (12-8s) and costs 40-60 mana (50-90). Venom Cask recharges in 10/9/8/7/6s (13-9s).
 import * as THREE from 'three';
 import { audio } from '../audio';
 import type { ChampionDef, ChampionKit, Hit, SkillDef, SkillKey } from '../champion';
@@ -27,7 +32,7 @@ import type { MissileFx } from '../vfx';
 import type { ParticleSystem } from '../particles';
 
 const ICON = 'https://ddragon.leagueoflegends.com/cdn/16.21.1/img';
-const PASSIVE = { maxStacks: 6, duration: 6, dps: [1, 5, 9, 13, 17], apRatio: 0.03 }; // dps: +1 per stack at these levels
+const PASSIVE = { maxStacks: 6, duration: 6, dps: [1, 5, 9, 13, 17], dpsPerTier: 2, apRatio: 0.03, spread: 300 }; // dps: +2 per stack at these levels (League: +1)
 const MAX_MARKS = 40; // poisoned enemies showing their stack icons at once (hordes)
 const MAX_SLOW_FX = 30; // Venom Cask debuff systems at once
 const MAX_HIT_FX = 30; // Spray and Pray impacts per bolt
@@ -45,7 +50,7 @@ const SKILLS = {
   },
   W: {
     name: t('champion.twitch.W'), desc: t('champion.twitch.W.desc'), damageType: 'magic', maxRank: 5, anim: 'twitch_base_spell2', icon: `${ICON}/spell/TwitchVenomCask.png`,
-    cooldown: [13, 12, 11, 10, 9], cost: [70, 70, 70, 70, 70],
+    cooldown: [10, 9, 8, 7, 6], cost: [70, 70, 70, 70, 70], // League: 13-9s
     damage: [0, 0, 0, 0, 0],
     extra: { label: t('champion.twitch.slow'), values: [30, 35, 40, 45, 50], percent: true },
     range: 950, aim: 950, castTime: 0.25, speed: 1400, gravity: 4000, radius: 300,
@@ -53,11 +58,11 @@ const SKILLS = {
   },
   E: {
     name: t('champion.twitch.E'), desc: t('champion.twitch.E.desc'), damageType: 'physical', maxRank: 5, anim: 'twitch_base_spell3', icon: `${ICON}/spell/TwitchExpunge.png`,
-    cooldown: [12, 11, 10, 9, 8], cost: [50, 60, 70, 80, 90],
-    damage: [110, 150, 190, 230, 270], bonusAdRatio: 2.1, apRatio: 2.1, // the card shows 6 stacks
-    extra: { label: t('champion.twitch.perStack'), values: [15, 20, 25, 30, 35] },
+    cooldown: [9, 8, 7, 6, 5], cost: [40, 45, 50, 55, 60], // League: 12-8s, 50-90 mana
+    damage: [190, 250, 310, 370, 430], bonusAdRatio: 3, apRatio: 3, // the card shows 6 stacks
+    extra: { label: t('champion.twitch.perStack'), values: [25, 32.5, 40, 47.5, 55] },
     aim: 'none', castTime: 0.25, range: 1200, speed: 3000, gravity: 3000,
-    base: [20, 30, 40, 50, 60], perStack: [15, 20, 25, 30, 35], bonusAdPerStack: 0.35, apPerStack: 0.35,
+    base: [40, 60, 80, 100, 120], perStack: [25, 32.5, 40, 47.5, 55], bonusAdPerStack: 0.5, apPerStack: 0.5, // League: 20-60, 15-35, 35%, 35%
   },
   R: {
     name: t('champion.twitch.R'), desc: t('champion.twitch.R.desc'), damageType: 'physical', maxRank: 3, anim: 'twitch_base_spell3', icon: `${ICON}/spell/TwitchFullAutomatic.png`,
@@ -160,7 +165,17 @@ function twitchKit(g: Game): ChampionKit {
   };
 
   // ---- Deadly Venom ----
-  const dps = () => PASSIVE.dps.filter((l) => g.level >= l).length + PASSIVE.apRatio * g.ap;
+  const dps = () => PASSIVE.dpsPerTier * PASSIVE.dps.filter((l) => g.level >= l).length + PASSIVE.apRatio * g.ap;
+  const spreadNear: Enemy[] = [];
+  /** A poisoned enemy died: its stacks spread to every enemy within PASSIVE.spread (wave clear, not from LoL). */
+  const spread = (dead: Enemy) => {
+    const n = venom.get(dead)?.stacks ?? 0;
+    if (n === 0) return;
+    for (const e of g.enemiesNear(dead.pos, PASSIVE.spread, spreadNear)) {
+      if (e === dead || e.deadFor >= 0 || !inReach(e, dead.pos, PASSIVE.spread)) continue;
+      for (let i = 0; i < n && stacksOf(e) < PASSIVE.maxStacks; i++) poison(e);
+    }
+  };
   const unmark = (v: Venom) => {
     if (v.icons) marks--;
     v.icons = drop(v.icons);
@@ -346,6 +361,7 @@ function twitchKit(g: Game): ChampionKit {
     },
 
     onKill(e) {
+      spread(e);
       if (big(e)) g.cooldowns.Q = 0; // Ambush resets on elite and epic kills
     },
 

@@ -679,6 +679,6 @@
  "champion.twitch.bonusAd": "Bonus AD",
  "champion.twitch.Q.desc": "Grants 10% Move Speed for 10-14s and Attack Speed for 6s. Killing an elite or epic monster resets the cooldown.",
  "champion.twitch.W.desc": "Lobs a cask that bursts in a 300 radius: enemies hit gain a Deadly Venom stack and are slowed (+6% per 100 AP). The venom pool lasts 3s, slowing enemies inside and adding a stack each second (up to 4 per cask).",
- "champion.twitch.E.desc": "Needs a poisoned enemy within 1200. A toxin flies to each poisoned enemy: physical damage plus 15-35 (+35% bonus AD) physical and 35% AP magic damage per Deadly Venom stack. The card shows 6 stacks.",
+ "champion.twitch.E.desc": "Needs a poisoned enemy within 1200. A toxin flies to each poisoned enemy: physical damage plus 25-55 (+50% bonus AD) physical and 50% AP magic damage per Deadly Venom stack (a poisoned enemy's death spreads its stacks within 300). The card shows 6 stacks.",
  "champion.twitch.R.desc": "For 6s gains bonus AD and 300 attack range; basic attacks fire bolts that pierce every enemy in line with on-hit effects, 10% less per enemy hit (down to 60%)."
 }
