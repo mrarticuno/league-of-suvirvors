@@ -48,7 +48,7 @@
 
 | 英雄选择 | 符文页 |
 |---|---|
-| ![英雄选择：拉克丝的原画与七位英雄](docs/media/champion-select.jpg) | ![符文页：精密 + 巫术与符文碎片](docs/media/rune-page.jpg) |
+| ![英雄选择：拉克丝的原画与九位英雄](docs/media/champion-select.jpg) | ![符文页：巫术 + 主宰与符文碎片](docs/media/rune-page.jpg) |
 
 | 升级：技能 | 升级：装备 |
 |---|---|
