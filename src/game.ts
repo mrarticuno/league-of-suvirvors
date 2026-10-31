@@ -245,7 +245,7 @@ export class Game {
   async setChampion(c: ChampionDef) {
     // the particle systems are one champion's at a time (loadVfx replaces them)
     const vfx = this.vfxFor === c.id ? null : loadVfx(`assets/vfx/${c.id}/`);
-    await Promise.all([vfx, loadModel(c.model, c.hide, c.model, { textures: c.textures, sequences: c.sequences, translucent: c.translucent }), audio.loadPrefix(c.id)]);
+    await Promise.all([vfx, loadModel(c.model, c.hide, c.model, { textures: c.textures, sequences: c.sequences, opaque: c.opaque }), audio.loadPrefix(c.id)]);
     this.vfxFor = c.id;
     this.champ = c;
   }
@@ -898,7 +898,9 @@ export class Game {
     this.faceTowards((prop ?? target!).pos);
     const set = melee ?? anims;
     const anim = form?.anim ?? (crit ? set.crit : set.attacks[this.attackIndex++ % set.attacks.length]);
-    const length = Math.min(this.player.duration(anim), delay);
+    // the clip plays at the attack speed ratio, as in League: the cast frame lands on the windup and a clip longer than the
+    // attack period (Aurelion Sol's 3.9 s swing) is cut by the next attack instead of squeezed into it
+    const length = this.player.duration(anim) * delay * B.attackSpeed;
     this.player.play(anim, { loop: false, restart: true, duration: length, fade: 0.05 });
     const sound = melee ? `${id}_melee` : `${id}_auto`;
     audio.play(form?.sound ?? (crit ? (melee ? `${id}_melee_crit` : `${id}_crit`) : this.attackIndex % 2 ? sound : `${sound}2`));

@@ -15,7 +15,7 @@ import { t } from '../i18n';
 
 const ICON = 'https://ddragon.leagueoflegends.com/cdn/16.21.1/img';
 const OLD_ICON = 'https://ddragon.leagueoflegends.com/cdn/13.1.1/img'; // the pre-rework kit's icons
-const HEAD = 'C_Buffbone_Glb_Head_Loc';
+const HANDS = ['Star1', 'Star2']; // the bones of the stars he holds
 // Starsurge wears today's Singularity vortex (E_AoE): its systems are authored for this radius, scaled to the star's
 const VORTEX_RADIUS = 450;
 
@@ -37,7 +37,7 @@ const SKILLS = {
     aim: 1075, castTime: 0.25,
   },
   W: {
-    name: t('champion.aurelionsol.W'), desc: t('champion.aurelionsol.W.desc'), damageType: 'magic', maxRank: 5, anim: 'aurelionsol_spell2_takeoff', icon: `${OLD_ICON}/spell/AurelionSolW.png`,
+    name: t('champion.aurelionsol.W'), desc: t('champion.aurelionsol.W.desc'), damageType: 'magic', maxRank: 5, anim: 'aurelionsol_passive', icon: `${OLD_ICON}/spell/AurelionSolW.png`,
     cooldown: [1.5, 1.5, 1.5, 1.5, 1.5], cost: [0, 0, 0, 0, 0],
     damage: [5, 10, 15, 20, 25], // added to each star hit (always, like the old passive rank bonus)
     drain: [6, 7, 8, 9, 10], // mana per second while expanded
@@ -45,7 +45,7 @@ const SKILLS = {
     aim: 'none', castTime: 0.05,
   },
   E: {
-    name: t('champion.aurelionsol.E'), desc: t('champion.aurelionsol.E.desc'), damageType: 'magic', maxRank: 5, anim: 'aurelionsol_dashing02', icon: `${OLD_ICON}/spell/AurelionSolE.png`,
+    name: t('champion.aurelionsol.E'), desc: t('champion.aurelionsol.E.desc'), damageType: 'magic', maxRank: 5, anim: 'aurelionsol_spell2_takeoff', icon: `${OLD_ICON}/spell/AurelionSolE.png`,
     cooldown: [20, 18, 16, 14, 12], cost: [60, 60, 60, 60, 60],
     damage: [0, 0, 0, 0, 0], duration: 3,
     speed: [0.6, 0.7, 0.8, 0.9, 1], extra: { label: t('stat.ms'), values: [0.6, 0.7, 0.8, 0.9, 1], percent: true },
@@ -69,9 +69,10 @@ export const AURELIONSOL: ChampionDef = {
   id: 'aurelionsol', name: t('champion.aurelionsol.name'), model: 'aurelionsol', icon: `${ICON}/champion/AurelionSol.png`,
   title: t('champion.aurelionsol.title'), splash: 'https://ddragon.leagueoflegends.com/cdn/img/champion/splash/AurelionSol_0.jpg',
   roles: ['mage'], difficulty: 7,
-  hide: ['AurelionSolFX'],
+  scale: 0.85, // League's SkinScale for him (Ezreal's is 1.1)
+  hide: ['AurelionSolFX'], // the body shell only AurelionSol_P_SkinOverride draws, with its galaxy and rim light
   conformPath: ['Neck1_Ground', 'Tail11'], // his tail snakes along the path he travelled
-  translucent: ['AurelionSol_BodyLower'], // the see-through tail: its low texel alpha is opacity, which the cut-out would discard
+  opaque: ['AurelionSol_BodyLower'], // the tail: blue scales fading into black space; its texture alpha is not opacity
   itemPool: 'ap',
   // OP.GG mid 16.21: Liandry's, Rylai's, Rabadon's, Void Staff, Shadowflame, Cosmic Drive
   build: ['6653', '3116', '3089', '3135', '4645', '4629'],
@@ -100,11 +101,20 @@ export const AURELIONSOL: ChampionDef = {
   sequences: { aurelionsol_run: ['aurelionsol_runb', 'aurelionsol_runc', 'aurelionsol_rund', 'aurelionsol_runa'] },
   vfx: {
     auto: 'AurelionSol_BA_Mis', crit: 'AurelionSol_BA_Mis', autoHit: 'AurelionSol_BA_tar', critHit: 'AurelionSol_BA_Crit_Tar',
-    death: [['AurelionSol_Death', 'C_Buffbone_Glb_Layout_Loc']],
+    // the death clip's particle events: the body dissolves, the hand stars go out and crumble
+    death: [
+      ['AurelionSol_Death', 'C_Buffbone_Glb_Layout_Loc'],
+      ['AurelionSol_Z_Death_Idle_Star', 'Star1'], ['AurelionSol_Z_Death_Idle_Star', 'Star2'],
+      ['AurelionSol_Z_Death_Idle_Star', 'Star3'], ['AurelionSol_Z_Death_Idle_Star', 'Star4'],
+      ['AurelionSol_Z_Death_Crumble_Star', 'Star1'], ['AurelionSol_Z_Death_Crumble_Star', 'Star2'],
+    ],
   },
-  // the skin's idleParticlesEffects (its body beams need a second bone and tiled beam UVs, which are not supported)
-  idleVfx: [['AurelionSol_P_SkinOverride', 'spine']],
-  animVfx: true,
+  // The skin's idleParticlesEffects: the galaxy and rim light over the body (the bin names a `spine` bone the rig lacks; the
+  // shell rides the skeleton, so any bone does) and the stars in his hands, which in League every clip's particle events
+  // relight (as clip events here they would go out 3 s into each clip; as idle systems they stay). Its body beams between
+  // tail bones need a second bone and tiled beam UVs, which are not supported. The other clip events (the cast hands of
+  // Q and R) play from castStart, so animVfx stays off.
+  idleVfx: [['AurelionSol_P_SkinOverride', 'Root'], ['AurelionSol_Z_Idle_Star', 'Star1'], ['AurelionSol_Z_Idle_Star', 'Star2']],
   kit: aurelionSolKit,
 };
 
@@ -143,10 +153,14 @@ function aurelionSolKit(g: Game): ChampionKit {
     return g.pos.clone().add(off).setY(0);
   };
   const follow = (key: string) => {
-    const o = g.vfx.attach(key);
+    const o = g.vfx.attach(key, { owner: g.player.root }); // W_Buff redraws his body glowing
     o.position.copy(g.pos);
     g.scene.add(o);
     return o;
+  };
+
+  const hands = (key: string) => {
+    for (const b of HANDS) { const bone = g.player.bone(b); if (bone) g.vfx.playOn(key, bone, g.facing, g.player.root); }
   };
 
   const setExpanded = (on: boolean) => {
@@ -217,9 +231,9 @@ function aurelionSolKit(g: Game): ChampionKit {
     moveAnims: () => (flying() ? { idle: 'aurelionsol_dashing02', run: 'aurelionsol_dashing02' } : undefined),
 
     castStart(key, point) {
-      const head = g.player.bone(HEAD);
-      if (key === 'Q' && head) g.vfx.playOn('AurelionSol_Q_Cas', head, g.facing, g.player.root);
-      if (key === 'R') g.vfx.playAt('AurelionSol_R_Calamity_Tell', landing(point));
+      // the cast clips' particle events: Singularity's hands on Q's clip, the Skies Descend's on R's
+      if (key === 'Q') hands('AurelionSol_E_Cas_Hands');
+      if (key === 'R') { hands('AurelionSol_R_Calamity_Cas'); g.vfx.playAt('AurelionSol_R_Calamity_Tell', landing(point)); }
     },
 
     cast(key, r, point) {

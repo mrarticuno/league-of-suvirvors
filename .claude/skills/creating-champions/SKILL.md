@@ -42,12 +42,12 @@ Assets (`assets-raw/`, `public/assets/`) não vão para o git.
 - `rankLevels`: nível de cada rank por skill, só se não segue o LoL (básicas 1/3/5/7/9, R 6/11/16). `autoRank`: skills que sobem sozinhas (sem ponto; R do Aphelios). `SkillDef.unlockLevel`: conjurável a partir do nível, independente do rank (os ranks então compram atributos via `stat`).
 - `anims` / `skills[k].anim`: nomes exatos dos clips no `.glb`. Clip inexistente = sem animação, sem erro: confira os nomes. Escreva cada nome de clip **literal** no código (nada de `` `x_${arma}_idle1` ``): `tools/optimize.mjs` corta do `.glb` de produção os clips que o bundle não cita, e o campeão fica em T-pose só em produção (o dev não acusa). Clips por forma/arma: tabela de literais (ver `CLIPS` em `aphelios.ts`).
 - `vfx`: chaves de sistemas de partícula do ataque básico (`auto`, `crit`, `autoHit`, `critHit`), como no `ResourceResolver` da skin; `death`: pares `[sistema, osso]` tocados na morte (eventos da animação de morte no `animations/skin0.bin`).
-- `animVfx`: ver "Escolhendo VFX".
+- `animVfx`: ver "Escolhendo VFX". Evento sem `mEndFrame` dura 3 s aqui (no LoL, até o clip acabar): efeito que todo clip reacende (as estrelas nas mãos do Aurelion Sol) vai em `idleVfx`, com `animVfx` desligado e os eventos de cast tocados em `castStart`.
 - `sequences`: clip feito de outros em sequência (`SequencerClipData` do `animations/skin0.bin`; ex.: `Run_Base` do Aurelion Sol = 4 clips). Cheque se `run`/`idle` não são sequências antes de usar um clip só.
-- `translucent`: submeshes cujo alfa da textura é opacidade (misturados, não recortados pelo `alphaTest`); ex.: a cauda do Aurelion Sol. Compare o alfa médio nos UVs de cada submesh.
+- `opaque`: submeshes desenhados inteiros, ignorando o alfa da textura. O material padrão do LoL **não recorta** por alfa: o alfa costuma ser máscara de efeito (a cauda do Aurelion Sol, `AurelionSol_BodyLower`, é escamas azuis virando espaço preto sob um alfa que cai a 0; recortada some, misturada vira fantasma). Compare o alfa médio nos UVs de cada submesh: parte opaca no LoL com alfa baixo vai em `opaque`.
 - `conformPath`: `[início, fim]` do `ConformToPathRigPoseModifierData` em `skinMeshProperties`: a cadeia segue o caminho percorrido (cauda que curva).
-- Antes de fechar o modelo, liste os submeshes do `.glb` e o tamanho de cada um. Parte que falta, fica preta/sólida ou some de longe costuma ser um submesh separado (a cauda do Aurelion Sol é `AurelionSol_BodyLower`, translúcida). Animação "cortada na metade" costuma ser um `SequencerClipData`.
-- `scale` só quando o export sai menor que o campeão no LoL: Teemo é pequeno de propósito (a 1.6 ficou grande demais; ficou sem `scale`).
+- Antes de fechar o modelo, liste os submeshes do `.glb` e o tamanho de cada um. Parte que falta, fica preta/sólida ou some de longe costuma ser um submesh separado (a cauda do Aurelion Sol é `AurelionSol_BodyLower`, em `opaque`). Animação "cortada na metade" costuma ser um `SequencerClipData`.
+- `scale` só quando o export sai menor que o campeão no LoL: Teemo é pequeno de propósito (a 1.6 ficou grande demais; ficou sem `scale`). O `SkinScale` de `skinMeshProperties` é o multiplicador que o LoL aplica (Ezreal 1.1, Brand 1.75, Lux 1.5, Sivir 0.9, Aurelion Sol 0.85): sirva-se dele como referência.
 - `SKIP_CLIPS` em `tools/build_models.py` corta clips por regex na extração: confira que não pega clips usados (o `spell4` do Teemo sumiu com um regex largo demais; ficou `spell4_(-|[1-9])`).
 - `idleVfx`: pares `[sistema, osso]` que ficam ligados a run toda (o `idleParticlesEffects` do `skin0.bin`, ex.: as chamas do Brand); param na morte. O bin às vezes omite o prefixo do osso (`BUFFBONE_GLB_CENTER_LOC` vs `C_BUFFBONE_GLB_CENTER_LOC`): confira no `.glb`.
 - Mago: ratio de AP da skill em `apRatio` (o card mostra) e `g.ap` no kit; `itemPool: 'ap'` no `ChampionDef` para receber itens AP no level up.
@@ -180,7 +180,7 @@ Dump de um bin para consulta: `read_linked(Names('../assets-raw/hashes'), [Wad(.
 | Laser/beam vira uma caixa gigante | UV de beam (U atravessa, V ao longo) e `scale.x` = largura total; posicione o sistema pelo início do feixe |
 | Anel de partícula em pé em vez de deitado | Ordem Euler YXZ nas rotações de partícula |
 | Efeito idle vira retângulo chapado | Recurso não suportado (`uvMode` 2, beam entre ossos): tire e comente, não force |
-| Parte do modelo preta/sólida ou faltando | Submesh separado translúcido: `translucent`; submesh de FX escondido: `hide` |
+| Parte do modelo preta/sólida ou faltando | Submesh com alfa baixo que o LoL desenha inteiro: `opaque`; submesh de FX escondido: `hide` |
 | Corrida cortada na metade | `Run_Base` é `SequencerClipData`: `sequences` |
 | Clip some na extração | Regex de `SKIP_CLIPS` pegou o clip |
 | Teste quebra com vetor mudando sozinho | Mock de `vfx.playAt`/`play` guarda a referência: passe `clone()` do vetor que o kit ainda vai mexer |

@@ -17,7 +17,7 @@ const loading = new Map<string, Promise<void>>(); // in flight or done: concurre
 export interface ModelOpts {
   textures?: Readonly<Record<string, string>>;
   sequences?: Readonly<Record<string, readonly string[]>>;
-  translucent?: readonly string[];
+  opaque?: readonly string[];
 }
 
 async function loadMaterial(texture: string) {
@@ -34,7 +34,8 @@ async function loadMaterial(texture: string) {
  * `mesh` loads another model's .glb with this model's texture (texture-only skins).
  * `textures` gives submeshes their own texture (the skin bin's materialOverride): submesh name -> texture file stem.
  * `sequences` adds clips made of others played end to end: new clip name -> part clip names.
- * `translucent`: submeshes blended by their texture alpha instead of cut out by it (e.g. a see-through tail).
+ * `opaque`: submeshes drawn whole, their texture alpha ignored (League's default material does not cut out: the alpha there
+ * is a mask for effects, e.g. Aurelion Sol's tail, painted into black space under a fading alpha).
  */
 export function loadModel(id: string, hide: readonly string[] = [], mesh = id, opts: ModelOpts = {}): Promise<void> {
   let p = loading.get(id);
@@ -48,21 +49,21 @@ export function loadModel(id: string, hide: readonly string[] = [], mesh = id, o
 /** Whether loadModel(id) finished: Actor and propModel need it. */
 export const modelLoaded = (id: string) => templates.has(id);
 
-async function fetchModel(id: string, hide: readonly string[], mesh: string, { textures = {}, sequences = {}, translucent = [] }: ModelOpts) {
+async function fetchModel(id: string, hide: readonly string[], mesh: string, { textures = {}, sequences = {}, opaque = [] }: ModelOpts) {
   const stems = [...new Set(Object.values(textures))];
   const [gltf, material, ...overrides] = await Promise.all([
     gltfLoader.loadAsync(asset(`assets/models/${mesh}.glb`)),
     loadMaterial(id),
     ...stems.map((s) => loadMaterial(s)),
   ]);
-  const blended = translucent.length ? Object.assign(material.clone(), { alphaTest: 0, transparent: true, depthWrite: false }) : material;
+  const solid = opaque.length ? Object.assign(material.clone(), { alphaTest: 0 }) : material;
   gltf.scene.traverse((o) => {
     const mesh = o as THREE.SkinnedMesh;
     if (!mesh.isMesh) return;
     const name = (mesh.material as THREE.Material).name;
     mesh.userData.submesh = name; // the replacement material loses it; particle overlays (VfxPrimitiveAttachedMesh) filter by it
     mesh.visible = !hide.includes(name);
-    mesh.material = name in textures ? overrides[stems.indexOf(textures[name])] : translucent.includes(name) ? blended : material;
+    mesh.material = name in textures ? overrides[stems.indexOf(textures[name])] : opaque.includes(name) ? solid : material;
     mesh.frustumCulled = false; // skinned bounds don't follow animation
   });
   for (const clip of gltf.animations) {

@@ -157,6 +157,7 @@ BANKS: dict[str, dict[str, list[str] | int]] = {
     },
     SFX + "characters/aurelionsol/skins/base/aurelionsol_base_sfx": {
         "aurelionsol_auto": [AS + "Basicattack_cast"],
+        "aurelionsol_auto2": [AS + "Basicattack_cast"],
         "aurelionsol_crit": [AS + "Basicattack_cast"],
         "aurelionsol_auto_hit": [AS + "Basicattack_OnHitLocation"],
         "aurelionsol_crit_hit": [AS + "CritAttack_OnHit"],

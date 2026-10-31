@@ -134,8 +134,8 @@ export interface ChampionDef {
   textures?: Readonly<Record<string, string>>;
   /** Joint chain bent along the travelled path (the skin bin's ConformToPathRigPoseModifierData): start and end joints. */
   conformPath?: readonly [from: string, to: string];
-  /** Submeshes blended by their texture alpha instead of cut out by it (e.g. a see-through tail). */
-  translucent?: readonly string[];
+  /** Submeshes drawn whole, texture alpha ignored (League's default material does not cut out; e.g. Aurelion Sol's tail). */
+  opaque?: readonly string[];
   base: BaseStats;
   skills: Readonly<Record<SkillKey, SkillDef>>;
   /** Champion level that unlocks each rank of a skill (default LoL: basic 1/3/5/7/9, R 6/11/16). */
