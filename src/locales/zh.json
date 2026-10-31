@@ -628,5 +628,21 @@
  "champion.sivir.Q.desc": "掷出十字刃飞行1250码后返回希维尔，去程与回程各对途经的每名敌人造成一次物理伤害（伤害随暴击几率提高；每命中一名敌人减少15%，最低40%，回程时重置）。",
  "champion.sivir.W.desc": "4秒内普攻获得攻击速度并在500码内的敌人之间弹射至多8次，造成物理伤害（每名敌人至多两次；对小兵造成65%伤害，并处决生命值低于15的小兵）。重置普攻计时。",
  "champion.sivir.E.desc": "1.5秒内的法术护盾会格挡下一个敌方技能或弹道；格挡成功后治疗希维尔（% 攻击力 +50% 法强）并触发敏锐疾行。",
- "champion.sivir.R.desc": "获得移动速度，持续8/10/12秒。持续期间每次普攻使Q、W、E的冷却缩短0.5秒；击杀精英或史诗怪物可刷新持续时间。"
+ "champion.sivir.R.desc": "获得移动速度，持续8/10/12秒。持续期间每次普攻使Q、W、E的冷却缩短0.5秒；击杀精英或史诗怪物可刷新持续时间。",
+ "champion.twitch.name": "图奇",
+ "champion.twitch.title": "瘟疫之源",
+ "champion.twitch.passive": "死亡毒液",
+ "champion.twitch.Q": "埋伏",
+ "champion.twitch.W": "剧毒之桶",
+ "champion.twitch.E": "毒性爆发",
+ "champion.twitch.R": "火力全开",
+ "champion.twitch.hud": "死亡毒液：{n}个中毒",
+ "champion.twitch.attackSpeed": "攻击速度",
+ "champion.twitch.slow": "减速",
+ "champion.twitch.perStack": "每层伤害",
+ "champion.twitch.bonusAd": "额外攻击力",
+ "champion.twitch.Q.desc": "获得持续10-14秒的10%移动速度和持续6秒的攻击速度。击杀精英或史诗怪物会重置冷却时间。",
+ "champion.twitch.W.desc": "投掷一个毒桶，在300半径内爆开：被命中的敌人获得一层死亡毒液并被减速（每100法术强度+6%）。毒池持续3秒，减速其中的敌人，并每秒叠加一层（每个毒桶最多4层）。",
+ "champion.twitch.E.desc": "需要1200范围内有中毒的敌人。毒素飞向每个中毒的敌人：造成物理伤害，并且每层死亡毒液额外造成15-35（+35%额外攻击力）物理伤害和35%法术强度的魔法伤害。卡片显示6层的伤害。",
+ "champion.twitch.R.desc": "6秒内获得额外攻击力和300攻击距离；普通攻击发射穿透直线上所有敌人并附带攻击特效的弩箭，每命中一个敌人伤害降低10%（最低60%）。"
 }

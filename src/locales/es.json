@@ -628,5 +628,21 @@
  "champion.sivir.Q.desc": "Lanza la cuchilla a 1250 unidades y vuelve a Sivir, infligiendo daño físico a cada enemigo que atraviesa a la ida y a la vuelta (el daño aumenta con la probabilidad de Golpe Crítico; 15 % menos por enemigo alcanzado, hasta 40 %, reiniciado a la vuelta).",
  "champion.sivir.W.desc": "Durante 4 s sus ataques básicos ganan Velocidad de Ataque y rebotan hasta 8 veces a enemigos a 500 unidades, infligiendo daño físico (cada enemigo como máximo dos veces; 65 % contra súbditos, ejecutándolos por debajo de 15 de Vida). Reinicia el temporizador de ataque.",
  "champion.sivir.E.desc": "Un escudo antihechizos de 1,5 s bloquea la siguiente habilidad o proyectil enemigo; bloquear la cura (% DA +50 % PH) y activa Pies Ligeros.",
- "champion.sivir.R.desc": "Gana Velocidad de Movimiento durante 8/10/12 s. Mientras dura, cada ataque básico reduce los enfriamientos de Q, W y E en 0,5 s; matar a un monstruo élite o épico renueva la duración."
+ "champion.sivir.R.desc": "Gana Velocidad de Movimiento durante 8/10/12 s. Mientras dura, cada ataque básico reduce los enfriamientos de Q, W y E en 0,5 s; matar a un monstruo élite o épico renueva la duración.",
+ "champion.twitch.name": "Twitch",
+ "champion.twitch.title": "la Rata Mutante",
+ "champion.twitch.passive": "Veneno Mortal",
+ "champion.twitch.Q": "Emboscada",
+ "champion.twitch.W": "Tonel de Veneno",
+ "champion.twitch.E": "Contaminar",
+ "champion.twitch.R": "Lluvia de Proyectiles",
+ "champion.twitch.hud": "Veneno Mortal: {n} envenenados",
+ "champion.twitch.attackSpeed": "Velocidad de Ataque",
+ "champion.twitch.slow": "Ralentización",
+ "champion.twitch.perStack": "Daño por acumulación",
+ "champion.twitch.bonusAd": "DA adicional",
+ "champion.twitch.Q.desc": "Otorga 10% de Velocidad de Movimiento durante 10-14 s y Velocidad de Ataque durante 6 s. Matar un monstruo élite o épico reinicia el enfriamiento.",
+ "champion.twitch.W.desc": "Lanza un tonel que estalla en un radio de 300: los enemigos alcanzados reciben una acumulación de Veneno Mortal y sufren Ralentización (+6% por cada 100 PH). El charco de veneno dura 3 s, ralentiza a quienes estén dentro y suma una acumulación por segundo (hasta 4 por tonel).",
+ "champion.twitch.E.desc": "Requiere un enemigo envenenado a menos de 1200. Una toxina vuela hacia cada enemigo envenenado: daño físico más 15-35 (+35% del DA adicional) de daño físico y 35% del PH de daño mágico por acumulación de Veneno Mortal. La carta muestra 6 acumulaciones.",
+ "champion.twitch.R.desc": "Durante 6 s obtiene DA adicional y 300 de alcance de ataque; los ataques básicos disparan virotes que atraviesan a todos los enemigos en línea con efectos al impactar, 10% menos por enemigo alcanzado (hasta 60%)."
 }

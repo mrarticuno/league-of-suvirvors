@@ -628,5 +628,21 @@
  "champion.sivir.Q.desc": "Arremessa a lâmina a 1250 unidades e ela volta para a Sivir, causando dano físico a todo inimigo que atravessa na ida e na volta (o dano cresce com a chance de Acerto Crítico; 15% a menos por inimigo atingido, até 40%, reiniciado na volta).",
  "champion.sivir.W.desc": "Por 4s os ataques básicos ganham Velocidade de Ataque e ricocheteiam até 8 vezes em inimigos a 500 unidades, causando dano físico (cada inimigo no máximo duas vezes; 65% contra tropas, executando-as abaixo de 15 de Vida). Reinicia o tempo do ataque.",
  "champion.sivir.E.desc": "Um escudo de feitiço por 1,5s bloqueia a próxima habilidade ou projétil inimigo; bloquear cura a Sivir (% DdA +50% PdH) e ativa Pés Ligeiros.",
- "champion.sivir.R.desc": "Ganha Velocidade de Movimento por 8/10/12s. Enquanto durar, cada ataque básico reduz as recargas de Q, W e E em 0,5s; abater um monstro elite ou épico renova a duração."
+ "champion.sivir.R.desc": "Ganha Velocidade de Movimento por 8/10/12s. Enquanto durar, cada ataque básico reduz as recargas de Q, W e E em 0,5s; abater um monstro elite ou épico renova a duração.",
+ "champion.twitch.name": "Twitch",
+ "champion.twitch.title": "o Semeador da Peste",
+ "champion.twitch.passive": "Veneno Mortal",
+ "champion.twitch.Q": "Emboscada",
+ "champion.twitch.W": "Tonel de Veneno",
+ "champion.twitch.E": "Contaminar",
+ "champion.twitch.R": "Passando Fogo",
+ "champion.twitch.hud": "Veneno Mortal: {n} envenenados",
+ "champion.twitch.attackSpeed": "Velocidade de Ataque",
+ "champion.twitch.slow": "Lentidão",
+ "champion.twitch.perStack": "Dano por acúmulo",
+ "champion.twitch.bonusAd": "DdA bônus",
+ "champion.twitch.Q.desc": "Concede 10% de Velocidade de Movimento por 10-14s e Velocidade de Ataque por 6s. Abater um monstro elite ou épico reinicia a recarga.",
+ "champion.twitch.W.desc": "Arremessa um tonel que explode num raio de 300: inimigos atingidos recebem um acúmulo de Veneno Mortal e sofrem Lentidão (+6% a cada 100 PdH). A poça de veneno dura 3s, causando Lentidão a quem estiver dentro e somando um acúmulo por segundo (até 4 por tonel).",
+ "champion.twitch.E.desc": "Exige um inimigo envenenado a até 1200. Uma toxina voa até cada inimigo envenenado: dano físico mais 15-35 (+35% do DdA bônus) de dano físico e 35% do PdH de dano mágico por acúmulo de Veneno Mortal. O card mostra 6 acúmulos.",
+ "champion.twitch.R.desc": "Por 6s ganha DdA bônus e 300 de alcance de ataque; os ataques básicos disparam virotes que atravessam todos os inimigos na linha com efeitos ao acertar, 10% a menos por inimigo atingido (até 60%)."
 }
