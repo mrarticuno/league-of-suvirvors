@@ -228,6 +228,7 @@ WASD não é usado porque colide com Q/W/E.
   - **E (Tiro Tóxico)**: passivo. Ataques básicos causam 9–65 + 30% PdH de dano mágico ao atingir e envenenam por 6–30 + 10% PdH por segundo durante 4 s (145% contra monstros).
   - **R (Armadilha Venenosa)**: até 3 cargas, recarregadas uma após a outra (30/25/20 s, reduzidas pela Aceleração de Habilidade). Arremessa um cogumelo (alcance 600/750/900) que se arma após 1 s e dura 5 min; um inimigo que pisa nele (135) o detona: 200/325/450 + 50% PdH em 400 e Lentidão de 30–50% por 4 s. Um cogumelo que cai sobre outro quica 350/450/550 para frente, de novo enquanto continuar caindo sobre cogumelos.
   - Fora do LoL: sem invisibilidade; o Q custa 40–60 (era 70–90) e sempre cega pela duração dobrada contra tropas/monstros; o passivo do W nunca se perde (sem campeões nem torres inimigas); o R tem 3 cargas em todos os ranks (era 3/4/5) e causa o dano de uma vez (era um veneno de 4 s).
+  - Reforçado para limpar waves (fora do LoL): o Veneno Mortal causa o dobro de dano (2/4/6/8/10 + 3% do PdH por acúmulo) e a morte de um inimigo envenenado espalha seus acúmulos para todos os inimigos a até 300; o Contaminar causa 40–120 + 25–55 (+50% do DdA bônus) físico e +50% do PdH mágico por acúmulo, recarga de 9–5 s, 40–60 de mana; Tonel de Veneno com recarga de 10–6 s.
 - **Lux**: alcance 550.
   - **Passiva (Iluminação)**: habilidades que causam dano marcam os inimigos atingidos por 6 s; o próximo ataque básico ou a Centelha Final da Lux num inimigo marcado consome a marca e causa 30–200 (nível) + 30% PdH de dano mágico bônus. A morte de um inimigo iluminado restaura 10–30 de mana (nível; recarga de 1 s contra tropas e monstros pequenos).
   - **Q (Ligação da Luz)**: uma esfera de luz (velocidade 1200, alcance 1175) causa 80–240 + 65% PdH aos dois primeiros inimigos atingidos e os enraíza por 2 s.
@@ -325,7 +326,7 @@ Magos conjuram sem parar contra hordas, então os custos de mana do LoL foram re
 | Lux | Q 40, W 40–60, E 50–70, R 80 | 10–30 quando um inimigo iluminado morre |
 | Ziggs | Q 30–40 (50–70), W 55 (80), E 50–75 (70–110), R 80 (100) | 10–30 em abates por habilidade |
 | Sivir | os do LoL (Q 55–75, W 60, E 0, R 100): ela vive de ataques básicos | nenhuma |
-| Twitch | os do LoL (Q 40, W 70, E 50–90, R 100): ele vive de ataques básicos | nenhuma |
+| Twitch | os do LoL exceto E 40–60 (50–90): Q 40, W 70, R 100; ele vive de ataques básicos | nenhuma |
 
 ## Arquitetura (onde adicionar conteúdo)
 

@@ -643,6 +643,6 @@
  "champion.twitch.bonusAd": "DdA bônus",
  "champion.twitch.Q.desc": "Concede 10% de Velocidade de Movimento por 10-14s e Velocidade de Ataque por 6s. Abater um monstro elite ou épico reinicia a recarga.",
  "champion.twitch.W.desc": "Arremessa um tonel que explode num raio de 300: inimigos atingidos recebem um acúmulo de Veneno Mortal e sofrem Lentidão (+6% a cada 100 PdH). A poça de veneno dura 3s, causando Lentidão a quem estiver dentro e somando um acúmulo por segundo (até 4 por tonel).",
- "champion.twitch.E.desc": "Exige um inimigo envenenado a até 1200. Uma toxina voa até cada inimigo envenenado: dano físico mais 15-35 (+35% do DdA bônus) de dano físico e 35% do PdH de dano mágico por acúmulo de Veneno Mortal. O card mostra 6 acúmulos.",
+ "champion.twitch.E.desc": "Exige um inimigo envenenado a até 1200. Uma toxina voa até cada inimigo envenenado: dano físico mais 25-55 (+50% do DdA bônus) de dano físico e 50% do PdH de dano mágico por acúmulo de Veneno Mortal (a morte de um inimigo envenenado espalha seus acúmulos a até 300). O card mostra 6 acúmulos.",
  "champion.twitch.R.desc": "Por 6s ganha DdA bônus e 300 de alcance de ataque; os ataques básicos disparam virotes que atravessam todos os inimigos na linha com efeitos ao acertar, 10% a menos por inimigo atingido (até 60%)."
 }

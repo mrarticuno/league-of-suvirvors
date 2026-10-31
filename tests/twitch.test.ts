@@ -35,13 +35,13 @@ const enemy = (z: number, tier: Enemy['def']['tier'] = 'minion') =>
 const auto = { type: 'physical', source: 'auto', onHit: true } as const;
 const venomTicks = (g: ReturnType<typeof rig>['g']) => g.hurtEnemy.mock.calls.filter(([, , h]) => h.type === 'true').map(([, d]) => d);
 
-it('Deadly Venom: on-hit stacks up to 6, 1 true damage per stack each second for 6s after the last stack', () => {
+it('Deadly Venom: on-hit stacks up to 6, 2 true damage per stack (twice League) each second for 6s after the last stack', () => {
   const { g, kit, step } = rig();
   const e = enemy(300);
   for (let i = 0; i < 8; i++) kit.onDamage!(e, auto);
   kit.onDamage!(e, { type: 'physical', source: 'ability', skill: 'Q' }); // abilities do not poison
   step(6.5);
-  expect(venomTicks(g)).toEqual([6, 6, 6, 6, 6, 6]);
+  expect(venomTicks(g)).toEqual([12, 12, 12, 12, 12, 12]);
   step(2);
   expect(venomTicks(g)).toHaveLength(6); // expired
 });
@@ -70,7 +70,7 @@ it('Venom Cask: a stack and a slow on impact, a stack each second in the pool, a
   step(4);
   g.hurtEnemy.mockClear();
   step(1); // 4 stacks tick for 4
-  expect(venomTicks(g)).toEqual([4]);
+  expect(venomTicks(g)).toEqual([8]);
 });
 
 it('Contaminate: needs a poisoned enemy; base plus per-stack damage when the toxin lands', () => {
@@ -83,7 +83,7 @@ it('Contaminate: needs a poisoned enemy; base plus per-stack damage when the tox
   kit.castStart!('E', g.pos);
   kit.cast('E', 0, g.pos);
   step(0.3); // 600 units at 3000 u/s
-  expect(g.hurtEnemy).toHaveBeenCalledWith(e, 20 + 3 * 15, expect.objectContaining({ skill: 'E' }));
+  expect(g.hurtEnemy).toHaveBeenCalledWith(e, 40 + 3 * 25, expect.objectContaining({ skill: 'E' }));
 });
 
 it('Spray and Pray: bonus AD and range; attacks become piercing bolts losing 10% per enemy, down to 60%', () => {
@@ -100,4 +100,19 @@ it('Spray and Pray: bonus AD and range; attacks become piercing bolts losing 10%
   for (let i = 0; i < 6; i++) o.onHit(enemy(100 * i), m);
   expect(g.hurtEnemy.mock.calls.map(([, d]) => Math.round(d))).toEqual([100, 90, 80, 70, 60, 60]);
   expect(kit.basicAttack!(target, 100, false, true)).toBe(false); // Runaan's bolts do not pierce
+});
+
+it('wave clear: a poisoned enemy\'s death spreads its stacks to enemies within 300', () => {
+  const { g, kit, enemies } = rig();
+  const dead = enemy(0), close = enemy(250), far = enemy(800);
+  enemies.push(dead, close, far);
+  for (let i = 0; i < 3; i++) kit.onDamage!(dead, { type: 'physical', source: 'auto', onHit: true });
+  kit.onKill!(dead, { type: 'physical', source: 'auto', onHit: true });
+  dead.deadFor = 0;
+  kit.castStart!('E', g.pos);
+  kit.cast('E', 0, g.pos);
+  g.hurtEnemy.mockClear();
+  for (let i = 0; i < 40; i++) { g.time += 0.05; kit.update!(0.05); }
+  expect(g.hurtEnemy).toHaveBeenCalledWith(close, 40 + 3 * 25, expect.objectContaining({ skill: 'E' }));
+  expect(g.hurtEnemy).not.toHaveBeenCalledWith(far, expect.anything(), expect.objectContaining({ skill: 'E' }));
 });

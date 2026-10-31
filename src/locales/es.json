@@ -643,6 +643,6 @@
  "champion.twitch.bonusAd": "DA adicional",
  "champion.twitch.Q.desc": "Otorga 10% de Velocidad de Movimiento durante 10-14 s y Velocidad de Ataque durante 6 s. Matar un monstruo élite o épico reinicia el enfriamiento.",
  "champion.twitch.W.desc": "Lanza un tonel que estalla en un radio de 300: los enemigos alcanzados reciben una acumulación de Veneno Mortal y sufren Ralentización (+6% por cada 100 PH). El charco de veneno dura 3 s, ralentiza a quienes estén dentro y suma una acumulación por segundo (hasta 4 por tonel).",
- "champion.twitch.E.desc": "Requiere un enemigo envenenado a menos de 1200. Una toxina vuela hacia cada enemigo envenenado: daño físico más 15-35 (+35% del DA adicional) de daño físico y 35% del PH de daño mágico por acumulación de Veneno Mortal. La carta muestra 6 acumulaciones.",
+ "champion.twitch.E.desc": "Requiere un enemigo envenenado a menos de 1200. Una toxina vuela hacia cada enemigo envenenado: daño físico más 25-55 (+50% del DA adicional) de daño físico y 50% del PH de daño mágico por acumulación de Veneno Mortal (la muerte de un enemigo envenenado propaga sus acumulaciones a 300 o menos). La carta muestra 6 acumulaciones.",
  "champion.twitch.R.desc": "Durante 6 s obtiene DA adicional y 300 de alcance de ataque; los ataques básicos disparan virotes que atraviesan a todos los enemigos en línea con efectos al impactar, 10% menos por enemigo alcanzado (hasta 60%)."
 }
