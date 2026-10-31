@@ -11,7 +11,8 @@ import { SAMIRA } from './samira';
 import { SIVIR } from './sivir';
 import { TEEMO } from './teemo';
 import { TWITCH } from './twitch';
+import { UDYR } from './udyr';
 import { ZIGGS } from './ziggs';
 
-export const CHAMPIONS: Record<string, ChampionDef> = { ezreal: EZREAL, samira: SAMIRA, brand: BRAND, aphelios: APHELIOS, lux: LUX, teemo: TEEMO, ziggs: ZIGGS, sivir: SIVIR, twitch: TWITCH, orianna: ORIANNA, gangplank: GANGPLANK };
+export const CHAMPIONS: Record<string, ChampionDef> = { ezreal: EZREAL, samira: SAMIRA, brand: BRAND, aphelios: APHELIOS, lux: LUX, teemo: TEEMO, ziggs: ZIGGS, sivir: SIVIR, twitch: TWITCH, orianna: ORIANNA, gangplank: GANGPLANK, udyr: UDYR };
 export const DEFAULT_CHAMPION = EZREAL;

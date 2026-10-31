@@ -184,6 +184,8 @@ export interface ChampionKit {
   canCast?(key: SkillKey): boolean;
   /** True while the champion flies over scenery and units: no wall nor unit collision (e.g. Comet of Legend). */
   ghost?(): boolean;
+  /** True while the champion shrugs off crowd control (e.g. an Awakened Blazing Stampede): stuns and knock-ups do nothing. */
+  unstoppable?(): boolean;
   /** True while the champion's own mechanics forbid basic attacks (e.g. a channel that replaces them). */
   disarmed?(): boolean;
   /** A hostile ability (missile, hazard, boss attack; not a melee basic attack) is about to hurt the champion: true negates it (a spell shield). */
