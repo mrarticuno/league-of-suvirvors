@@ -17,7 +17,6 @@ describe('rollOffers', () => {
       expect(new Set(offers.map((o) => o.id)).size).toBe(offers.length);
       for (const o of offers) {
         if (o.kind === 'new') {
-          expect(ITEMS[o.id].pools).toContain('ad');
           expect(o.id).not.toBe('3078');
           expect(o.slot).toBe(1);
         } else expect(o).toEqual({ id: '3078', slot: 0, kind: 'level' });
@@ -37,11 +36,14 @@ describe('rollOffers', () => {
     expect(rollOffers(full.map((s) => ({ ...s, level: MAX_LEVEL })), 'ad')).toEqual([]);
   });
 
-  it('pools: AP items go to AP champions, attack items to AD ones, tanks and hybrids to both', () => {
-    expect(ITEMS['3089'].pools).toEqual(['ap']); // Rabadon's
-    expect(ITEMS['3031'].pools).toEqual(['ad']); // Infinity Edge
-    expect(ITEMS['3068'].pools).toEqual(['ad', 'ap']); // Sunfire Aegis
-    expect(ITEMS['3124'].pools).toEqual(['ad', 'ap']); // Guinsoo's
+  it('types come from stats; hybrids have several', () => {
+    expect(ITEMS['6653'].types).toEqual(['ap', 'tank']); // Liandry's
+    expect(ITEMS['3084'].types).toEqual(['tank']); // Heartsteel
+    expect(ITEMS['3087'].types).toEqual(['ad', 'ap']); // Statikk Shiv
+    expect(ITEMS['3115'].types).toEqual(['ad', 'ap']); // Nashor's (AS)
+    expect(ITEMS['3091'].types).toEqual(['ad', 'tank']); // Wit's End
+    expect(ITEMS['3089'].types).toEqual(['ap']); // Rabadon's
+    for (const it of Object.values(ITEMS)) expect(it.types.length, it.id).toBeGreaterThan(0);
   });
 });
 

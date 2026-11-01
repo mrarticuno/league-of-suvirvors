@@ -10,15 +10,23 @@ export interface ItemStats {
   critDamage?: number; tenacity?: number; ms?: number; // ms: flat Move Speed (boots)
 }
 export type ItemPool = 'ad' | 'ap';
+/** An item's lines: level-up offers follow the types of the items the player picked (rollOffers). */
+export type ItemType = 'ad' | 'ap' | 'tank';
+export const ITEM_TYPES: readonly ItemType[] = ['ad', 'ap', 'tank'];
 export interface Item {
   id: string;
   name: string;
   stats: ItemStats;
   pools: ItemPool[]; // champions it is offered to (ChampionDef.itemPool)
+  types: ItemType[]; // in ITEM_TYPES order; hybrids have several
 }
 
 const AD_STATS: (keyof ItemStats)[] = ['ad', 'as', 'crit', 'critDamage', 'armorPen', 'lethality'];
 const AP_STATS: (keyof ItemStats)[] = ['ap', 'magicPen', 'magicPenFlat'];
+const TANK_STATS: (keyof ItemStats)[] = ['hp', 'armor', 'mr'];
+const TYPE_STATS: Record<ItemType, (keyof ItemStats)[]> = { ad: AD_STATS, ap: AP_STATS, tank: TANK_STATS };
+/** AD: an attack stat; AP: an ability power stat; Tank: any defensive stat. */
+export const typesOf = (s: ItemStats): ItemType[] => ITEM_TYPES.filter((t) => TYPE_STATS[t].some((k) => s[k]));
 /** AD champions get items with an attack stat, AP ones items with AP; hybrids and items with neither (tanks) go to both. */
 function poolsOf(s: ItemStats): ItemPool[] {
   const ad = AD_STATS.some((k) => s[k]), ap = AP_STATS.some((k) => s[k]);
@@ -31,7 +39,7 @@ const toItems = (src: Record<string, { stats: ItemStats }>): Record<string, Item
   const stats: ItemStats = { ...it.stats };
   if (stats.lifesteal) stats.lifesteal *= VAMP_MULT;
   if (stats.omnivamp) stats.omnivamp *= VAMP_MULT;
-  return [id, { id, stats, pools: poolsOf(stats), name: t(`item.${id}` as Key) }];
+  return [id, { id, stats, pools: poolsOf(stats), types: typesOf(stats), name: t(`item.${id}` as Key) }];
 }));
 export const ITEMS = toItems(data.items);
 
