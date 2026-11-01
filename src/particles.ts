@@ -751,6 +751,9 @@ class Emitter {
     if (points.length < 2) return;
     const tile = val(e.primitive.mTrail?.mBirthTilingSize, et)?.[0] || 200;
     const side = new THREE.Vector3(1, 0, 0).applyQuaternion(this.sys.quat);
+    // ground-layer trails lie flat on the terrain, like ground beams (Hwei's QE path is authored 75 below its missile)
+    const ground = !!e.isGroundLayer;
+    if (ground) side.setY(0).normalize();
     b.reserve(points.length * 2, (points.length - 1) * 6);
     let dist = 0;
     for (let i = 0; i < points.length; i++) {
@@ -769,6 +772,7 @@ class Emitter {
         const u = dist / tile, v = (k + 1) / 2;
         const x = u - 0.5, y = v - 0.5;
         _w.copy(p.pos).addScaledVector(sv, w * k);
+        if (ground) _w.y = GROUND;
         b.vert(_w, x * cos - y * sin + 0.5 + scroll[0], x * sin + y * cos + 0.5 + scroll[1], c, pt, erode);
       }
       if (i > 0) {

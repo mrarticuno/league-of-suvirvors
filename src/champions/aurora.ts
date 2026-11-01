@@ -353,6 +353,7 @@ function auroraKit(g: Game): ChampionKit {
     // the static ring lingers past the rift; removing its anchor stops it emitting and lets it fade out
     const fx = new THREE.Group();
     fx.position.copy(center);
+    fx.scale.setScalar(SKILLS.R.radius / SKILLS.R.fxRadius); // a followed system takes its anchor's scale every frame
     g.scene.add(fx);
     riftFx('Aurora_R_AoERingStatic', center, facing, { follow: fx, killOnStop: false });
     rift = {
