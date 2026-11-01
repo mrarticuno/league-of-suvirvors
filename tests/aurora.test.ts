@@ -67,7 +67,7 @@ it('procs free Spirits (small enemies once per 5s, elites always) that heal ever
   proc(enemy('elite'));
   expect(kit.hud!()).toContain('2/4');
   step(1.05);
-  expect(g.heal).toHaveBeenCalledWith(2 * 3); // 2 Spirits x 3 at level 1
+  expect(g.heal).toHaveBeenCalledWith(2 * 10); // 2 Spirits x 10 at level 1
   step(3.1);
   expect(kit.hud!()).toContain('0/4');
 });
@@ -85,7 +85,7 @@ it('kills by abilities restore 10 mana at level 1, once per second from minions'
   expect(g.mana).toBe(20);
 });
 
-it('the recast bolts deal 40% to minions, scaled up to +50% by missing Health, and 20% on later bolts', () => {
+it('the recast bolts deal 75% to minions, scaled up to +50% by missing Health, and 20% on later bolts', () => {
   const { g, kit, enemies, step } = rig();
   const a = enemy('minion'), b = enemy('minion');
   a.pos.set(0, 0, 600); b.pos.set(0, 0, 600);
@@ -98,7 +98,7 @@ it('the recast bolts deal 40% to minions, scaled up to +50% by missing Health, a
   kit.recast!('Q', new THREE.Vector3());
   step(1);
   const bolts = g.hurtEnemy.mock.calls.filter(([e, , hit]) => hit.skill === 'Q' && (e === a || e === b)).map(([e, dmg]) => [e === a ? 'a' : 'b', Math.round(dmg)]);
-  const full = 145 * 0.4;
+  const full = 145 * 0.75;
   expect(bolts).toContainEqual(['a', Math.round(full * 1.25)]);
   expect(bolts).toContainEqual(['b', Math.round(full)]);
   expect(bolts).toContainEqual(['a', Math.round(full * 1.25 * 0.2)]);

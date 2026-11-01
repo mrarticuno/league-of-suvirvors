@@ -67,7 +67,7 @@ export class Hud {
     };
     slider('menu-music', audio.musicVolume, (v) => audio.setMusicVolume(v));
     slider('menu-sfx', audio.sfxVolume, (v) => audio.setSfxVolume(v)).onchange = () => audio.play('hud_open'); // preview on release
-    $('pause-btn').onclick = () => this.toggleMenu();
+    $('pause-btn').onclick = () => { if (!this.game?.over) this.toggleMenu(); }; // the end screen has its own buttons
     $('pause-btn').setAttribute('aria-label', t('hud.pause'));
     $('auto').onclick = onAuto;
     $('skills').innerHTML = SKILL_KEYS.map((k) => `

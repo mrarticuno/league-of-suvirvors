@@ -38,7 +38,7 @@ const PASSIVE = {
   hpPct: 0.01, hpPctPerAp: 0.00027, // 1% (+2.7% per 100 AP) of max Health
   monsterCapBase: 90, monsterCapPerLevel: 10, // 100-270 against monsters
   spiritDuration: 4, maxSpirits: 4, spiritCooldown: 5, // SpiritModeDuration; CooldownDuration (small enemies only)
-  healMin: 3, healMax: 20, healApRatio: 0.02, // per Spirit per second
+  healMin: 10, healMax: 20, healApRatio: 0.02, // per Spirit per second
   manaRestore: [10, 30] as const, manaCooldown: 1,
   maxMarkFx: 40, // particle budget: past this, stacks still count without their ring
 };
@@ -46,10 +46,10 @@ const PASSIVE = {
 const SKILLS = {
   Q: {
     name: t('champion.aurora.Q'), desc: t('champion.aurora.Q.desc'), damageType: 'magic', maxRank: 5, anim: 'spell1', icon: `${ICON}/spell/AuroraQ.png`,
-    cooldown: [9, 8.5, 8, 7.5, 7], cost: [35, 35, 35, 35, 35],
+    cooldown: [6, 5.75, 5.5, 5.25, 5], cost: [35, 35, 35, 35, 35],
     damage: [45, 70, 95, 120, 145], apRatio: 0.4,
     range: 900, aim: 900, speed: 1600, width: 180, castTime: 0.25, markDuration: 3.5, recastDelay: 0.1,
-    returnSpeed: 2000, minionMod: 0.4, monsterMod: 0.5, missingHpBonus: 0.5, repeatMod: 0.2,
+    returnSpeed: 2000, minionMod: 0.75, monsterMod: 0.5, missingHpBonus: 0.5, repeatMod: 0.2,
   },
   W: {
     name: t('champion.aurora.W'), desc: t('champion.aurora.W.desc'), damageType: 'magic', maxRank: 5, anim: 'spell2', icon: `${ICON}/spell/AuroraW.png`,
@@ -61,13 +61,13 @@ const SKILLS = {
   },
   E: {
     name: t('champion.aurora.E'), desc: t('champion.aurora.E.desc'), damageType: 'magic', maxRank: 5, anim: 'spell3_reblock3', icon: `${ICON}/spell/AuroraE.png`,
-    cooldown: [15, 14, 13, 12, 11], cost: [50, 50, 50, 50, 50],
+    cooldown: [10, 9.5, 9, 8.5, 8], cost: [50, 50, 50, 50, 50],
     damage: [80, 120, 160, 200, 240], apRatio: 0.7,
     range: 825, aim: 825, width: 175, castTime: 0.35, slow: 0.8, slowDuration: 1, recoil: 250,
   },
   R: {
     name: t('champion.aurora.R'), desc: t('champion.aurora.R.desc'), damageType: 'magic', maxRank: 3, anim: 'spell4_e', icon: `${ICON}/spell/AuroraR.png`,
-    cooldown: [140, 120, 100], cost: [80, 80, 80],
+    cooldown: [90, 80, 70], cost: [80, 80, 80],
     damage: [175, 275, 375], apRatio: 0.7, slow: 0.3, slowDuration: 2,
     aim: 700, castTime: 0.05, leap: 250, leapTime: 0.4,
     // AoESize 700 is the rift's radius (castRadius 750 is its indicator; the official clip shows a ring ~7.7x her height

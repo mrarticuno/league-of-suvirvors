@@ -105,6 +105,7 @@ async function startRun(champ: ChampionDef, page: Page, saved?: RunSnapshot) {
   loading.style.display = '';
   await game.setChampion(champ);
   loading.style.display = 'none';
+  if (hud?.menuOpen) hud.toggleMenu(); // the ESC menu may still be open from the last run (e.g. its end screen)
   if (champ !== hudChamp) {
     hud = new Hud(champ, toggleAuto);
     hudChamp = champ;

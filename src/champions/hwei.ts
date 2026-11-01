@@ -49,14 +49,14 @@ const SPELLS = {
   },
   QW: {
     anim: 'spell1w', castTime: 0.5, aim: 1900, icon: `${HUD}/hweiqw.png`,
-    range: 1900, radius: 225, delay: 1,
-    damage: [60, 85, 110, 135, 160], apRatio: 0.3, bonusMult: [2, 2.375, 2.75, 3.125, 3.5], monsterCap: 300, minionMult: 0.5,
+    range: 1900, radius: 300, delay: 1,
+    damage: [60, 85, 110, 135, 160], apRatio: 0.3, bonusMult: [2, 2.375, 2.75, 3.125, 3.5], monsterCap: 300, minionMult: 0.75,
   },
   QE: {
     anim: 'spell1e', castTime: 0.35, aim: 1200, icon: `${HUD}/hweiqe.png`,
     range: 1200, tellSpeed: 1500, delay: 0.6, speed: 800, step: 150, explosions: 7, radius: 225,
     damage: [20, 35, 50, 65, 80], apRatio: 0.3,
-    lava: 2.5, tick: 0.25, tickDamage: [5, 8.75, 12.5, 16.25, 20], tickApRatio: 0.06, slow: 0.35, minionMult: 0.6, monsterMult: 1.35,
+    lava: 2.5, tick: 0.25, tickDamage: [6, 10.5, 15, 19.5, 24], tickApRatio: 0.06, slow: 0.35, minionMult: 0.9, monsterMult: 1.35,
   },
   WQ: {
     anim: 'spell3w', castTime: 0.25, aim: 'move', icon: `${HUD}/hweiwq.png`, // standing Spell2q plays spell3w.anm
@@ -66,7 +66,7 @@ const SPELLS = {
   WW: {
     anim: 'spell2w', castTime: 0.3, aim: 'move', icon: `${HUD}/hweiww.png`,
     range: 650, radius: 350, duration: 3,
-    shield: [100, 140, 180, 220, 260], apRatio: 0.6, start: 0.5, tick: 0.264, ticksToFull: 6, linger: 0.5,
+    shield: [100, 140, 180, 220, 260], apRatio: 0.6, heal: 0.3, start: 0.5, tick: 0.264, ticksToFull: 6, linger: 0.5,
   },
   WE: {
     anim: 'spell2e', castTime: 0.25, aim: 'none', icon: `${HUD}/hweiwe.png`,
@@ -86,7 +86,9 @@ const SPELLS = {
   },
   EE: {
     anim: 'spell3e', castTime: 0.35, aim: 800, icon: `${HUD}/hweiee.png`,
-    range: 800, delay: 0.6, width: 320, depth: 340, pull: 0.2,
+    // HweiEE Width 320 is half the width: the client's clip shows the maw ~640 across the cast and ~440 along it,
+    // ~1.28x the size its systems are authored at (jaw quads 250 half-wide), so they play at fxScale
+    range: 800, delay: 0.6, width: 640, depth: 440, fxScale: 1.28, pull: 0.2,
     damage: [70, 110, 150, 190, 230], apRatio: 0.65, slow: [0.4, 0.475, 0.55, 0.625, 0.7], slowFor: 1.25,
   },
 } as const;
@@ -94,18 +96,18 @@ const SPELLS = {
 const SKILLS = {
   Q: {
     name: t('champion.hwei.Q'), desc: t('champion.hwei.Q.desc'), damageType: 'magic', maxRank: 5, anim: 'spell1q', icon: `${ICON}/spell/HweiQ.png`,
-    cooldown: [10, 9, 8, 7, 6], cost: [30, 30, 30, 30, 30],
+    cooldown: [7, 6.3, 5.6, 4.9, 4.2], cost: [30, 30, 30, 30, 30],
     damage: SPELLS.QQ.damage, apRatio: SPELLS.QQ.apRatio, aim: 800, castTime: 0.25,
   },
   W: {
     name: t('champion.hwei.W'), desc: t('champion.hwei.W.desc'), damageType: 'magic', maxRank: 5, anim: 'spell2w', icon: `${ICON}/spell/HweiW.png`,
-    cooldown: [18, 17.5, 17, 16.5, 16], cost: [45, 45, 45, 45, 45],
+    cooldown: [12.6, 12.25, 11.9, 11.55, 11.2], cost: [45, 45, 45, 45, 45],
     damage: SPELLS.WE.damage, apRatio: SPELLS.WE.apRatio, hits: 3, aim: 'move', castTime: 0.25,
     extra: { label: t('champion.hwei.W.shield'), values: SPELLS.WW.shield },
   },
   E: {
     name: t('champion.hwei.E'), desc: t('champion.hwei.E.desc'), damageType: 'magic', maxRank: 5, anim: 'spell3e', icon: `${ICON}/spell/HweiE.png`,
-    cooldown: [12, 11.5, 11, 10.5, 10], cost: [25, 25, 25, 25, 25],
+    cooldown: [8.4, 8.05, 7.7, 7.35, 7], cost: [25, 25, 25, 25, 25],
     damage: SPELLS.EQ.damage, apRatio: SPELLS.EQ.apRatio, aim: 1100, castTime: 0.25,
   },
   R: {
@@ -557,6 +559,8 @@ function hweiKit(g: Game): ChampionKit {
       // half the shield on entering, growing a twelfth of it every 0.264s up to the full amount
       const full = S.shield[p.rank] + S.apRatio * ap();
       const want = full * Math.min(1, S.start + ((1 - S.start) * p.ticks) / S.ticksToFull);
+      // not from LoL (horde sustain): the pool also heals `heal` of the full shield, spread over its growth
+      if (p.ticks <= S.ticksToFull) g.heal((full * S.heal) / (S.ticksToFull + 1));
       p.ticks++;
       if (!poolShield || g.shield <= 0) {
         audio.play('hwei_WW_shield');
@@ -686,8 +690,9 @@ function hweiKit(g: Game): ChampionKit {
     const at = clampPoint(point, S.range);
     const dir = toward(at).clone();
     const facing = Math.atan2(dir.x, dir.z);
-    // the jaws are authored from their near end: the bite's center sits 150 units ahead of the system
-    g.vfx.playAt('Hwei_E_E_Hand', at.clone().addScaledVector(dir, -150), facing);
+    // the jaws are authored from their near end: the bite's center sits 150 units (scaled) ahead of the system
+    const fx = g.vfx.play('Hwei_E_E_Hand', at.clone().addScaledVector(dir, -150 * S.fxScale), facingQuat(facing));
+    if (fx) fx.scale = S.fxScale;
     audio.playAt('hwei_EE_zone', at, g.pos);
     const c = newCast('EE', 'E', true);
     timers.push({
