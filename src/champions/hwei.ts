@@ -310,7 +310,10 @@ function hweiKit(g: Game): ChampionKit {
     }
     lightsUntil = 0;
   };
-  /** One charge spent on `e`: a flare flies to it for the bonus damage; Hwei gets the mana back. */
+  /**
+   * One charge spent on `e`: Hwei gets the mana back and the returned bonus damage lands with the hit itself (an
+   * attack shows one bigger number); the flare flying to the target is only its look.
+   */
   const spendLight = (e: Enemy, reduced: boolean) => {
     const W = SPELLS.WE;
     const f = flares.pop()!;
@@ -319,14 +322,14 @@ function hweiKit(g: Game): ChampionKit {
     g.mana = Math.min(g.maxMana, g.mana + W.mana[lightsRank]);
     const damage = (W.damage[lightsRank] + W.apRatio * ap()) * (reduced ? W.aoeMult : 1);
     g.spawnMissile('Hwei_W_E_Foxfire_Mis', from, e.pos, {
-      speed: W.flareSpeed, range: 4000, radius: 10, damage, target: e, hit: HITS.proc, height: from.y,
+      speed: W.flareSpeed, range: 4000, radius: 10, damage: 0, target: e, hit: HITS.proc, height: from.y,
       onHit: (x) => {
         g.vfx.hit('Hwei_W_E_Empowered_tar', x.pos, 0, { size: boundSize(x) });
         audio.play('hwei_WE_hit');
-        g.hurtEnemy(x, damage, HITS.proc);
       },
     });
     if (!flares.length) endLights(false);
+    return damage;
   };
   /**
    * Stirring Lights on a spell hit: the cast's first hit spends a charge (a flare flies to that enemy); the area
@@ -336,7 +339,7 @@ function hweiKit(g: Game): ChampionKit {
     const reduced = c.aoe && kind(e) !== 'epic';
     if (!c.empowered) {
       c.empowered = true;
-      spendLight(e, reduced);
+      g.hurtEnemy(e, spendLight(e, reduced), HITS.proc);
       return;
     }
     if (!c.aoe) return;
@@ -897,8 +900,7 @@ function hweiKit(g: Game): ChampionKit {
 
     onDamage(e, hit) {
       // Stirring Lights empowers basic attacks too (one charge each)
-      if (hit.source === 'auto' && !hit.bolt && lightsOn()) spendLight(e, false);
-      return 0;
+      return hit.source === 'auto' && !hit.bolt && lightsOn() ? spendLight(e, false) : 0;
     },
 
     update(dt) {

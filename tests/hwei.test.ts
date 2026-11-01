@@ -81,7 +81,8 @@ it('Stirring Lights: each basic attack spends a flare that restores mana, three 
   const { g, kit, missiles, cast } = rig();
   cast('W', 'E');
   const auto: Hit = { type: 'physical', source: 'auto', onHit: true };
-  for (let i = 0; i < 4; i++) kit.onDamage!(enemy(), auto);
+  const bonus = [0, 1, 2, 3].map(() => kit.onDamage!(enemy(), auto));
+  expect(bonus).toEqual([20, 20, 20, 0]); // rank 1: 20 bonus magic damage in the attack itself, none once spent
   expect(missiles).toHaveLength(3); // three flares fly to the targets
   expect(g.mana).toBe(3 * 45); // rank 1: 45 mana each
 });
