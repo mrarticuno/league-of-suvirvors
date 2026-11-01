@@ -14,7 +14,7 @@ const AUTO: Hit = { type: 'physical', source: 'auto', onHit: true };
 function rig() {
   const enemies: Enemy[] = [];
   const g = {
-    time: 0, level: 1, ap: 0, facing: 0, shield: 0, pos: new THREE.Vector3(), scene: new THREE.Scene(),
+    time: 0, level: 1, ap: 0, facing: 0, shield: 0, mana: 0, maxMana: 1000, float: vi.fn(), pos: new THREE.Vector3(), scene: new THREE.Scene(),
     ranks: { Q: 5, W: 5, E: 5, R: 3 }, cooldowns: { Q: 0, W: 0, E: 0, R: 0 }, champ: ORIANNA,
     vfx: {
       attach: () => new THREE.Group(), play: vi.fn(() => null), playAt: vi.fn(), hit: vi.fn(), playOn: vi.fn(),
@@ -128,4 +128,21 @@ it('Shockwave pressed while the Ball flies goes off 0.5s after it lands, tossing
   const [, offset, stun] = g.knockBack.mock.calls[0];
   expect(offset.x).toBeCloseTo(-325);
   expect(stun).toBe(0.75);
+});
+
+it('Command: Attack restores 3 mana per enemy hit up to its cost; Dissonance refunds its cost on 3+ enemies', () => {
+  const { g, kit, enemies, step } = rig();
+  for (let i = 0; i < 10; i++) enemies.push(enemy(300 + i * 20));
+  kit.cast('Q', 4, new THREE.Vector3(600, 0, 0));
+  step(1);
+  expect(g.mana).toBe(25); // 10 hits would be 30: capped at the cost
+  expect(g.float).toHaveBeenCalledWith(g.pos, '+25', 'mana');
+  g.mana = 0;
+  kit.cast('W', 4, g.pos); // at the Ball, among the enemies
+  expect(g.mana).toBe(80);
+  enemies.length = 2;
+  enemies.splice(0, 2, enemy(600), enemy(5000));
+  g.mana = 0;
+  kit.cast('W', 4, g.pos);
+  expect(g.mana).toBe(0); // fewer than 3
 });

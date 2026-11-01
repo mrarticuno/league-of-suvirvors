@@ -1,7 +1,7 @@
 // Orianna. Numbers mirror League of Legends V26.21 (sources: the League wiki, the client's orianna.bin spell data and
 // the skin bins). Cooldowns are League's. Adapted for hordes (she lives on her skills and starved of mana without the
-// Blue buff): Q costs 25 (League 35) and Dissonance refunds its cost when it hits 3 or more enemies, so a crowd sustains
-// her and a boss fight drains her.
+// Blue buff): Q costs 25 (League 35) and Dissonance refunds its cost when it hits 3 or more enemies, Command: Attack
+// restores 3 mana per enemy it hits (up to its cost), so a crowd sustains her and a boss fight drains her.
 // The Ball is part of Orianna's own mesh while she holds it (the BallDown/BallUpper joints, collapsed while it is away;
 // League swaps to the OriannaNoBall model, the same body without it). Away from her it is the OriannaBall model resting
 // on the ground, and the skin's Ghost particle meshes while it flies. It attaches back when she walks within 135 of it
@@ -42,6 +42,7 @@ const SKILLS = {
     name: t('champion.orianna.Q'), desc: t('champion.orianna.Q.desc'), damageType: 'magic', maxRank: 5, anim: 'orianna_spell1_right', icon: `${ICON}/spell/OrianaIzunaCommand.png`,
     cooldown: [7, 6, 5, 4, 3], cost: [25, 25, 25, 25, 25], // League 35
     damage: [60, 90, 120, 150, 180], apRatio: 0.6, reduced: 0.7,
+    manaPerHit: 3, // adapted: mana per enemy hit, up to the cost
     range: 825, aim: 825, minTravel: 150, speed: 1400, radius: 175, castTime: 0.05,
   },
   W: {
@@ -215,6 +216,12 @@ function oriannaKit(g: Game): ChampionKit {
     if (dir.lengthSq() < 1) dir.set(Math.sin(g.facing), 0, Math.cos(g.facing));
     return { fx, dir: dir.normalize().clone(), to: to.clone().setY(0), travelled: 0, rank, hit: new Set() };
   };
+  /** Adds mana; `show` floats the amount over Orianna (the refund nets out the cost paid a frame earlier: unseen on the bar). */
+  const restore = (n: number, show: boolean) => {
+    if (n <= 0) return;
+    g.mana = Math.min(g.maxMana, g.mana + n);
+    if (show) g.float(g.pos, `+${n}`, 'mana');
+  };
   /** Damage to enemies the flying Ball passes through (once each). Returns how many it hit this step. */
   const sweep = (f: Flight, hit: (e: Enemy, first: boolean) => void) => {
     const at = f.fx.root.position;
@@ -231,6 +238,7 @@ function oriannaKit(g: Game): ChampionKit {
     const Q = SKILLS.Q;
     const dmg = (Q.damage[f.rank] + Q.apRatio * g.ap) * (first ? 1 : Q.reduced);
     if (f.hit.size < BALL.maxHitFx) g.vfx.playAt('Orianna_Z_Izuna_tar', e.pos.clone().setY(0), 0, { size: boundSize(e) });
+    restore(Math.min(Q.manaPerHit, Q.cost[f.rank] - Q.manaPerHit * f.hit.size), false); // f.hit: the enemies hit before this one
     g.hurtEnemy(e, dmg, HITS.Q);
   };
   const protectHit = (f: Flight) => (e: Enemy) => {
@@ -253,6 +261,7 @@ function oriannaKit(g: Game): ChampionKit {
       hit(e, f.hit.size === 0);
       f.hit.add(e);
     }
+    if (f.hit.size > 0) g.float(g.pos, `+${Math.min(Q.cost[f.rank], Q.manaPerHit * f.hit.size)}`, 'mana');
     g.vfx.playAt('Orianna_Z_Izuna_nova', ball, angleTo(g.pos, ball), { owner: actor?.root });
     audio.playAt('orianna_Q_land', ball, g.pos);
     for (const q of queued.splice(0)) q.key === 'W' ? dissonance(q.rank) : windShockwave(q.rank);
@@ -327,7 +336,7 @@ function oriannaKit(g: Game): ChampionKit {
       g.hurtEnemy(e, damage, HITS.W);
     }
     if (fx > 0) audio.play('orianna_Q_hit');
-    if (fx >= W.refundHits) g.mana = Math.min(g.maxMana, g.mana + W.cost[rank]);
+    if (fx >= W.refundHits) restore(W.cost[rank], true);
     fields.push({ at, until: g.time + W.field, rank, fx: field, stop: audio.play('orianna_W_field') });
   };
   const updateFields = () => {

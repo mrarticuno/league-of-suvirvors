@@ -133,7 +133,7 @@ export interface RunSnapshot {
 export interface Choice { title: string; options: { name: string; text: string; icon: string; run: () => void }[] }
 
 /** Floating combat text (damage dealt/taken, XP), rendered by the HUD. */
-export interface Floater { pos: THREE.Vector3; text: string; kind: 'physical' | 'magic' | 'crit' | 'taken' | 'xp'; age: number }
+export interface Floater { pos: THREE.Vector3; text: string; kind: 'physical' | 'magic' | 'crit' | 'taken' | 'xp' | 'mana'; age: number }
 
 const ringGeo = new THREE.RingGeometry(0.85, 1, 48).rotateX(-Math.PI / 2);
 const glow = (color: number) =>

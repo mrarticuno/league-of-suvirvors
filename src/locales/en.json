@@ -664,7 +664,7 @@
  "champion.orianna.hud": "Clockwork Winding {stacks}/{max}",
  "champion.orianna.speed": "Move Speed / Slow",
  "champion.orianna.shield": "Shield",
- "champion.orianna.Q.desc": "Commands the Ball to fly to the target location (up to 825 units) and stay there, dealing magic damage to enemies it passes through and to enemies within 175 of where it lands. Enemies hit after the first take 70%.",
+ "champion.orianna.Q.desc": "Commands the Ball to fly to the target location (up to 825 units) and stay there, dealing magic damage to enemies it passes through and to enemies within 175 of where it lands. Enemies hit after the first take 70%. Restores 3 mana per enemy hit, up to its cost.",
  "champion.orianna.W.desc": "The Ball emits an electric pulse that deals magic damage to enemies within 225 and leaves a field for 3s: enemies inside are slowed by 20–40% and Orianna inside gains as much Move Speed, both fading over 2s after leaving it. Hitting 3 or more enemies refunds its mana cost.",
  "champion.orianna.E.desc": "Commands the Ball to fly back to Orianna and attach to her, dealing magic damage to enemies it passes through and granting her a Shield for 2.5s. While attached, the Ball grants her 6–30 Armor and Magic Resist.",
  "champion.orianna.R.desc": "After 0.5s, the Ball unleashes a shockwave that deals magic damage to enemies within 415, tosses them 325 units toward it and stuns them for 0.75s.",

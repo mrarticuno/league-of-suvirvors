@@ -664,7 +664,7 @@
  "champion.orianna.hud": "Corda {stacks}/{max}",
  "champion.orianna.speed": "Velocidade de Movimento / Lentidão",
  "champion.orianna.shield": "Escudo",
- "champion.orianna.Q.desc": "Ordena que a Bola voe até o local alvo (até 825 unidades) e fique lá, causando dano mágico aos inimigos por onde passa e aos inimigos a até 175 do ponto onde para. Os inimigos atingidos depois do primeiro sofrem 70%.",
+ "champion.orianna.Q.desc": "Ordena que a Bola voe até o local alvo (até 825 unidades) e fique lá, causando dano mágico aos inimigos por onde passa e aos inimigos a até 175 do ponto onde para. Os inimigos atingidos depois do primeiro sofrem 70%. Restaura 3 de mana por inimigo atingido, até o custo.",
  "champion.orianna.W.desc": "A Bola emite um pulso elétrico que causa dano mágico aos inimigos a até 225 e deixa um campo por 3s: inimigos dentro dele sofrem 20–40% de Lentidão e Orianna dentro dele ganha o mesmo em Velocidade de Movimento, os dois diminuindo ao longo de 2s depois de sair. Acertar 3 ou mais inimigos devolve o custo de mana.",
  "champion.orianna.E.desc": "Ordena que a Bola volte voando até Orianna e se prenda a ela, causando dano mágico aos inimigos por onde passa e concedendo a ela um Escudo por 2,5s. Enquanto presa, a Bola concede 6–30 de Armadura e Resistência Mágica.",
  "champion.orianna.R.desc": "Após 0,5s, a Bola libera uma onda de choque que causa dano mágico aos inimigos a até 415, os arremessa 325 unidades em direção a ela e os atordoa por 0,75s.",

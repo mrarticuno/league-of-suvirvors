@@ -267,7 +267,7 @@ WASD não é usado porque colide com Q/W/E.
   - **W (Comando: Dissonância)**: um pulso na Bola, 70–230 + 85% PdH a até 225; o campo dura 3 s: inimigos dentro sofrem 20–40% de Lentidão e Orianna dentro ganha o mesmo em Velocidade de Movimento, os dois diminuindo ao longo de 2 s depois de sair.
   - **E (Comando: Proteger)**: a Bola volta voando até ela (velocidade 1850), causando 60–180 + 30% PdH aos inimigos no caminho, e dá um Escudo de 55–195 + 45% PdH por 2,5 s; enquanto está com ela, +6–30 de Armadura e Resistência Mágica.
   - **R (Comando: Onda de Choque)**: após 0,5 s, 225/350/475 + 110% PdH a até 415 da Bola, arremessando os inimigos 325 em direção a ela e atordoando-os por 0,75 s. W e R apertados enquanto a Bola voa até um ponto do Atacar disparam quando ela pousa.
-  - Fora do LoL: o Comando: Proteger só mira a Orianna (sem aliados); os limites de cor da seta (60%/80% da coleira) e quando o arco da coleira aparece são estimativas (no script, não no bin); o W toca o clip `spell2` (o bin indica Spell1 para Q e W). Recargas são as do LoL; o Q custa 25 (35) e o W devolve o custo ao acertar 3 ou mais inimigos.
+  - Fora do LoL: o Comando: Proteger só mira a Orianna (sem aliados); os limites de cor da seta (60%/80% da coleira) e quando o arco da coleira aparece são estimativas (no script, não no bin); o W toca o clip `spell2` (o bin indica Spell1 para Q e W). Recargas são as do LoL; o Q custa 25 (35) e o W devolve o custo ao acertar 3 ou mais inimigos; o Q restaura 3 de mana por inimigo atingido, até o custo.
 - **Twitch** (DataValues dos bins de feitiço, patch 26.21; LoL Wiki V26.16 para as regras de script): alcance 550, virotes a 2500 u/s, windup de 20,2%. Todos os sistemas de partícula de gameplay da skin são usados (virotes e impactos, os ícones de caveira de rato e a fumaça do veneno, o tonel, a explosão, a poça, o anel e o debuff de lentidão, a toxina e o impacto, o puf da Emboscada, o brilho nas mãos e o rastro de velocidade, a aura, o brilho da besta, os virotes e impactos de Passando Fogo, a fumaça idle).
   - **Passiva (Veneno Mortal)**: efeitos ao acertar (ataques básicos, virotes do Furacão de Runaan, cada inimigo atingido por um virote de Passando Fogo) e o Tonel de Veneno aplicam um acúmulo por 6 s (renovado, até 6): 1/2/3/4/5 (níveis 1/5/9/13/17) + 3% do PdH de dano verdadeiro por acúmulo a cada segundo.
   - **Q (Emboscada)**: 10% de Velocidade de Movimento por 10–14 s e 40–60% de Velocidade de Ataque por 6 s; recarga 16 s, 40 de mana.
@@ -358,7 +358,7 @@ Magos conjuram sem parar contra hordas, então os custos de mana do LoL foram re
 | Lux | Q 40, W 40–60, E 50–70, R 80 | 10–30 quando um inimigo iluminado morre |
 | Ziggs | Q 30–40 (50–70), W 55 (80), E 50–75 (70–110), R 80 (100) | 10–30 em abates por habilidade |
 | Sivir | os do LoL (Q 55–75, W 60, E 0, R 100): ela vive de ataques básicos | nenhuma |
-| Orianna | Q 25 (35), W 60–80, E 60, R 100 | o W devolve o custo ao acertar 3+ inimigos |
+| Orianna | Q 25 (35), W 60–80, E 60, R 100 | Q: 3 por inimigo atingido, até o custo; o W devolve o custo ao acertar 3+ inimigos |
 | Twitch | os do LoL exceto E 40–60 (50–90): Q 40, W 70, R 100; ele vive de ataques básicos | nenhuma |
 | Gangplank | Q 30–18 (50–30), W 40–70 (60–100), E cargas, R 80 (100) | 10–30 em abates do Negociarrr ou de um barril |
 | Udyr | Q 15 (20), W/E/R 28–18 (40–23) | 10–30 em abates por ataques fortalecidos, raios ou a tempestade |
