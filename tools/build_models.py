@@ -39,6 +39,11 @@ MODELS = {
     "udyr": ("udyr", "udyr_base_main_tx_cm.png", []),
     # stance arms and horns texture of the udyr mesh (ChampionDef.textures)
     "udyr_arms": ("udyr", "../udyr/udyr_submesharms_tx_cm.png", []),
+    "aurora": ("aurora", "aurora_base_tx_cm.png", []),
+    # wand texture of the aurora mesh (ChampionDef.textures)
+    "aurora_weapon": ("aurora", "../aurora/aurora_base_weapon_tx_cm.png", []),
+    # Spirit Abjuration's spirits: the AuroraSpirits character of Aurora's WAD (own mesh and clips)
+    "auroraspirits": ("auroraspirits", "auroraspirits_base_main_tx_cm.png", []),
     "aphelios_guns": ("aphelios", "../aphelios/aphelios_base_guns_tx_cm.png", []),
     # Crescendum's sentry: own mesh and clips, wearing Aphelios' gun texture (OWN_MESH)
     "apheliosturret": ("apheliosturret", "../aphelios/aphelios_base_guns_tx_cm.png", []),
@@ -83,6 +88,8 @@ SKIP_CLIPS = {
     "gangplank": re.compile(r"channel|dance|joke|laugh|taunt|respawn|recall"),
     "orianna": re.compile(r"channel|dance|joke|laugh|taunt"),
     "twitch": re.compile(r"channel|dance|joke|laugh|taunt|recall"),
+    "aurora": re.compile(r"_to|torun|towalk|_in|homeguard|homguard|channel|dance|joke|laugh|taunt|recall|respawn|knockup|stunned|catch|walk"),
+    "auroraspirits": re.compile(r"dance"),
     "udyr": re.compile(r"channel|dance|joke|laugh|taunt|recall|recal_|respawn|homeguard"),
 }
 

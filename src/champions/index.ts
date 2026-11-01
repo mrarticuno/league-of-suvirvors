@@ -2,6 +2,7 @@
 import type { ChampionDef } from '../champion';
 import { APHELIOS } from './aphelios';
 import { AURELIONSOL } from './aurelionsol';
+import { AURORA } from './aurora';
 import { BRAND } from './brand';
 import { EZREAL } from './ezreal';
 import { GANGPLANK } from './gangplank';
@@ -14,5 +15,5 @@ import { TWITCH } from './twitch';
 import { UDYR } from './udyr';
 import { ZIGGS } from './ziggs';
 
-export const CHAMPIONS: Record<string, ChampionDef> = { ezreal: EZREAL, samira: SAMIRA, brand: BRAND, aphelios: APHELIOS, aurelionsol: AURELIONSOL, lux: LUX, teemo: TEEMO, ziggs: ZIGGS, sivir: SIVIR, twitch: TWITCH, orianna: ORIANNA, gangplank: GANGPLANK, udyr: UDYR };
+export const CHAMPIONS: Record<string, ChampionDef> = { ezreal: EZREAL, samira: SAMIRA, brand: BRAND, aphelios: APHELIOS, aurelionsol: AURELIONSOL, lux: LUX, teemo: TEEMO, ziggs: ZIGGS, sivir: SIVIR, twitch: TWITCH, orianna: ORIANNA, gangplank: GANGPLANK, udyr: UDYR, aurora: AURORA };
 export const DEFAULT_CHAMPION = EZREAL;

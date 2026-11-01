@@ -11,7 +11,7 @@ export const loadVfx = loadParticles;
  * or a bone of an animated model (cast effects at the hand or weapon), keeping its facing.
  */
 interface Live { sys: ParticleSystem; follow?: THREE.Object3D; bone?: THREE.Object3D; orient?: boolean; dir?: THREE.Vector3; until?: number; killOnStop?: boolean; shot?: string }
-type PlayOpts = Partial<Omit<Live, 'sys'>> & SystemOpts;
+type PlayOpts = Partial<Omit<Live, 'sys'>> & SystemOpts & { life?: number }; // life: seconds a one-shot emits (default 3)
 const _p = new THREE.Vector3();
 const _q = new THREE.Quaternion();
 // Overlapping copies of a one-shot effect (impacts on a crowd: a piercing ult, Infernum's bolts) thin out instead of
@@ -74,11 +74,11 @@ export class Vfx {
     this.particles = n;
   }
 
-  play(key: string, at: THREE.Vector3, quat: THREE.Quaternion, { owner, size, target, targetQuat, bind, duration, ...extra }: PlayOpts = {}) {
+  play(key: string, at: THREE.Vector3, quat: THREE.Quaternion, { owner, size, target, targetQuat, bind, duration, life = 3, ...extra }: PlayOpts = {}) {
     const sys = createSystem(key, this.scene, at, quat, { owner, size, target, targetQuat, bind, duration });
     // one-shot effects stop emitting after a while even if an emitter loops forever
     if (!sys) return sys;
-    const live: Live = { sys, until: extra.follow ? undefined : this.time + 3, ...extra };
+    const live: Live = { sys, until: extra.follow ? undefined : this.time + life, ...extra };
     sys.persistent = live.until === undefined;
     if (live.until !== undefined && !live.bone) { // short-lived and free-standing: marks, glows and missiles keep full density
       const same = (this.shots.get(key) ?? 0) + 1;

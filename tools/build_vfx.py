@@ -1,9 +1,9 @@
 """Build a character's particle systems from its skin bin: emitter data + every texture/mesh they reference.
 
-Usage: python tools/build_vfx.py <hashes_dir> <character> <out_dir> <DATA/FINAL dir>
+Usage: python tools/build_vfx.py <hashes_dir> <character> <out_dir> <DATA/FINAL dir> [<extra character>...]
 
 Reads data/characters/<c>/skins/skin0.bin (and the bins it links), keeps the VfxSystemDefinitionData reachable
-from the skin's ResourceResolver, and writes <out_dir>/systems.json ({effect key: system}) and spells.json.
+from the skin's ResourceResolver (plus the skins of extra characters of the same WAD, e.g. a pet's), and writes <out_dir>/systems.json ({effect key: system}) and spells.json.
 Asset paths inside the systems are rewritten to the extracted file names (<stem>.png / <stem>.json).
 Assets shared with other champions live in other WADs, so missing paths are looked up in every WAD under FINAL.
 """
@@ -130,7 +130,7 @@ def anim_events(entries):
     return out
 
 
-def main(hashes_dir, char, out_dir, final_dir):
+def main(hashes_dir, char, out_dir, final_dir, *extra):
     names = Names(hashes_dir)
     final = Path(final_dir)
     main_wad = Wad(final / "Champions" / f"{char.capitalize()}.wad.client")
@@ -138,6 +138,12 @@ def main(hashes_dir, char, out_dir, final_dir):
     resolver = next(e for e in entries.values() if e["__type"] == "ResourceResolver")
     systems = {k: entries[p] for k, p in resolver["resourceMap"].items()
                if entries.get(p, {}).get("__type") == "VfxSystemDefinitionData"}
+    for x in extra:  # a pet of the champion's WAD (e.g. Aurora's spirits) whose own systems the kit plays
+        more = read_linked(names, [main_wad], f"data/characters/{x}/skins/skin0.bin")
+        res = next(e for e in more.values() if e["__type"] == "ResourceResolver")
+        for k, p in res["resourceMap"].items():
+            if more.get(p, {}).get("__type") == "VfxSystemDefinitionData":
+                systems.setdefault(k, more[p])
 
     assets = set()
     collect_assets(systems, assets)

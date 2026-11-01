@@ -184,6 +184,8 @@ export interface ChampionKit {
   canCast?(key: SkillKey): boolean;
   /** True while the champion flies over scenery and units: no wall nor unit collision (e.g. Comet of Legend). */
   ghost?(): boolean;
+  /** True while the champion walks through units but not scenery (League's ghosting, e.g. Aurora's Realm Hopper). */
+  ghosted?(): boolean;
   /** True while the champion shrugs off crowd control (e.g. an Awakened Blazing Stampede): stuns and knock-ups do nothing. */
   unstoppable?(): boolean;
   /** True while the champion's own mechanics forbid basic attacks (e.g. a channel that replaces them). */

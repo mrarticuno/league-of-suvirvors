@@ -334,8 +334,22 @@ export class Game {
     this.kit = this.champ.kit(this);
     this.idleFx = (this.champ.idleVfx ?? []).flatMap((v) => this.boneVfx(v, true) ?? []);
     if (this.champ.animVfx) {
-      this.player.events = animEvents();
-      this.player.onEvent = (ev) => { for (const b of (ev as ClipEvent).bones) this.boneVfx([(ev as ClipEvent).key, b], false); };
+      const events: Record<string, ClipEvent[]> = { ...animEvents() };
+      // a sequence clip plays its parts' events, shifted by the parts before (Aurora's idle variants light her wand)
+      for (const [name, parts] of Object.entries(this.champ.sequences ?? {})) {
+        let at = 0;
+        const list: ClipEvent[] = [];
+        for (const p of parts) {
+          for (const ev of events[p] ?? []) list.push({ ...ev, t: ev.t + at, ...(ev.end !== undefined && { end: ev.end + at }) });
+          at += this.player.duration(p);
+        }
+        if (list.length) events[name] = list.sort((a, b) => a.t - b.t);
+      }
+      this.player.events = events;
+      this.player.onEvent = (ev) => {
+        const { key, bones, t, end } = ev as ClipEvent;
+        for (const b of bones) this.boneVfx([key, b], false, end !== undefined ? end - t : undefined);
+      };
     }
     this.autoRankUp();
     this.hp = this.maxHp;
@@ -384,10 +398,11 @@ export class Game {
   private get moveAnims() { return this.kit.moveAnims?.() ?? this.champ.anims; }
 
   /** Plays a champion system on one of its bones (`loop`: until stopped); null when the bone or system is missing. */
-  private boneVfx([key, name]: BoneVfx, loop: boolean) {
+  /** `seconds`: how long it emits (an animation event's mEndFrame); default the one-shot 3s, `loop` forever. */
+  private boneVfx([key, name]: BoneVfx, loop: boolean, seconds?: number) {
     const bone = this.player.bone(name);
     if (!bone) return null;
-    return this.vfx.play(key, bone.getWorldPosition(this.tmp), facingQuat(this.facing), { bone, owner: this.player.root, ...(loop && { until: undefined }) });
+    return this.vfx.play(key, bone.getWorldPosition(this.tmp), facingQuat(this.facing), { bone, owner: this.player.root, life: seconds, ...(loop && { until: undefined }) });
   }
 
   // ---- derived stats ----
@@ -1426,7 +1441,7 @@ export class Game {
   /** Push overlapping units apart (and out of the champion), like LoL unit collision. Grid neighbours only. */
   private separate() {
     const B = this.champ.base;
-    const ghost = this.kit.ghost?.() ?? false;
+    const ghost = (this.kit.ghost?.() || this.kit.ghosted?.()) ?? false;
     for (const a of this.enemies) {
       if (a.deadFor >= 0) continue;
       for (const b of this.grid.query(a.pos.x, a.pos.z, (a.def.radius + this.maxEnemyRadius) * 0.8 + GRID_SLACK, this.nearSep)) {
