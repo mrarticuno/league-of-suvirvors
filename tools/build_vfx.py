@@ -110,23 +110,36 @@ def spell_data(entries):
 
 
 def anim_events(entries):
-    """Particle events of the animation clips, by .anm stem (the .glb clip name): [{t, key, bones, end?}], 30 fps.
-    A file shared by clips that play different effects (variants picked by game state) is left to the kit."""
+    """Events of the animation clips, by .anm stem (the .glb clip name), 30 fps: particle events {t, key, bones, end?}
+    and submesh visibility events {t, key: "", bones: [], show, hide, end?} (parts shown/hidden until the end frame or the
+    clip's end). A file shared by clips that play different particles, or that toggle different submeshes (an eventless
+    clip counts: variants picked by game state, e.g. a weapon drawn), keeps those events out: the kit plays them."""
     graph = next((e for e in entries.values() if e["__type"] == "AnimationGraphData"), None)
     by_file = {}
     for name, c in (graph or {}).get("mClipDataMap", {}).items():
         f = ((c.get("mAnimationResourceData") or {}).get("mAnimationFilePath") or "").split("/")[-1][:-4].lower()
-        evs = [{"t": (v.get("mStartFrame") or 0) / 30, "key": v["mEffectKey"],
-                "bones": [x.get("mBoneName") for x in v.get("mParticleEventDataPairList", []) if x.get("mBoneName")],
-                **({"end": v["mEndFrame"] / 30} if v.get("mEndFrame") else {})}
-               for v in (c.get("mEventDataMap") or {}).values() if v.get("__type") == "ParticleEventData" and v.get("mEffectKey")]
-        if f and evs:
-            by_file.setdefault(f, []).append((str(name).startswith("0x"), evs))
+        data = (c.get("mEventDataMap") or {}).values()
+        parts = [{"t": (v.get("mStartFrame") or 0) / 30, "key": v["mEffectKey"],
+                  "bones": [x.get("mBoneName") for x in v.get("mParticleEventDataPairList", []) if x.get("mBoneName")],
+                  **({"end": v["mEndFrame"] / 30} if v.get("mEndFrame") else {})}
+                 for v in data if v.get("__type") == "ParticleEventData" and v.get("mEffectKey")]
+        subs = [{"t": (v.get("mStartFrame") or 0) / 30, "key": "", "bones": [],
+                 "show": v.get("mShowSubmeshList", []), "hide": v.get("mHideSubmeshList", []),
+                 **({"end": v["mEndFrame"] / 30} if v.get("mEndFrame") else {})}
+                for v in data if v.get("__type") == "SubmeshVisibilityEventData"]
+        if f:
+            by_file.setdefault(f, []).append((str(name).startswith("0x"), parts, subs))
     out = {}
     for f, clips in by_file.items():
-        if len({tuple(sorted(e["key"] for e in evs)) for _, evs in clips}) > 1:
-            continue
-        out[f] = sorted(clips)[0][1]  # the named clip first
+        clips.sort(key=lambda c: c[0])  # the named clip first
+        with_parts = [p for _, p, _ in clips if p]
+        evs = []
+        if with_parts and len({tuple(sorted(e["key"] for e in p)) for p in with_parts}) == 1:
+            evs += with_parts[0]
+        if len({repr([(e["show"], e["hide"]) for e in s]) for _, _, s in clips}) == 1:
+            evs += clips[0][2]
+        if evs:
+            out[f] = evs
     return out
 
 

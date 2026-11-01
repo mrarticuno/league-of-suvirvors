@@ -49,6 +49,7 @@
 | 乌迪尔 | 战士 · 坦克 | 四种姿态取代大招，每种姿态强化两次攻击；每隔一段时间可觉醒其中一种 |
 | 阿萝拉 | 法师 · 刺客 | 会飞回的诅咒、跃入灵界、带后跳的爆发，以及可从一侧传送到另一侧的交界领域 |
 | 彗 | 法师 · 辅助 | 三种主题，各含三个技能（灾、靖、悚），被第二个技能引爆的标记，以及不断扩大的绝望光环 |
+| 凯尔 | 射手 · 法师 | 在 1/6/11/16 级登神：由近战变为远程，热忱叠满后升华并发射火焰波；天界之剑、治疗、强化一击与剑雨 |
 
 ## 截图
 
@@ -92,6 +93,10 @@
 |---|
 | ![彗：九个主题技能、落款的爆炸与焚心绚华绘对抗怪潮](docs/media/hwei.gif) |
 
+| 凯尔 |
+|---|
+| ![凯尔：四种形态、耀焰冲击、星火符刃、火焰波与圣裁之刻对抗怪潮](docs/media/kayle.gif) |
+
 | 纳什男爵（20:00） | 暂停菜单：属性、装备与鞋子 |
 |---|---|
 | ![男爵竞技场与预警攻击](docs/media/baron.gif) | ![暂停菜单：英雄的全部属性以及每件装备的属性与被动](docs/media/stats-menu.jpg) |
@@ -123,7 +128,7 @@ pnpm dev        # http://localhost:5173（在第一个界面选择英雄）
 2. 哈希列表（游戏的 `.bin` 通过 xxh64 哈希引用纹理和动画）：
    ```bash
    curl -s https://raw.communitydragon.org/data/hashes/lol/hashes.game.txt \
-     | grep -E "assets/characters/(ezreal|samira|brand|aphelios|aurelionsol|lux|teemo|ziggs|sivir|twitch|orianna|gangplank|gangplankbarrel|udyr|aurora|auroraspirits|hwei|sru_|turret|inhibitor|nexus)" > assets-raw/hashes.filtered.txt
+     | grep -E "assets/characters/(ezreal|samira|brand|aphelios|aurelionsol|lux|teemo|ziggs|sivir|twitch|orianna|gangplank|gangplankbarrel|udyr|aurora|auroraspirits|hwei|kayle|sru_|turret|inhibitor|nexus)" > assets-raw/hashes.filtered.txt
    ```
 3. 从 WAD 中提取（`tools/extract_lol.py`）并转换为 `.glb`（`tools/build_models.py`）：
    ```bash
@@ -141,6 +146,7 @@ pnpm dev        # http://localhost:5173（在第一个界面选择英雄）
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt udyr assets-raw/udyr "$G/Champions/Udyr.wad.client"
    for c in aurora auroraspirits; do .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt $c assets-raw/$c "$G/Champions/Aurora.wad.client"; done
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt hwei assets-raw/hwei "$G/Champions/Hwei.wad.client"
+   .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt kayle assets-raw/kayle "$G/Champions/Kayle.wad.client"
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt teemomushroom assets-raw/teemomushroom "$G/Champions/Teemo.wad.client"
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt lux assets-raw/lux "$G/Champions/Lux.wad.client"
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt ziggs assets-raw/ziggs "$G/Champions/Ziggs.wad.client"
@@ -167,7 +173,7 @@ pnpm dev        # http://localhost:5173（在第一个界面选择英雄）
    `pieces` 是一个有限的 `.mapgeo` v14 解析器：如果跳过或失败（格式版本不同、缺少 WAD），运行时会根据布局障碍物绘制深色方块/圆柱。不会出错。
 5. 技能特效：从皮肤的 `.bin` 读取伊泽瑞尔的粒子系统，以及它们使用的所有纹理和网格。使用第 4 步下载的哈希列表：
    ```bash
-   for c in ezreal samira brand aphelios aurelionsol lux teemo ziggs sivir twitch orianna gangplank udyr hwei; do (cd tools && ../.venv-tools/bin/python build_vfx.py ../assets-raw/hashes $c ../public/assets/vfx/$c "$G"); done
+   for c in ezreal samira brand aphelios aurelionsol lux teemo ziggs sivir twitch orianna gangplank udyr hwei kayle; do (cd tools && ../.venv-tools/bin/python build_vfx.py ../assets-raw/hashes $c ../public/assets/vfx/$c "$G"); done
    (cd tools && ../.venv-tools/bin/python build_vfx.py ../assets-raw/hashes aurora ../public/assets/vfx/aurora "$G" auroraspirits)  # + her spirits' own systems
    ```
    生成 `systems.json`（按 `ResourceResolver` 键索引的特效，例如 `Ezreal_Q_mis`）、`spells.json`（飞弹速度/宽度/射程）以及资源的 PNG/JSON。`tools/read_bin.py` 可以单独把任意 `.bin` 转为 JSON。发射器运行时位于 `src/particles.ts`；`src/vfx.ts` 只负责选择播放哪个系统以及在哪里播放。
@@ -317,6 +323,13 @@ pnpm dev        # http://localhost:5173（在第一个界面选择英雄）
   - **EQ（阴沉变意）**：1300 速度的面容，命中 1100 内第一个敌人：70–230 +65%法强，恐惧 1–1.5秒（逃离彗），并随距离增强 70–99% 减速。**EW（滞涩幽瞳）**：掷出 900 内的眼睛，停留 3秒；落地 0.65秒后锁定 350 内最近的敌人，0.3秒后扑出（1300→2100 速度，射程 600），禁锢命中的第一个敌人 1.2–2秒并造成 70–230 +65%法强。**EE（双钩血喉）**：800 内的双颚 0.6秒后合拢：640×440 范围 70–230 +65%法强，将敌人拉向中心并减速 40–70%，在 1.25秒内衰减。
   - **R（焚心绚华绘）**：1400 速度的墨团，粘附在 1300 内命中的第一个敌人；3秒内光环从 150 扩大到 500，每 0.25秒造成 2.5–7.5 +1.25%法强 并叠加绝望（每层减速 10%，乘算，最多 12 层）；结束或目标死亡时碎裂，造成 200–450 +80%法强。
   - 非原版内容：所有敌人都可被标记、被眼睛锁定和被大招命中（原版：英雄）；焚心绚华绘在第一个敌人处停下（原版穿过小兵）；阴沉变意的减速随距离增强（原版未说明方向）；飞染没有幽灵效果（`ghost()` 也会穿墙）；法力值消耗按法师下调（主题 Q 30、W 45、E 25、R 80），宿墨的法力回复仍是法力来源；没有友军、视野和显形。
+- **凯尔**（角色与皮肤 bin：DataValues、技能计算、弹道参数、法力、冷却、装备升级与动画图；脚本构建的判定范围参考 wiki）：模型与伊泽瑞尔保持英雄联盟中的比例（SkinScale 1.175 对 1.1）。皮肤的每个玩法特效都在原版播放的位置播放：普攻挥砍（近战、升华与远程，来自动画事件，与原版一样随骨骼转向）、远程弹道与命中、耀焰冲击的传送门、剑、十字爆炸、命中与破甲标记、星界恩典的治疗与光环、星火符刃的施法、射程圈、弹道（普通与燃焰）与命中、火焰波的弧光与命中、圣裁之刻的护罩、环绕之剑、指示器、坠落之剑与爆炸、登神的神光与羽翼闪光、死亡消散。动画的子网格事件负责拔剑（升华）并按形态切换装备。
+  - **被动（登神长阶）**：热忱（1级）：每次攻击获得 5秒热忱（每层 6% +每100法术强度1% 攻击速度，最多 5层）；5层时升华（+10% 移动速度，拔剑，升华动画）。升起（6级）：变为远程，射程 525（近战范围内仍为挥砍，无弹道）。燃焰（11级）：1秒内体型增大 10%；升华时攻击发射火焰波（三个 2800 速度、相隔 9° 的判定，射程 850，宽 100），造成 20（11级后每级+3）+10% 额外攻击力 +25% 法术强度魔法伤害，每波每个敌人只受一次伤害，暴击对每个目标单独判定。超凡（16级）：射程 625，永久升华。每次登神播放对应动画、音效与特效；羽翼与盔甲随之改变（装备升级）。
+  - **Q（耀焰冲击）**：在身前开启传送门（施法时间 = 攻击前摇）；0.25秒后 1600 速度的剑（射程 900，宽 75）飞出；命中第一个敌人后在撞击点前方 100 处展开十字（中心半径 100，左右各 150，前 400，后 100）：60–180 +60% 额外攻击力 +50% 法术强度魔法伤害，25–45% 减速 2秒，护甲与魔法抗性 −15% 持续 4秒。
+  - **W（星界恩典）**：回复 55–155 +25% 法术强度，并获得 24–40%（每100法术强度+8%）移动速度 2秒；施法时可以移动。
+  - **E（星火符刃）**：命中时造成 15–35 +10% 额外攻击力 +20% 法术强度魔法伤害。主动（无消耗）：重置普攻；5秒内的下一次攻击额外造成 8–10%（每100法术强度+1.5%）已损失生命值的魔法伤害（对野怪最多 400），升起前射程变为 525（近战范围内仍为挥砍）；燃焰起在目标处爆炸，对 350 内所有敌人造成完整攻击伤害与命中效果。
+  - **R（圣裁之刻）**：无敌 2.5秒（可移动与攻击），在身边召唤剑，随后落在 675/675/775 范围内：200–400 +100% 额外攻击力 +70% 法术强度魔法伤害。
+  - 非原版内容：近战射程 250（原版 175，本作所有近战英雄相同）；W 与 R 只能对自己施放（没有队友，W 连向队友的光束不会播放）；法力消耗降低（Q 30–50，W 35–55，R 50/25/0）；羽翼与剑的专属着色器（升华时的火焰流动、16级的火焰羽翼）为近似：羽翼与剑刃用材质的反照率重映射与渐变上色其数值贴图。
 - **两步升级**：
   1. 按英雄联盟规则提升一个技能等级：基础技能在 1/3/5/7/9 级，R 在 6/11/16 级（厄斐琉斯：属性点，见上文）。没有可升级的技能时跳过此步。
   2. 从随机的 3 件装备中选 1 件（出装完成后改为药水）。
@@ -325,7 +338,7 @@ pnpm dev        # http://localhost:5173（在第一个界面选择英雄）
   - 每件装备有 5 级。属性从 40%（1 级）成长到 100%（5 级）；被动在 3 级解锁，强度 60%，4 级 80%，5 级 100%。魔宗、大天使之杖和凛冬之临在 5 级获得转化后的被动（魔切、炽天使之拥、末日寒冬）。
   - 装备池：召唤师峡谷的全部传说装备，除了带主动效果的装备（中娅沙漏、幽梦之灵、九头蛇系列……）、辅助装备、重伤装备（凡性的提醒、炼金朋克链锯剑、莫雷洛秘典；荆棘之甲只保留反伤）以及需要视野或英雄护盾的被动（暗行者之爪、毒蛇之牙）。物理英雄获得攻击装备，法术英雄获得法强装备，坦克和混合装备两者都有。
   - 被动针对怪潮调整："英雄"触发改为击杀精英 / 史诗野怪；法术护盾格挡下一次受到的伤害。
-  - 每个英雄的推荐出装（OP.GG，16.21 版本）：出现概率为三倍，并标记为“推荐”。伊泽瑞尔：三相之力、魔宗、朔极之矛、赛瑞尔达的怨恨、无穷饥渴、守护天使。莎弥拉：收集者、无尽之刃、多米尼克领主的致意、不朽盾弓、饮血剑、守护天使。布兰德：黑焰火炬、瑞莱的冰晶节杖、兰德里的折磨、影焰、灭世者的死亡之帽、虚空之杖。厄斐琉斯：收集者、无尽之刃、多米尼克领主的致意、卢安娜的飓风、守护天使、饮血剑。 奥瑞利安·索尔：兰德里的折磨、瑞莱的冰晶节杖、灭世者的死亡之帽、虚空之杖、影焰、星界驱驰。 拉克丝：卢登的回声、影焰、灭世者的死亡之帽、视界专注、虚空之杖、残疫。希维尔：精华掠夺者、纳沃利迅刃、无尽之刃、多米尼克领主的致意、饮血剑、守护天使。 提莫：纳什之牙、兰德里的折磨、裂隙制造者、灭世者的死亡之帽、虚空之杖、影焰。吉格斯：卢登的回声、影焰、灭世者的死亡之帽、虚空之杖、女妖面纱、视界专注。 图奇：破败王者之刃、鬼索的狂暴之刃、卢安娜的飓风、无尽之刃、多米尼克领主的致意、守护天使。 奥莉安娜：卢登的回声、影焰、灭世者的死亡之帽、虚空之杖、蜕生、女妖面纱。普朗克：夺萃之镰、收集者、无尽之刃、多米尼克领主的致意、不朽盾弓、守护天使。乌迪尔：三相之力、朔极之矛、斯特拉克的挑战护手、亡者的板甲、自然之力、振奋盔甲。阿萝拉：卢登的回声、影焰、灭世者的死亡之帽、虚空之杖、风暴狂涌、女妖面纱。彗：卢登的伙伴、影焰、灭世者的死亡之帽、虚空之杖、女妖面纱、视界专注。
+  - 每个英雄的推荐出装（OP.GG，16.21 版本）：出现概率为三倍，并标记为“推荐”。伊泽瑞尔：三相之力、魔宗、朔极之矛、赛瑞尔达的怨恨、无穷饥渴、守护天使。莎弥拉：收集者、无尽之刃、多米尼克领主的致意、不朽盾弓、饮血剑、守护天使。布兰德：黑焰火炬、瑞莱的冰晶节杖、兰德里的折磨、影焰、灭世者的死亡之帽、虚空之杖。厄斐琉斯：收集者、无尽之刃、多米尼克领主的致意、卢安娜的飓风、守护天使、饮血剑。 奥瑞利安·索尔：兰德里的折磨、瑞莱的冰晶节杖、灭世者的死亡之帽、虚空之杖、影焰、星界驱驰。 拉克丝：卢登的回声、影焰、灭世者的死亡之帽、视界专注、虚空之杖、残疫。希维尔：精华掠夺者、纳沃利迅刃、无尽之刃、多米尼克领主的致意、饮血剑、守护天使。 提莫：纳什之牙、兰德里的折磨、裂隙制造者、灭世者的死亡之帽、虚空之杖、影焰。吉格斯：卢登的回声、影焰、灭世者的死亡之帽、虚空之杖、女妖面纱、视界专注。凯尔：纳什之牙、鬼索的狂暴之刃、灭世者的死亡之帽、影焰、虚空之杖、巫妖之祸。 图奇：破败王者之刃、鬼索的狂暴之刃、卢安娜的飓风、无尽之刃、多米尼克领主的致意、守护天使。 奥莉安娜：卢登的回声、影焰、灭世者的死亡之帽、虚空之杖、蜕生、女妖面纱。普朗克：夺萃之镰、收集者、无尽之刃、多米尼克领主的致意、不朽盾弓、守护天使。乌迪尔：三相之力、朔极之矛、斯特拉克的挑战护手、亡者的板甲、自然之力、振奋盔甲。阿萝拉：卢登的回声、影焰、灭世者的死亡之帽、虚空之杖、风暴狂涌、女妖面纱。彗：卢登的伙伴、影焰、灭世者的死亡之帽、虚空之杖、女妖面纱、视界专注。
   - 出装完成（6 件装备均为 5 级）：升级时提供生命药水或法力药水（恢复 5% 最大值），每次击杀有 1% 概率掉落图纸（蓝色卷轴，每局 1 张），使随机一件装备变为传说（属性 +50%；该格获得动态金色光环与“传说”标签）。
   - 鞋子：六格之外的第 7 格。5:00 获得鞋子（+25 移动速度）；击杀峡谷迅捷蟹后可选择一双二级鞋（镀甲之靴带镀层：物理攻击造成的伤害降低 10%）；击杀小龙后升级为三级鞋（仅属性）。
   - 节奏：敌人一方（移动、攻击、动画、首领攻击、敌方投射物、刷怪速度）从 0:00 的 x1 逐渐加速到 5:00 的 x1.5，之后保持 x1.5。计时器、冷却、增益和英雄保持真实时间。
@@ -392,6 +405,7 @@ pnpm dev        # http://localhost:5173（在第一个界面选择英雄）
 | 乌迪尔 | Q 15（20）、W/E/R 28–18（40–23） | 强化攻击、闪电或风暴击杀回复 10–30 |
 | 阿萝拉 | Q 35（60）、W/E 50（80）、R 80（100） | 技能击杀或击杀带有驱灵奇术层数或诅咒的敌人回复 10–30 |
 | 彗 | 主题 Q 30（80–120）、W 45（90–110）、E 25（50–70）、R 80（100） | 无；宿墨每次强化命中回复 45–65 |
+| 凯尔 | Q 30–50（60–100）、W 35–55（70–90）、E 0、R 50/25/0（100/50/0） | 无：依靠普攻 |
 
 较新法师的怪潮调整（括号内为英雄联盟数值）：阿萝拉 Q 冷却 6–5秒（9–7），E 10–8秒（15–11），R 90/80/70秒（140/120/100），飞去来咒对小兵 75%（40%），被动灵物治疗 10–20（3–20）。彗的主题冷却缩短 30%：Q 7–4.2秒（10–6），W 12.6–11.2秒（18–16），E 8.4–7秒（12–10）；攒聚雷半径 300（225），对小兵和野怪 75%（50%），连皴山对小兵 90%（60%），熔岩 6–24（5–20），渲浓回复其护盾 30% 的生命值。
 
@@ -399,8 +413,8 @@ pnpm dev        # http://localhost:5173（在第一个界面选择英雄）
 
 - **英雄**（`src/champion.ts`、`src/champions/`）：一个英雄由 `ChampionDef`（基础属性、技能的等级/消耗/冷却/动画/图标、动画、普攻特效）加一个每局创建的 `kit` 组成，`kit` 负责处理技能及其特殊机制（层数、标记等）。`Game` 负责通用部分：移动、普攻、冷却、法力、装备和伤害管线。
   - 新英雄：创建 `src/champions/<name>.ts`（模板：`ezreal.ts`；法术强度法师、持续伤害和逐敌标记参考 `brand.ts`），并在 `src/champions/index.ts` 中注册。音效命名遵循 `<id>_auto`、`<id>_Q`、`<id>_death`……分步指南：`.claude/skills/creating-champions/SKILL.md`。
-  - kit 钩子：`cast`（必需）、`castStart`、`castAnim`、`canCast`、`recast`（技能冷却中再次按下，例如引爆透光奇点）、`attackSpeedBonus`/`moveSpeedBonus`、`disarmed`、`ghost`（不与墙体和单位碰撞，例如星流横溢）、`unstoppable`（免疫控制，例如觉醒的踏火蛮冲）、`steer`/`onMoveOrder`（英雄自行移动直到移动指令，例如星流横溢的航向）、`meleeAuto`、`onDamage`（减免前的额外魔法伤害，例如引爆 W 的标记）、`onKill`（例如炽热之焰的击杀回蓝）、`onDealt`（减免后的伤害，例如断魄的治疗）、`update`、`dispose`、`hud`、`gauge`。有多种形态的英雄（厄斐琉斯的武器）：`stat`（自身属性，例如购买的属性点）、`attackTarget`/`attackStart`/`basicAttack`（普攻的目标、动画、音效、前摇以及发射）、`moveAnims`、`cooldownBase`/`castTime`（按形态）、`skillView`（技能栏图标、名称和角标）和 `tray`（技能栏上方的小图标）。
-  - `ChampionDef` 扩展：`idleVfx`（整局附着在骨骼上的系统，例如布兰德的火焰）、`vfx.death`、`scale`（模型大小）、`sequences`（首尾相接的动画片段，即 bin 的 SequencerClipData，例如奥瑞利安·索尔的奔跑）、`opaque`（整体绘制、忽略贴图 alpha 的子网格，与 LoL 默认材质一致，例如他的尾巴）、`conformPath`（沿移动路径弯曲的关节链，即 bin 的 ConformToPathRigPoseModifierData）、法师使用 `itemPool: 'ap'`（技能用 `apRatio` 缩放）、`build`（出装网站推荐的 6 件传说装备，升级时出现概率更高并带标记）、`rankLevels`（每个技能等级的解锁等级）、`autoRank`（无需技能点自动升级的技能）和 `SkillDef.unlockLevel`（从某个等级起可施放，与技能等级无关）。
+  - kit 钩子：`cast`（必需）、`castStart`、`castAnim`、`canCast`、`recast`（技能冷却中再次按下，例如引爆透光奇点）、`attackSpeedBonus`/`moveSpeedBonus`、`disarmed`、`ghost`（不与墙体和单位碰撞，例如星流横溢）、`unstoppable`（免疫控制，例如觉醒的踏火蛮冲）、`steer`/`onMoveOrder`（英雄自行移动直到移动指令，例如星流横溢的航向）、`meleeAuto`、`onDamage`（减免前的额外魔法伤害，例如引爆 W 的标记）、`onKill`（例如炽热之焰的击杀回蓝）、`onDealt`（减免后的伤害，例如断魄的治疗）、`update`、`dispose`、`hud`、`gauge`。有多种形态的英雄（厄斐琉斯的武器）：`stat`（自身属性，例如购买的属性点）、`attackTarget`/`attackStart`/`basicAttack`（普攻的目标、动画、音效、前摇以及发射）、`moveAnims`、`cooldownBase`/`castTime`（按形态）、`skillView`（技能栏图标、名称和角标）和 `tray`（技能栏上方的小图标）。、`invulnerable`（不受伤害，例如圣裁之刻）、`resistShred`（技能自带的护甲/魔抗削减，例如耀焰冲击）。
+  - `ChampionDef` 扩展：`idleVfx`（整局附着在骨骼上的系统，例如布兰德的火焰）、`vfx.death`、`scale`（模型大小）、`sequences`（首尾相接的动画片段，即 bin 的 SequencerClipData，例如奥瑞利安·索尔的奔跑）、`opaque`（整体绘制、忽略贴图 alpha 的子网格，与 LoL 默认材质一致，例如他的尾巴）、`conformPath`（沿移动路径弯曲的关节链，即 bin 的 ConformToPathRigPoseModifierData）、法师使用 `itemPool: 'ap'`（技能用 `apRatio` 缩放）、`build`（出装网站推荐的 6 件传说装备，升级时出现概率更高并带标记）、`rankLevels`（每个技能等级的解锁等级）、`autoRank`（无需技能点自动升级的技能）和 `SkillDef.unlockLevel`（从某个等级起可施放，与技能等级无关）。、`remap`（纹理为数值贴图、由材质的渐变或反照率重映射上色的子网格，例如凯尔的羽翼与剑刃）、`boneHeading`（骨骼特效随骨骼转向，与原版一致：骨架的 buffbone 朝向后方）、`conformPath` 支持多条骨链（凯尔的两只下羽翼）。
   - 对敌人的控制：`game.slow(e, pct, s)`、`game.stunEnemy(e, s)` 和 `game.rootEnemy(e, s)`（不能移动，仍可攻击）（仅通用循环；首领 AI 忽略后两者）。 `game.knockUp(e, s)` 是把模型抛向空中的眩晕（星天落瀑）。 `game.knockBack(e, offset, s)` 还会让它沿地面移动（定点爆破）；`game.dash(dir, dist, speed, height)` 可以跳跃。
   - 投射物：`game.spawnMissile(vfx, from, to, { hit, target | pierce, onHit, ... })`。没有 `onHit` 时，默认命中效果会应用特效、音效和伤害。
 - **装备被动**（钩子在 `src/itemEffects.ts`，条目在 `src/itemPassives/ad.ts`、`ap.ts`、`tank.ts`）：每个条目包含描述（最高等级的数值）和钩子工厂 `effect(g, power)`（`onHit`、`onHitMagic`、`onAttack`、`onCast`、`onDealt`、`onKill`、`onHurt`、`onStruck`、`onOverheal`、`tick`、`onLethal`、`stat`、`damageMult`……）。`power()` 是被动在装备当前等级的强度（0.6/0.8/1）：效果的数值乘以它，全有或全无的效果（复活、法术护盾）则延长冷却。通用机制在 `src/itemPassives/shared.ts`：咒刃、救主灵刃、法术护盾、灼烧、充能。`unique` + `rank` 复现英雄联盟的唯一被动（只有最强的一个生效）。属性仍在 `items.json` 中。

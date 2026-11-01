@@ -19,8 +19,11 @@ function assetNames(v: Bin, out: Set<string>) {
   else if (v && typeof v === 'object') for (const x of Object.values(v)) assetNames(x, out);
 }
 
-/** A particle event of an animation clip (tools/build_vfx.py events.json): `key` at each bone, `t` seconds in. */
-export interface ClipEvent { t: number; key: string; bones: string[]; end?: number }
+/**
+ * An event of an animation clip (tools/build_vfx.py events.json), `t` seconds in: particle system `key` at each bone, or
+ * (`show`/`hide`, empty `key`) submeshes shown and hidden until `end` or the clip's end.
+ */
+export interface ClipEvent { t: number; key: string; bones: string[]; end?: number; show?: string[]; hide?: string[] }
 let clipEvents: Record<string, ClipEvent[]> = {};
 /** The loaded champion's clip particle events, by clip name, in time order. */
 export const animEvents = () => clipEvents;
@@ -115,6 +118,9 @@ void main() {
   // colour along the palette row (compared with the client's videos: a scale clamped to the row, not an offset)
   vec4 t = texture2D(map, vUv);
   float u = clamp(t.r * vPal, 0.0, 1.0);
+  // onto the row's texel centres: the palette repeats, so u = 0 would blend in the far (white) end of the row
+  float pw = float(textureSize(paletteTex, 0).x);
+  u = (u * (pw - 1.0) + 0.5) / pw;
   vec4 c = vec4(texture2D(paletteTex, vec2(u, paletteV)).rgb, t.a) * vColor;
 #else
   vec4 c = texture2D(map, vUv) * vColor;
@@ -164,6 +170,16 @@ function material(e: Bin) {
   return m;
 }
 
+/** Three blending of a League blendMode: 1 alpha, 2 subtractive (destination minus source), others additive. */
+function blendOf(mode: number | undefined): Partial<THREE.ShaderMaterialParameters> {
+  if (mode === 1) return { blending: THREE.NormalBlending };
+  if (mode === 2) return {
+    blending: THREE.CustomBlending, blendEquation: THREE.ReverseSubtractEquation,
+    blendSrc: THREE.SrcAlphaFactor, blendDst: THREE.OneFactor,
+  };
+  return { blending: THREE.AdditiveBlending };
+}
+
 function newMaterial(e: Bin) {
   const defines: Record<string, string> = {};
   const uniforms: Record<string, THREE.IUniform> = {
@@ -190,13 +206,13 @@ function newMaterial(e: Bin) {
     const rows = pal.paletteCount || 1;
     uniforms.paletteV.value = ((val(pal.paletteSelector, 0)?.[0] ?? 0) + 0.5) / rows;
   }
-  // only blendMode 1 is alpha blended (its textures carry real alpha); the default and the others are additive:
-  // most particle textures are DXT1 with an opaque black background
+  // blendMode 1 is alpha blended (its textures carry real alpha), 2 subtracts (the "Subtract"/shadow layers that darken
+  // the ground under a glow); the default and the others are additive: most particle textures are DXT1 on opaque black
   return new THREE.ShaderMaterial({
     vertexShader, fragmentShader, uniforms, defines, transparent: true, depthWrite: false, side: THREE.DoubleSide,
     // ground-layer meshes lie on the terrain plane: bias them toward the camera so they don't z-fight (flicker) with it
     polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -8,
-    blending: e.blendMode === 1 ? THREE.NormalBlending : THREE.AdditiveBlending,
+    ...blendOf(e.blendMode),
   });
 }
 
@@ -550,7 +566,7 @@ class Emitter {
       uniforms: { map: { value: textures.get(e.texture) }, color: { value: new THREE.Vector4(1, 1, 1, 1) } },
       transparent: true, depthWrite: false, side: e.disableBackfaceCull ? THREE.DoubleSide : THREE.FrontSide,
       polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -8, // drawn over the owner's own surface
-      blending: e.blendMode === 1 ? THREE.NormalBlending : THREE.AdditiveBlending,
+      ...blendOf(e.blendMode),
     });
     this.sys.owner!.traverse((o) => {
       const src = o as THREE.SkinnedMesh;

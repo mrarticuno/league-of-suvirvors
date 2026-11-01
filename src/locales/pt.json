@@ -734,5 +734,20 @@
  "champion.hwei.Q.desc": "Abre Desastre: Fogo Devastador lança uma bola de fogo que explode no primeiro inimigo causando dano mágico mais 3-7% da Vida máxima (até 250 contra monstros). Raio Cortante atinge a área após 1s causando 60-160 (+30% do PdH), até 200-350% contra um inimigo isolado ou imobilizado conforme a Vida perdida (75% em tropas e monstros). Fissura Derretida entra em erupção 7 vezes ao longo de um caminho causando 20-80 (+30% do PdH) e deixa lava que causa 35% de Lentidão e queima 6-24 (+6% do PdH) a cada 0,25s por 2,5s.",
  "champion.hwei.W.desc": "Abre Serenidade: Corrente Fugaz pinta uma corrente que concede 30-40% (+3% por 100 de PdH) de Velocidade de Movimento enquanto você estiver nela, por 4-6s. Lagoa da Reflexão concede um Escudo de metade do valor ao entrar, crescendo até 100-260 (+60% do PdH) enquanto você permanecer dentro por 3s, e cura 30% desse valor enquanto cresce. Luzes Vivas: três chamas fortalecem seus próximos 3 ataques ou acertos de habilidade em até 9s com o dano mágico bônus mostrado, restaurando 45-65 de Mana cada.",
  "champion.hwei.E.desc": "Abre Tormento: Semblante Sinistro atinge o primeiro inimigo causando dano mágico e o amedronta por 1-1,5s, com 70-99% de Lentidão (mais longe, mais forte). Olhar do Abismo posiciona um olho que se lança no inimigo mais próximo, enraizando o primeiro que encontrar por 1,2-2s. Gorja Esmagadora fecha após 0,6s, puxando os inimigos para o centro com 40-70% de Lentidão, que diminui ao longo de 1,25s.",
- "champion.hwei.R.desc": "Lança desespero que gruda no primeiro inimigo atingido: por 3s uma aura crescente causa 10-30 (+5% do PdH) de dano mágico por segundo aos inimigos dentro e aplica 10% de Lentidão por acúmulo (até 12), depois se estilhaça causando o dano mostrado. Em um tema, R é Lavar Pincel: sai do tema sem gastar o custo nem a recarga."
+ "champion.hwei.R.desc": "Lança desespero que gruda no primeiro inimigo atingido: por 3s uma aura crescente causa 10-30 (+5% do PdH) de dano mágico por segundo aos inimigos dentro e aplica 10% de Lentidão por acúmulo (até 12), depois se estilhaça causando o dano mostrado. Em um tema, R é Lavar Pincel: sai do tema sem gastar o custo nem a recarga.",
+ "champion.kayle.name": "Kayle",
+ "champion.kayle.title": "a Justa",
+ "champion.kayle.passive": "Ascensão Divina",
+ "champion.kayle.Q": "Explosão Radiante",
+ "champion.kayle.W": "Bênção Celestial",
+ "champion.kayle.E": "Lâmina de Fogo Estelar",
+ "champion.kayle.R": "Sentença Divina",
+ "champion.kayle.hud": "Fervor {stacks}/{max}",
+ "champion.kayle.hud.exalted": "Exaltada",
+ "champion.kayle.W.heal": "Cura",
+ "champion.kayle.E.execute": "Vida perdida",
+ "champion.kayle.Q.desc": "Abre um portal à sua frente; após 0,25s uma espada celestial sai dele e se expande no primeiro inimigo atingido, causando dano mágico numa área em cruz, aplicando Lentidão de 25-45% por 2s e reduzindo Armadura e Resistência Mágica em 15% por 4s.",
+ "champion.kayle.W.desc": "Cura a si mesma em 55-155 (+25% do PdH) e ganha 24-40% (+8% a cada 100 de PdH) de Velocidade de Movimento por 2s.",
+ "champion.kayle.E.desc": "Passiva: seus ataques básicos causam dano mágico adicional ao acertar. Ativa: reinicia o ataque básico; o próximo em até 5s causa 8-10% (+1,5% a cada 100 de PdH) da Vida perdida do alvo como dano mágico (até 400 contra monstros) e alcança 525 antes do nível 6. A partir do nível 11 explode no alvo, atingindo todos os inimigos a até 350.",
+ "champion.kayle.R.desc": "Fica invulnerável por 2,5s e conjura espadas flamejantes, depois as faz chover ao seu redor, causando dano mágico a todos os inimigos a até 675-775."
 }

@@ -7,6 +7,7 @@ import type * as THREE from 'three';
 import type { Enemy, Game } from './game';
 import type { FxStat } from './itemEffects';
 import type { ItemPool } from './items';
+import type { Remap } from './assets';
 
 export type SkillKey = 'Q' | 'W' | 'E' | 'R';
 export const SKILL_KEYS: readonly SkillKey[] = ['Q', 'W', 'E', 'R'];
@@ -132,8 +133,10 @@ export interface ChampionDef {
   hide?: readonly string[];
   /** Submeshes with their own texture (the skin bin's materialOverride): submesh name -> texture file stem. */
   textures?: Readonly<Record<string, string>>;
-  /** Joint chain bent along the travelled path (the skin bin's ConformToPathRigPoseModifierData): start and end joints. */
-  conformPath?: readonly [from: string, to: string];
+  /** Joint chains bent along the travelled path (the skin bin's ConformToPathRigPoseModifierData): start and end joints of each. */
+  conformPath?: readonly (readonly [from: string, to: string])[];
+  /** Submeshes whose texture is a value map coloured by their shader (League's gradient-remap materials; see Remap in assets.ts). */
+  remap?: Readonly<Record<string, Remap>>;
   /** Submeshes drawn whole, texture alpha ignored (League's default material does not cut out; e.g. Aurelion Sol's tail). */
   opaque?: readonly string[];
   base: BaseStats;
@@ -150,6 +153,11 @@ export interface ChampionDef {
   vfx: { auto: string; crit: string; autoHit: string; critHit: string; death?: readonly BoneVfx[] };
   /** Systems riding bones for the whole run (the skin's idleParticlesEffects, e.g. a body of flames); stop on death. */
   idleVfx?: readonly BoneVfx[];
+  /**
+   * Bone systems (animation events, idle and death effects) turn with their bone's heading, as in League, instead of the
+   * champion's facing: the rigs' buffbones face backwards, and swing meshes authored with a half turn then open forward.
+   */
+  boneHeading?: boolean;
   /** Plays the particle events of its animation clips (events.json of tools/build_vfx.py), as League does. */
   animVfx?: boolean;
   /** Items offered on level up (src/items.ts ItemPool): attack or ability power items; default 'ad'. */
@@ -197,6 +205,10 @@ export interface ChampionKit {
   ghosted?(): boolean;
   /** True while the champion shrugs off crowd control (e.g. an Awakened Blazing Stampede): stuns and knock-ups do nothing. */
   unstoppable?(): boolean;
+  /** True while the champion takes no damage at all (e.g. Divine Judgment); crowd control still lands. */
+  invulnerable?(): boolean;
+  /** Share (0..1) of `e`'s armor or magic resist removed by the champion's own debuffs (e.g. Radiant Blast's 15%). */
+  resistShred?(e: Enemy, type: DamageType): number;
   /** True while the champion's own mechanics forbid basic attacks (e.g. a channel that replaces them). */
   disarmed?(): boolean;
   /** A hostile ability (missile, hazard, boss attack; not a melee basic attack) is about to hurt the champion: true negates it (a spell shield). */

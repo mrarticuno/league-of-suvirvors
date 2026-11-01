@@ -734,5 +734,20 @@
  "champion.hwei.Q.desc": "Abre Desastre: Fuego Devastador lanza una bola de fuego que explota en el primer enemigo e inflige daño mágico más un 3-7% de la Vida máxima (hasta 250 contra monstruos). Rayo Destrozador golpea el área tras 1 s e inflige 60-160 (+30% del PH), hasta un 200-350% contra un enemigo aislado o inmovilizado según la Vida faltante (75% a súbditos y monstruos). Fisura Magma entra en erupción 7 veces a lo largo de un camino e inflige 20-80 (+30% del PH), dejando lava que causa una Ralentización del 35% y quema 6-24 (+6% del PH) cada 0,25 s durante 2,5 s.",
  "champion.hwei.W.desc": "Abre Serenidad: Corriente Fugaz pinta una corriente que otorga un 30-40% (+3% por cada 100 de PH) de Velocidad de Movimiento mientras estés en ella, durante 4-6 s. Estanque del Reflejo otorga un Escudo de la mitad de su valor al entrar, que crece hasta 100-260 (+60% del PH) mientras permanezcas dentro durante 3 s, y te cura un 30% de ese valor mientras crece. Luces Provocadoras: tres llamas potencian tus siguientes 3 ataques o impactos de habilidad en 9 s con el daño mágico adicional mostrado y restauran 45-65 de Maná cada una.",
  "champion.hwei.E.desc": "Abre Tormento: Semblante Sombrío golpea al primer enemigo alcanzado con daño mágico y lo atemoriza durante 1-1,5 s, con una Ralentización del 70-99% (más lejos, más fuerte). Mirada del Abismo coloca un ojo que se lanza al enemigo más cercano e inmoviliza al primero que encuentre durante 1,2-2 s. Fauces Trituradoras se cierran tras 0,6 s, atraen a los enemigos al centro y les aplican una Ralentización del 40-70% que decae durante 1,25 s.",
- "champion.hwei.R.desc": "Lanza desesperación que se adhiere al primer enemigo alcanzado: durante 3 s un aura creciente inflige 10-30 (+5% del PH) de daño mágico por segundo a los enemigos dentro y les aplica una Ralentización del 10% por acumulación (hasta 12), luego estalla con el daño mostrado. En un tema, R es Limpiar Pincel: sale del tema sin gastar su costo ni su enfriamiento."
+ "champion.hwei.R.desc": "Lanza desesperación que se adhiere al primer enemigo alcanzado: durante 3 s un aura creciente inflige 10-30 (+5% del PH) de daño mágico por segundo a los enemigos dentro y les aplica una Ralentización del 10% por acumulación (hasta 12), luego estalla con el daño mostrado. En un tema, R es Limpiar Pincel: sale del tema sin gastar su costo ni su enfriamiento.",
+ "champion.kayle.name": "Kayle",
+ "champion.kayle.title": "la Justiciera",
+ "champion.kayle.passive": "Ascenso Divino",
+ "champion.kayle.Q": "Explosión Radiante",
+ "champion.kayle.W": "Bendición Celestial",
+ "champion.kayle.E": "Espadafuego Celeste",
+ "champion.kayle.R": "Juicio Divino",
+ "champion.kayle.hud": "Fervor {stacks}/{max}",
+ "champion.kayle.hud.exalted": "Exaltada",
+ "champion.kayle.W.heal": "Curación",
+ "champion.kayle.E.execute": "Vida faltante",
+ "champion.kayle.Q.desc": "Abre un portal frente a ella; tras 0,25 s una espada celestial sale de él y se expande en el primer enemigo alcanzado, infligiendo daño mágico en un área en cruz, aplicando una Ralentización de 25-45% durante 2 s y reduciendo la Armadura y la Resistencia Mágica un 15% durante 4 s.",
+ "champion.kayle.W.desc": "Se cura 55-155 (+25% del PH) y gana 24-40% (+8% por cada 100 de PH) de Velocidad de Movimiento durante 2 s.",
+ "champion.kayle.E.desc": "Pasiva: sus ataques básicos infligen daño mágico adicional al impactar. Activa: reinicia su ataque básico; el siguiente en 5 s inflige 8-10% (+1,5% por cada 100 de PH) de la Vida faltante del objetivo como daño mágico (hasta 400 contra monstruos) y alcanza 525 antes del nivel 6. Desde el nivel 11 explota en el objetivo y alcanza a todos los enemigos a 350.",
+ "champion.kayle.R.desc": "Se vuelve invulnerable durante 2,5 s y conjura espadas en llamas, luego las hace llover a su alrededor, infligiendo daño mágico a todos los enemigos a 675-775."
 }

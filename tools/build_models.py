@@ -47,6 +47,12 @@ MODELS = {
     "aurora_weapon": ("aurora", "../aurora/aurora_base_weapon_tx_cm.png", []),
     # Spirit Abjuration's spirits: the AuroraSpirits character of Aurora's WAD (own mesh and clips)
     "auroraspirits": ("auroraspirits", "auroraspirits_base_main_tx_cm.png", []),
+    "kayle": ("kayle", "kayle_base_tx_cm.png", []),
+    # wings and sword textures of the kayle mesh (ChampionDef.textures)
+    "kayle_wings": ("kayle", "../kayle/kayle_base_wings_tx_cm.png", []),
+    "kayle_sword": ("kayle", "../kayle/kayle_base_sword_tx_cm.png", []),
+    # the sword blade's colour ramp (its Kayle_Sword material's Gradient_Texture; ChampionDef.remap)
+    "kayle_gradient": ("kayle", "../kayle/kayle_base_wing_transform_gradient.png", []),
     "aphelios_guns": ("aphelios", "../aphelios/aphelios_base_guns_tx_cm.png", []),
     # Crescendum's sentry: own mesh and clips, wearing Aphelios' gun texture (OWN_MESH)
     "apheliosturret": ("apheliosturret", "../aphelios/aphelios_base_guns_tx_cm.png", []),
@@ -94,6 +100,7 @@ SKIP_CLIPS = {
     "aurora": re.compile(r"_to|torun|towalk|_in|homeguard|homguard|channel|dance|joke|laugh|taunt|recall|respawn|knockup|stunned|catch|walk"),
     "auroraspirits": re.compile(r"dance"),
     "udyr": re.compile(r"channel|dance|joke|laugh|taunt|recall|recal_|respawn|homeguard"),
+    "kayle": re.compile(r"channel|dance|joke|laugh|taunt|recall|respawn|homeguard|turn_"),
     "hwei": re.compile(r"_to|channel|dance|joke|laugh|taunt|recall|respawn|varsitting|idlevar|idle1_|idlein|knockup|stun|additive|activationerunslow"),
 }
 

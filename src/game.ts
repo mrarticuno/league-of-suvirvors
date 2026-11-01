@@ -226,6 +226,7 @@ export class Game {
   private nearSep: Enemy[] = [];
   private nearMissile: Enemy[] = [];
   private tmp = new THREE.Vector3();
+  private tmpQuat = new THREE.Quaternion();
   private frame = 0;
   private missiles: Missile[] = [];
   floaters: Floater[] = [];
@@ -250,7 +251,7 @@ export class Game {
   async setChampion(c: ChampionDef) {
     // the particle systems are one champion's at a time (loadVfx replaces them)
     const vfx = this.vfxFor === c.id ? null : loadVfx(`assets/vfx/${c.id}/`);
-    await Promise.all([vfx, loadModel(c.model, c.hide, c.model, { textures: c.textures, sequences: c.sequences, opaque: c.opaque }), audio.loadPrefix(c.id)]);
+    await Promise.all([vfx, loadModel(c.model, c.hide, c.model, { textures: c.textures, sequences: c.sequences, opaque: c.opaque, remap: c.remap }), audio.loadPrefix(c.id)]);
     this.vfxFor = c.id;
     this.champ = c;
   }
@@ -335,7 +336,7 @@ export class Game {
     this.cooldowns = { Q: 0, W: 0, E: 0, R: 0 };
     this.pos.set(0, 0, 0);
     this.player = new Actor(this.champ.model, this.champ.scale);
-    if (this.champ.conformPath) this.player.conformToPath(...this.champ.conformPath);
+    for (const [from, to] of this.champ.conformPath ?? []) this.player.conformToPath(from, to);
     this.scene.add(this.player.root);
     this.kit = this.champ.kit(this);
     this.idleFx = (this.champ.idleVfx ?? []).flatMap((v) => this.boneVfx(v, true) ?? []);
@@ -353,7 +354,8 @@ export class Game {
       }
       this.player.events = events;
       this.player.onEvent = (ev) => {
-        const { key, bones, t, end } = ev as ClipEvent;
+        const { key, bones, t, end, show, hide } = ev as ClipEvent;
+        if (show || hide) this.player.toggleSubmeshes(show ?? [], hide ?? [], end);
         for (const b of bones) this.boneVfx([key, b], false, end !== undefined ? end - t : undefined);
       };
     }
@@ -408,7 +410,12 @@ export class Game {
   private boneVfx([key, name]: BoneVfx, loop: boolean, seconds?: number) {
     const bone = this.player.bone(name);
     if (!bone) return null;
-    return this.vfx.play(key, bone.getWorldPosition(this.tmp), facingQuat(this.facing), { bone, owner: this.player.root, life: seconds, ...(loop && { until: undefined }) });
+    let heading = this.facing;
+    if (this.champ.boneHeading) { // League turns a bone's systems with the bone (its buffbones face backwards)
+      const f = this.tmp.set(0, 0, 1).applyQuaternion(bone.getWorldQuaternion(this.tmpQuat));
+      heading = Math.atan2(f.x, f.z);
+    }
+    return this.vfx.play(key, bone.getWorldPosition(this.tmp), facingQuat(heading), { bone, owner: this.player.root, life: seconds, ...(loop && { until: undefined }) });
   }
 
   // ---- derived stats ----
@@ -1078,9 +1085,10 @@ export class Game {
     if (amount <= 0) return 0;
     const physical = type === 'physical';
     const shred = physical ? (e.shredUntil > this.time ? e.shred * 0.06 : 0) : (e.mrShredUntil > this.time ? e.mrShred * 0.075 : 0);
+    const own = this.kit.resistShred?.(e, type) ?? 0; // the champion's own resistance reduction (Radiant Blast)
     const pen = physical ? this.items.armorPen + this.fxStat('armorPen') : this.items.magicPen + this.fxStat('magicPen');
     const flat = physical ? this.items.lethality + this.fxStat('lethality') : this.items.magicPenFlat + this.fxStat('magicPenFlat');
-    const resist = Math.max(0, (physical ? e.armor : e.mr) * (1 - shred) * (1 - pen) * (physical ? 1 - hitPen : 1) - flat);
+    const resist = Math.max(0, (physical ? e.armor : e.mr) * (1 - shred) * (1 - own) * (1 - pen) * (physical ? 1 - hitPen : 1) - flat);
     return amount * (100 / (100 + resist));
   }
 
@@ -1122,7 +1130,7 @@ export class Game {
   get campingMult() { return 1 + (CAMPING.max - 1) * Math.min(1, this.stillFor / CAMPING.ramp); }
 
   hurtPlayer(amount: number, nonLethal = false, magic = false, spell = true) {
-    if (!this.alive || this.stasis > 0) return;
+    if (!this.alive || this.stasis > 0 || this.kit?.invulnerable?.()) return;
     if (spell && this.kit?.blockSpell?.()) return;
     let taken = amount * (100 / (100 + Math.max(0, magic ? this.mr : this.armor))) * this.campingMult;
     if (!magic && this.boots && PLATING.has(this.boots)) taken *= 0.9;

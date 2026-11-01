@@ -71,7 +71,7 @@ export const AURELIONSOL: ChampionDef = {
   roles: ['mage'], difficulty: 7,
   scale: 0.85, // League's SkinScale for him (Ezreal's is 1.1)
   hide: ['AurelionSolFX'], // the body shell only AurelionSol_P_SkinOverride draws, with its galaxy and rim light
-  conformPath: ['Neck1_Ground', 'Tail11'], // his tail snakes along the path he travelled
+  conformPath: [['Neck1_Ground', 'Tail11']], // his tail snakes along the path he travelled
   opaque: ['AurelionSol_BodyLower'], // the tail: blue scales fading into black space; its texture alpha is not opacity
   itemPool: 'ap',
   // OP.GG mid 16.21: Liandry's, Rylai's, Rabadon's, Void Staff, Shadowflame, Cosmic Drive

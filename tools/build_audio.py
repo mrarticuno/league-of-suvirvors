@@ -40,6 +40,7 @@ TW = "Play_sfx_Twitch_Twitch"
 UD = "Play_sfx_Udyr_Udyr"
 AU = "Play_sfx_Aurora_Aurora"
 HW = "Play_sfx_Hwei_Hwei"
+KA = "Play_sfx_Kayle_Kayle"
 
 # bank path (without _events/_audio) -> {sound key: event name candidates (first match wins) or an event id}
 BANKS: dict[str, dict[str, list[str] | int]] = {
@@ -345,6 +346,47 @@ BANKS: dict[str, dict[str, list[str] | int]] = {
         "aurora_R_exit_champ": [AU + "R_exit_champ_buffactivate"],
         "aurora_death": ["Play_sfx_Aurora_Death3D_buffactivate"],
     },
+    SFX + "characters/kayle/skins/base/kayle_base_sfx": {
+        "kayle_melee1": [KA + "BasicAttack_OnCast"],
+        "kayle_melee2": [KA + "BasicAttack2_OnCast"],
+        "kayle_melee1_hit": [KA + "BasicAttack_OnHit"],
+        "kayle_melee2_hit": [KA + "BasicAttack2_OnHit"],
+        "kayle_ranged1": [KA + "BasicAttack4_OnCast"],
+        "kayle_ranged2": [KA + "BasicAttack3_OnCast"],
+        "kayle_ranged1_launch": [KA + "BasicAttack4_OnMissileCast"],
+        "kayle_ranged2_launch": [KA + "BasicAttack3_OnMissileCast"],
+        "kayle_ranged1_hit": [KA + "BasicAttack4_OnHit"],
+        "kayle_ranged2_hit": [KA + "BasicAttack3_OnHit"],
+        "kayle_P_zeal": [KA + "EnrageReady_buffactivate"],
+        "kayle_P_exalted": [KA + "Enrage_buffactivate"],
+        "kayle_P_wave": [KA + "EnrageConeMisUpgrade_cast"],
+        "kayle_P_wave_launch": [KA + "EnrageConeMis_OnMissileCast"],
+        "kayle_P_wave_hit": [KA + "EnrageConeMis_hit"],
+        "kayle_P_ascend0": [KA + "PassiveCeremony_cast_self"],
+        "kayle_P_ascend1": [KA + "PassiveCeremony1_cast_self"],
+        "kayle_P_ascend2": [KA + "PassiveCeremony2_cast_self"],
+        "kayle_P_ascend3": [KA + "PassiveCeremony3_cast_self"],
+        "kayle_Q": [KA + "Q_OnCast"],
+        "kayle_Q_launch": [KA + "QMis_OnMissileCast"],
+        "kayle_Q_hit": [KA + "QMis_OnHit"],
+        "kayle_W": [KA + "WHeal_OnCast"],
+        "kayle_E": [KA + "E_OnCast"],
+        "kayle_E_attack": [KA + "EAttack_OnCast"],
+        "kayle_E_launch": [KA + "EAttack_OnMissileCast"],
+        "kayle_E_hit": [KA + "EAttack_OnHit"],
+        "kayle_E_melee": [KA + "EAttackMelee_OnCast"],
+        "kayle_E_melee_hit": [KA + "EAttackMelee_OnHit"],
+        "kayle_E_up": [KA + "EAttackUpgrade_OnCast"],
+        "kayle_E_up_launch": [KA + "EAttackUpgrade_OnMissileCast"],
+        "kayle_E_up_hit": [KA + "EAttackUpgrade_OnHit"],
+        "kayle_E_magic": [KA + "EMagic_hit"],
+        "kayle_R": [KA + "R_OnCast"],
+        "kayle_R_up": [KA + "R_cast_blades_up"],
+        "kayle_R_down": [KA + "R_cast_blades_down"],
+        "kayle_R_hit": [KA + "R_hit"],
+        "kayle_R_self": [KA + "R_hit_self"],
+        "kayle_death": ["Play_sfx_Kayle_Death3D_cast"],
+    },
     SFX + "characters/hwei/skins/base/hwei_base_sfx": {
         "hwei_auto": [HW + "BasicAttack_OnCast"],
         "hwei_auto2": [HW + "BasicAttack2_OnCast"],
@@ -585,7 +627,7 @@ def render(txtp_path, mp3, music):
 
 def main(wwiser, out_dir, final_dir):
     final = Path(final_dir)
-    wads = [Wad(final / w) for w in ("Champions/Ezreal.wad.client", "Champions/Samira.wad.client", "Champions/Brand.wad.client", "Champions/Aphelios.wad.client", "Champions/AurelionSol.wad.client", "Champions/Lux.wad.client", "Champions/Teemo.wad.client", "Champions/Ziggs.wad.client", "Champions/Sivir.wad.client", "Champions/Twitch.wad.client", "Champions/Orianna.wad.client", "Champions/Gangplank.wad.client", "Champions/Udyr.wad.client", "Champions/Aurora.wad.client", "Champions/Hwei.wad.client", "Maps/Shipping/Map11.wad.client", "Maps/Shipping/Common.wad.client")]
+    wads = [Wad(final / w) for w in ("Champions/Ezreal.wad.client", "Champions/Samira.wad.client", "Champions/Brand.wad.client", "Champions/Aphelios.wad.client", "Champions/AurelionSol.wad.client", "Champions/Lux.wad.client", "Champions/Teemo.wad.client", "Champions/Ziggs.wad.client", "Champions/Sivir.wad.client", "Champions/Twitch.wad.client", "Champions/Orianna.wad.client", "Champions/Gangplank.wad.client", "Champions/Udyr.wad.client", "Champions/Aurora.wad.client", "Champions/Hwei.wad.client", "Champions/Kayle.wad.client", "Maps/Shipping/Map11.wad.client", "Maps/Shipping/Common.wad.client")]
     read = lambda p: next((d for d in (w.read(p) for w in wads) if d is not None), None)
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)

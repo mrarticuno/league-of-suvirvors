@@ -14,10 +14,18 @@ const texLoader = new THREE.TextureLoader();
 const templates = new Map<string, Template>();
 const loading = new Map<string, Promise<void>>(); // in flight or done: concurrent callers share one download
 
+/**
+ * A submesh whose texture is a value map, coloured by its shader (League's gradient-remap materials, e.g. Kayle's wings):
+ * the green channel picks a colour along row `v` of `gradient` (a texture stem), or without one a grey from `min` to
+ * `max` (the material's albedoNewMin/Max). Alpha stays the texture's.
+ */
+export interface Remap { gradient?: string; v?: number; min?: number; max?: number }
+
 export interface ModelOpts {
   textures?: Readonly<Record<string, string>>;
   sequences?: Readonly<Record<string, readonly string[]>>;
   opaque?: readonly string[];
+  remap?: Readonly<Record<string, Remap>>;
 }
 
 async function loadMaterial(texture: string) {
@@ -49,13 +57,37 @@ export function loadModel(id: string, hide: readonly string[] = [], mesh = id, o
 /** Whether loadModel(id) finished: Actor and propModel need it. */
 export const modelLoaded = (id: string) => templates.has(id);
 
-async function fetchModel(id: string, hide: readonly string[], mesh: string, { textures = {}, sequences = {}, opaque = [] }: ModelOpts) {
+/** `base` drawn through a Remap: its texture's green channel picks the colour (see Remap). */
+function remapMaterial(base: THREE.MeshBasicMaterial, r: Remap, gradient: THREE.Texture | undefined, key: string) {
+  const m = base.clone();
+  const v = (r.v ?? 0).toFixed(4), min = (r.min ?? 0).toFixed(4), max = (r.max ?? 1).toFixed(4);
+  m.onBeforeCompile = (sh) => {
+    sh.uniforms.gradientMap = { value: gradient ?? null };
+    sh.fragmentShader = sh.fragmentShader.replace('void main() {', 'uniform sampler2D gradientMap;\nvoid main() {').replace('#include <map_fragment>', `
+      vec4 texel = texture2D(map, vMapUv);
+      float value = pow(texel.g, 1.0 / 2.2); // the map is decoded from sRGB: back to the stored value
+      texel.rgb = ${gradient ? `texture2D(gradientMap, vec2(value, ${v})).rgb` : `vec3(pow(mix(${min}, ${max}, value), 2.2))`};
+      diffuseColor *= texel;`);
+  };
+  m.customProgramCacheKey = () => `remap:${key}:${v}:${min}:${max}`;
+  return m;
+}
+
+async function fetchModel(id: string, hide: readonly string[], mesh: string, { textures = {}, sequences = {}, opaque = [], remap = {} }: ModelOpts) {
   const stems = [...new Set(Object.values(textures))];
+  const gradients = [...new Set(Object.values(remap).flatMap((r) => r.gradient ?? []))];
   const [gltf, material, ...overrides] = await Promise.all([
     gltfLoader.loadAsync(asset(`assets/models/${mesh}.glb`)),
     loadMaterial(id),
     ...stems.map((s) => loadMaterial(s)),
+    ...gradients.map((s) => loadMaterial(s)),
   ]);
+  const gradientMaps = overrides.splice(stems.length).map((m) => Object.assign(m.map!, { wrapS: THREE.ClampToEdgeWrapping, wrapT: THREE.ClampToEdgeWrapping }));
+  const remapped = new Map<string, THREE.Material>();
+  for (const [name, r] of Object.entries(remap)) {
+    const base = name in textures ? overrides[stems.indexOf(textures[name])] : material;
+    remapped.set(name, remapMaterial(base, r, r.gradient ? gradientMaps[gradients.indexOf(r.gradient)] : undefined, `${id}:${name}`));
+  }
   const solid = opaque.length ? Object.assign(material.clone(), { alphaTest: 0 }) : material;
   gltf.scene.traverse((o) => {
     const mesh = o as THREE.SkinnedMesh;
@@ -63,7 +95,7 @@ async function fetchModel(id: string, hide: readonly string[], mesh: string, { t
     const name = (mesh.material as THREE.Material).name;
     mesh.userData.submesh = name; // the replacement material loses it; particle overlays (VfxPrimitiveAttachedMesh) filter by it
     mesh.visible = !hide.includes(name);
-    mesh.material = name in textures ? overrides[stems.indexOf(textures[name])] : opaque.includes(name) ? solid : material;
+    mesh.material = remapped.get(name) ?? (name in textures ? overrides[stems.indexOf(textures[name])] : opaque.includes(name) ? solid : material);
     mesh.frustumCulled = false; // skinned bounds don't follow animation
   });
   for (const clip of gltf.animations) {
@@ -159,7 +191,9 @@ export class Actor {
   onEvent?: (ev: { t: number }) => void;
   private nextEvent = 0;
   private lastTime = 0;
-  private path?: PathRig;
+  private paths: PathRig[] = [];
+  private shown = new Map<THREE.Object3D, boolean>(); // each submesh's own visibility (showSubmesh), under clip events
+  private toggled: { end: number; parts: THREE.Object3D[] }[] = []; // clip submesh events in effect
   private collapsed = new Set<THREE.Object3D>();
   /** Detached rig: the bone hierarchy lives outside `root` (not in the scene), so moving the actor costs one matrix and the
    *  bones only recompute when `update` runs. Bone world positions are then rig-local (unusable for world VFX). */
@@ -176,7 +210,10 @@ export class Actor {
     model.traverse((o) => {
       if (o.name) this.bones.set(o.name.toLowerCase(), o);
       const sub = (o.userData.submesh as string | undefined)?.toLowerCase();
-      if (sub) this.submeshes.set(sub, [...(this.submeshes.get(sub) ?? []), o]);
+      if (sub) {
+        this.submeshes.set(sub, [...(this.submeshes.get(sub) ?? []), o]);
+        this.shown.set(o, o.visible);
+      }
     });
     if (opts.detachedRig && this.detachRig(model, scale)) return;
     model.scale.setScalar(scale);
@@ -219,7 +256,34 @@ export class Actor {
 
   /** Shows or hides a submesh (the skin's SubmeshVisibility events, e.g. the weapon in hand), case-insensitive. */
   showSubmesh(name: string, visible: boolean) {
-    for (const o of this.submeshes.get(name.toLowerCase()) ?? []) o.visible = visible;
+    for (const o of this.submeshes.get(name.toLowerCase()) ?? []) {
+      o.visible = visible;
+      this.shown.set(o, visible);
+    }
+  }
+
+  /**
+   * A clip's submesh visibility event (the animation's SubmeshVisibilityEventData, e.g. the sword drawn during a swing):
+   * shows and hides parts until `end` seconds into the clip, or until the next clip; they then go back to their
+   * `showSubmesh` state. Case-insensitive.
+   */
+  toggleSubmeshes(show: readonly string[], hide: readonly string[], end = Infinity) {
+    const parts: THREE.Object3D[] = [];
+    for (const [names, v] of [[show, true], [hide, false]] as const) {
+      for (const n of names) for (const o of this.submeshes.get(n.toLowerCase()) ?? []) { o.visible = v; parts.push(o); }
+    }
+    this.toggled.push({ end, parts });
+  }
+
+  /** Ends the clip submesh events past their end frame (all of them when `all`). */
+  private untoggle(all: boolean) {
+    const t = this.current?.time ?? 0;
+    for (let i = this.toggled.length - 1; i >= 0; i--) {
+      const ev = this.toggled[i];
+      if (!all && t < ev.end) continue;
+      for (const o of ev.parts) o.visible = this.shown.get(o) ?? true;
+      this.toggled.splice(i, 1);
+    }
   }
 
   /**
@@ -243,7 +307,7 @@ export class Actor {
     for (let o = this.bone(to); o && !joints.includes(start!); o = o.parent ?? undefined) joints.unshift(o);
     if (start && joints[0] === start) {
       const q = () => joints.map(() => new THREE.Quaternion());
-      this.path = { joints, trail: joints.map(() => new THREE.Vector3()), pose: q(), bent: q() };
+      this.paths.push({ joints, trail: joints.map(() => new THREE.Vector3()), pose: q(), bent: q() });
     }
   }
 
@@ -291,6 +355,7 @@ export class Actor {
     action.clampWhenFinished = true;
     action.timeScale = opts.duration ? clip.duration / opts.duration : 1;
     action.play();
+    if (this.toggled.length) this.untoggle(true);
     if (this.current && this.current !== action) action.crossFadeFrom(this.current, opts.fade ?? 0.12, false);
     this.current = action;
     this.currentName = name;
@@ -307,11 +372,15 @@ export class Actor {
     this.mixer.update(dt);
     for (const b of this.collapsed) b.scale.setScalar(0);
     if (this.rig) { this.rig.updateMatrixWorld(true); for (const sk of this.skeletons) this.dirty.add(sk); }
-    if (this.path) this.followPath(this.path);
+    for (const p of this.paths) this.followPath(p);
+    if (this.toggled.length) this.untoggle(false);
     const evs = this.events?.[this.eventsName];
     if (!evs || !this.current || !this.onEvent) return;
     const t = this.current.time;
-    if (t < this.lastTime) this.nextEvent = 0; // looped
+    if (t < this.lastTime) { // looped: the clip's events fire again
+      this.nextEvent = 0;
+      if (this.toggled.length) this.untoggle(true);
+    }
     this.lastTime = t;
     while (this.nextEvent < evs.length && evs[this.nextEvent].t <= t) this.onEvent(evs[this.nextEvent++]);
   }

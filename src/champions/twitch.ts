@@ -86,7 +86,7 @@ export const TWITCH: ChampionDef = {
   title: t('champion.twitch.title'), splash: 'https://ddragon.leagueoflegends.com/cdn/img/champion/splash/Twitch_0.jpg',
   roles: ['marksman', 'assassin'], difficulty: 6,
   hide: ['Twitch_Cheese_Mat'], // the joke's cheese
-  conformPath: ['Tail1', 'Tail10'], // his tail trails the path he walked
+  conformPath: [['Tail1', 'Tail10']], // his tail trails the path he walked
   base: {
     hp: 630, hpPerLevel: 98,
     hpRegen5: 3.75, hpRegen5PerLevel: 0.6,
