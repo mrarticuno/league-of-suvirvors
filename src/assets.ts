@@ -153,6 +153,7 @@ export class Actor {
   private bones = new Map<string, THREE.Object3D>();
   private submeshes = new Map<string, THREE.Object3D[]>();
   currentName = '';
+  private eventsName = ''; // clip whose events the current one fires (itself, or the one named by `play`'s `events`)
   /** Timed events per clip (e.g. particle events): `onEvent` runs as the current clip passes each one. */
   events?: Record<string, readonly { t: number }[]>;
   onEvent?: (ev: { t: number }) => void;
@@ -279,8 +280,8 @@ export class Actor {
     return this.clips.get(name)?.duration ?? 0;
   }
 
-  /** Crossfade to a clip. `duration` stretches the clip to last that many seconds. */
-  play(name: string, opts: { loop?: boolean; fade?: number; duration?: number; restart?: boolean } = {}) {
+  /** Crossfade to a clip. `duration` stretches the clip to last that many seconds; `events` fires that clip's events instead. */
+  play(name: string, opts: { loop?: boolean; fade?: number; duration?: number; restart?: boolean; events?: string } = {}) {
     const clip = this.clips.get(name);
     if (!clip) return;
     if (this.currentName === name && !opts.restart) return;
@@ -293,6 +294,7 @@ export class Actor {
     if (this.current && this.current !== action) action.crossFadeFrom(this.current, opts.fade ?? 0.12, false);
     this.current = action;
     this.currentName = name;
+    this.eventsName = opts.events ?? name;
     this.nextEvent = 0;
     this.lastTime = 0;
   }
@@ -306,7 +308,7 @@ export class Actor {
     for (const b of this.collapsed) b.scale.setScalar(0);
     if (this.rig) { this.rig.updateMatrixWorld(true); for (const sk of this.skeletons) this.dirty.add(sk); }
     if (this.path) this.followPath(this.path);
-    const evs = this.events?.[this.currentName];
+    const evs = this.events?.[this.eventsName];
     if (!evs || !this.current || !this.onEvent) return;
     const t = this.current.time;
     if (t < this.lastTime) this.nextEvent = 0; // looped

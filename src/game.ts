@@ -202,6 +202,8 @@ export class Game {
   private castLock = 0;
   private idleFx: ParticleSystem[] = []; // ChampionDef.idleVfx, stopped on death
   private animLock = 0;
+  private walking = false; // the champion moved this frame
+  private gestureRun = false; // the gesture is a running variant: walking keeps it, stopping cuts it
   private pendingCast: { key: SkillKey; point: THREE.Vector3 } | null = null;
   private dashMove: { dir: THREE.Vector3; left: number; speed: number; length: number; height: number } | null = null; // forced movement (dash)
   stasis = 0; // frozen and untargetable (Guardian Angel)
@@ -618,6 +620,7 @@ export class Game {
     this.kit.castStart?.(key, point);
     audio.play(`${this.champ.id}_${key}`);
     this.animLock = Math.min(this.player.duration(anim), castTime + 0.6);
+    this.gestureRun = false;
   }
 
   /** The player gave a new move order (main.ts: click on the ground, arrow key or joystick pressed). */
@@ -804,6 +807,7 @@ export class Game {
 
     move = this.kit.steer?.() ?? move;
     const moving = move.lengthSq() > 0;
+    this.walking = moving;
     // Survivors rule: the champion attacks while moving. During the windup it turns to the target; after it, back to running.
     this.tryAttack(dt);
     this.stillFor = moving ? 0 : this.stillFor + dt;
@@ -812,9 +816,9 @@ export class Game {
       this.clampToArena();
       if (this.windup < 0) {
         this.facing = Math.atan2(move.x, move.z);
-        this.animLock = 0;
+        if (!this.gestureRun) this.animLock = 0;
       }
-    }
+    } else if (this.gestureRun) this.animLock = 0;
     // resolve even when stationary: a blink, the Baron's push or the tentacle drag can embed the player in scenery
     if (!this.kit.ghost?.()) this.collidePlayer();
 
@@ -904,17 +908,22 @@ export class Game {
     this.player.play(anim, { loop: false, restart: true, duration: length, fade: 0.05 });
     const sound = melee ? `${id}_melee` : `${id}_auto`;
     audio.play(form?.sound ?? (crit ? (melee ? `${id}_melee_crit` : `${id}_crit`) : this.attackIndex % 2 ? sound : `${sound}2`));
-    this.animLock = length;
+    this.animLock = Math.max(length, this.windup); // the attack pose holds until the hit, even if the clip ends first
+    this.gestureRun = false;
   }
 
   /** The next basic attack can start right away (an attack timer reset, e.g. a returning blade caught). */
   resetAttack() { this.attackTimer = 0; }
 
-  /** Plays a one-shot clip over the idle animation for its length (a kit's gesture, e.g. catching a returning blade); casts and attacks win. */
-  gesture(anim: string) {
+  /** Plays a one-shot clip over the idle animation for its length (a kit's gesture, e.g. catching a returning blade); casts and
+   *  attacks win. Walking cuts it, unless `run` is given: then a walking champion plays `run` (an attack's _to_run follow-through)
+   *  with `anim`'s particle events, and stopping cuts that one. */
+  gesture(anim: string, run?: string) {
     if (this.castLock > 0 || this.windup >= 0 || !this.alive) return;
-    this.player.play(anim, { loop: false, restart: true, fade: 0.05 });
-    this.animLock = this.player.duration(anim);
+    this.gestureRun = run !== undefined && this.walking;
+    const clip = this.gestureRun ? run! : anim;
+    this.player.play(clip, { loop: false, restart: true, fade: 0.05, events: anim });
+    this.animLock = this.player.duration(clip);
   }
 
   private fireAuto(target: Enemy) {

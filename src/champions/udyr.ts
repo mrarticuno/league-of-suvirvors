@@ -48,28 +48,34 @@ const ARMS: Record<Stance, readonly string[]> = { Q: ['BearArms'], W: ['BoarArms
 const ALL_ARMS = ['Arms', 'BearArms', 'BoarArms', 'RamArms', 'RamHorns', 'PhoenixArms'];
 // clips per stance, written out because tools/optimize.mjs keeps only the clips named literally in the bundle. An
 // attack is the windup clip then its _to_idle follow-through (the animation graph's Attack -> Attack_To_Idle), whose
-// particle events (events.json) are the swipe and claw ribbons of the hit
-interface Clips { idle: string; run: string; runFast: string; cast: string; attacks: readonly string[]; follow: readonly string[]; emp: readonly string[]; empFollow: readonly string[] }
+// particle events (events.json) are the swipe and claw ribbons of the hit. Walking, the follow-through is the _to_run clip
+// (the graph's Attack -> Attack_To_Run), which fires the _to_idle clip's events: the bin puts them on _to_idle only.
+// `windup`: the attack's castFrame (spell data, 30 fps): the hit lands as the windup clip ends
+interface Clips {
+  idle: string; run: string; runFast: string; cast: string;
+  attacks: readonly string[]; follow: readonly string[]; followRun: readonly string[];
+  emp: readonly string[]; empFollow: readonly string[]; empFollowRun: readonly string[]; empWindup: number;
+}
 const CLIPS: Record<Stance, Clips> = {
   Q: {
     idle: 'spell1_idle', run: 'spell1_run', runFast: 'spell1_run_fast', cast: 'spell1_activate',
-    attacks: ['spell1_attack1', 'spell1_attack2'], follow: ['spell1_attack1_to_idle', 'spell1_attack2_to_idle'],
-    emp: ['spell1_attack1', 'spell1_attack2'], empFollow: ['spell1_attack1_to_idle', 'spell1_attack2_to_idle'],
+    attacks: ['spell1_attack1', 'spell1_attack2'], follow: ['spell1_attack1_to_idle', 'spell1_attack2_to_idle'], followRun: ['spell1_attack1_to_run', 'spell1_attack2_to_run'],
+    emp: ['spell1_attack1', 'spell1_attack2'], empFollow: ['spell1_attack1_to_idle', 'spell1_attack2_to_idle'], empFollowRun: ['spell1_attack1_to_run', 'spell1_attack2_to_run'], empWindup: 12,
   },
   W: {
     idle: 'spell2_idle', run: 'spell2_run', runFast: 'spell2_run_fast', cast: 'spell2_activation',
-    attacks: ['spell2_attack'], follow: ['spell2_attack_to_idle'],
-    emp: ['spell2_enhancedattack1', 'spell2_enhancedattack2'], empFollow: ['spell2_enhancedattack1_to_idle', 'spell2_enhancedattack2_to_idle'],
+    attacks: ['spell2_attack'], follow: ['spell2_attack_to_idle'], followRun: ['spell2_attack_to_run'],
+    emp: ['spell2_enhancedattack1', 'spell2_enhancedattack2'], empFollow: ['spell2_enhancedattack1_to_idle', 'spell2_enhancedattack2_to_idle'], empFollowRun: ['spell2_attack1_to_run', 'spell2_attack2_to_run'], empWindup: 16,
   },
   E: {
     idle: 'spell3_idle', run: 'spell3_run', runFast: 'spell3_run', cast: 'spell3',
-    attacks: ['spell3_attack1', 'spell3_attack2'], follow: ['spell3_attack1_to_idle', 'spell3_attack2_to_idle'],
-    emp: ['spell3_enhanced_attack'], empFollow: ['spell3_enhanced_attack_to_idle'],
+    attacks: ['spell3_attack1', 'spell3_attack2'], follow: ['spell3_attack1_to_idle', 'spell3_attack2_to_idle'], followRun: ['spell3_attack1_to_run', 'spell3_attack2_to_run'],
+    emp: ['spell3_enhanced_attack'], empFollow: ['spell3_enhanced_attack_to_idle'], empFollowRun: ['spell3_enhanced_attack_to_run'], empWindup: 14,
   },
   R: {
     idle: 'spell4_idle', run: 'spell4_run', runFast: 'spell4_run_fast', cast: 'spell4',
-    attacks: ['spell4_attack1', 'spell4_attack2'], follow: ['spell4_attack1_to_idle', 'spell4_attack2_to_idle'],
-    emp: ['spell4_attack1', 'spell4_attack2'], empFollow: ['spell4_attack1_to_idle', 'spell4_attack2_to_idle'],
+    attacks: ['spell4_attack1', 'spell4_attack2'], follow: ['spell4_attack1_to_idle', 'spell4_attack2_to_idle'], followRun: ['spell4_attack1_to_run', 'spell4_attack2_to_run'],
+    emp: ['spell4_attack1', 'spell4_attack2'], empFollow: ['spell4_attack1_to_idle', 'spell4_attack2_to_idle'], empFollowRun: ['spell4_attack1_to_run', 'spell4_attack2_to_run'], empWindup: 12,
   },
 };
 
@@ -159,7 +165,7 @@ export const UDYR: ChampionDef = {
     attackRange: 250, // League: 125
     moveSpeed: 350,
     critDamage: 1.75,
-    windupPercent: 0.3 / 1.6,
+    windupPercent: (12 / 30) * 0.65, // UdyrBasicAttack castFrame 12 at 30 fps, at the base attack speed
     missileSpeed: 467, // melee: the hit lands at the end of the windup (the kit's basicAttack)
     radius: 65,
     armor: 31, armorPerLevel: 4.7,
@@ -202,7 +208,7 @@ function udyrKit(g: Game): ChampionKit {
   let hairUntil = 0;
   let monk = 0, monkUntil = 0; // Monk Training attacks left
   let attackIndex = 0;
-  let pending: { stance: Stance | null; empowered: boolean; follow: string; sound: string } = { stance: null, empowered: false, follow: CLIPS.W.follow[0], sound: 'udyr_auto_hit' };
+  let pending: { stance: Stance | null; empowered: boolean; follow: string; followRun: string; sound: string } = { stance: null, empowered: false, follow: CLIPS.W.follow[0], followRun: CLIPS.W.followRun[0], sound: 'udyr_auto_hit' };
   let manaAt = 0;
 
   // Wilding Claw
@@ -406,7 +412,7 @@ function udyrKit(g: Game): ChampionKit {
       const set = emp ? c.emp : c.attacks;
       const anim = set[i % set.length];
       pending = {
-        stance, empowered: emp, follow: (emp ? c.empFollow : c.follow)[i % set.length],
+        stance, empowered: emp, follow: (emp ? c.empFollow : c.follow)[i % set.length], followRun: (emp ? c.empFollowRun : c.followRun)[i % set.length],
         sound: emp ? `udyr_${stance}_auto_hit` : 'udyr_auto_hit',
       };
       // Stampede: the empowered attack pounces onto its target
@@ -415,7 +421,7 @@ function udyrKit(g: Game): ChampionKit {
         if (gap > E.pounceMin) g.dash(dir.copy(target.pos).sub(g.pos).setY(0).normalize(), gap - E.pounceMin / 2, E.pounce);
       }
       const sound = emp ? `udyr_${stance}_auto${i % 2 ? '' : '2'}` : `udyr_auto${i % 2 ? '' : '2'}`;
-      return { anim, sound };
+      return { anim, sound, windupPercent: emp ? (c.empWindup / 30) * UDYR.base.attackSpeed : undefined };
     },
 
     // melee: the hit lands at the end of the windup, no missile
@@ -426,7 +432,7 @@ function udyrKit(g: Game): ChampionKit {
       }
       const s = pending.stance;
       const emp = pending.empowered && s !== null && empowered > 0;
-      g.gesture(pending.follow); // the follow-through clip carries the swipe and ribbon particle events
+      g.gesture(pending.follow, pending.followRun); // the follow-through carries the swipe and ribbon particle events
       audio.play(pending.sound);
       if (emp) {
         empowered--;
