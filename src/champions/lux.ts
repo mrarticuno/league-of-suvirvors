@@ -71,9 +71,6 @@ export const LUX: ChampionDef = {
   scale: 1.3, // the export stands ~134 tall, Ezreal ~185
   title: t('champion.lux.title'), splash: 'https://ddragon.leagueoflegends.com/cdn/img/champion/splash/Lux_0.jpg',
   roles: ['mage', 'support'], difficulty: 5,
-  itemPool: 'ap',
-  // OP.GG mid 16.21: Luden's, Shadowflame, Rabadon's, Horizon Focus, Void Staff, Malignance (Zhonya's has an active)
-  build: ['6655', '4645', '3089', '4628', '3135', '3118'],
   base: {
     hp: 580, hpPerLevel: 99,
     hpRegen5: 5.5, hpRegen5PerLevel: 0.55,

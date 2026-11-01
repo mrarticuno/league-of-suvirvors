@@ -6,7 +6,6 @@
 import type * as THREE from 'three';
 import type { Enemy, Game } from './game';
 import type { FxStat } from './itemEffects';
-import type { ItemPool } from './items';
 import type { Remap } from './assets';
 
 export type SkillKey = 'Q' | 'W' | 'E' | 'R';
@@ -160,10 +159,6 @@ export interface ChampionDef {
   boneHeading?: boolean;
   /** Plays the particle events of its animation clips (events.json of tools/build_vfx.py), as League does. */
   animVfx?: boolean;
-  /** Items offered on level up (src/items.ts ItemPool): attack or ability power items; default 'ad'. */
-  itemPool?: ItemPool;
-  /** Recommended items (current build-site core, in buy order): offered more often and marked on level up. */
-  build: readonly string[];
   /**
    * Close-range basic attack (e.g. a blade) used instead of the missile when the kit's `meleeAuto` says so:
    * no missile, the hit lands at the end of the windup. Sounds: `<id>_melee`, `_melee2`, `_melee_crit`, `_melee_hit`, `_melee_crit_hit`.

@@ -87,9 +87,6 @@ export const ZIGGS: ChampionDef = {
   scale: 1.45, // Brand's: the exports share League's units (Ziggs ~110 tall, Brand ~125), so they keep the game's proportion
   title: t('champion.ziggs.title'), splash: 'https://ddragon.leagueoflegends.com/cdn/img/champion/splash/Ziggs_0.jpg',
   roles: ['mage'], difficulty: 4,
-  itemPool: 'ap',
-  // OP.GG 16.21: Luden's Echo, Shadowflame, Rabadon's; then Void Staff, Banshee's Veil, Horizon Focus (Zhonya's has an active)
-  build: ['6655', '4645', '3089', '3135', '3102', '4628'],
   base: {
     hp: 606, hpPerLevel: 106,
     hpRegen5: 6.5, hpRegen5PerLevel: 0.6,

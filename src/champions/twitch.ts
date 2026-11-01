@@ -103,8 +103,6 @@ export const TWITCH: ChampionDef = {
     armor: 27, armorPerLevel: 4,
   },
   skills: SKILLS,
-  // OP.GG 16.21: Blade of the Ruined King, Guinsoo's Rageblade, Runaan's Hurricane; then Infinity Edge, Lord Dominik's, Guardian Angel
-  build: ['3153', '3124', '3085', '3031', '3036', '3026'],
   passive: { name: t('champion.twitch.passive'), icon: `${ICON}/passive/Twitch_Passive.png` },
   // the animation graph: Attack1 and Attack2 are both attack1, Spell1 (Q) is idle1, Spell3 serves E and R, Spell4 is the R attack
   anims: {

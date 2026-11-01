@@ -87,9 +87,6 @@ export const ORIANNA: ChampionDef = {
   scale: SCALE,
   title: t('champion.orianna.title'), splash: 'https://ddragon.leagueoflegends.com/cdn/img/champion/splash/Orianna_0.jpg',
   roles: ['mage', 'support'], difficulty: 7,
-  itemPool: 'ap',
-  // OP.GG mid 16.21: Luden's, Shadowflame, Rabadon's, Void Staff, Cryptbloom, Banshee's (Zhonya's has an active)
-  build: ['6655', '4645', '3089', '3135', '3137', '3102'],
   base: {
     hp: 565, hpPerLevel: 110,
     hpRegen5: 7, hpRegen5PerLevel: 0.55,

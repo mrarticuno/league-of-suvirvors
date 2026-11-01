@@ -73,9 +73,6 @@ export const AURELIONSOL: ChampionDef = {
   hide: ['AurelionSolFX'], // the body shell only AurelionSol_P_SkinOverride draws, with its galaxy and rim light
   conformPath: [['Neck1_Ground', 'Tail11']], // his tail snakes along the path he travelled
   opaque: ['AurelionSol_BodyLower'], // the tail: blue scales fading into black space; its texture alpha is not opacity
-  itemPool: 'ap',
-  // OP.GG mid 16.21: Liandry's, Rylai's, Rabadon's, Void Staff, Shadowflame, Cosmic Drive
-  build: ['6653', '3116', '3089', '3135', '4645', '4629'],
   base: {
     hp: 645, hpPerLevel: 106,
     hpRegen5: 7, hpRegen5PerLevel: 0.6,

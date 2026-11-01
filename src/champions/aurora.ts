@@ -91,9 +91,6 @@ export const AURORA: ChampionDef = {
   roles: ['mage', 'assassin'], difficulty: 5,
   scale: SCALE,
   textures: { Weapon: 'aurora_weapon' }, // the skin's materialOverride: the wand has its own texture
-  itemPool: 'ap',
-  // OP.GG mid 16.21: Luden's Echo, Shadowflame, Rabadon's; then Void Staff, Stormsurge, Banshee's Veil
-  build: ['6655', '4645', '3089', '3135', '4646', '3102'],
   base: {
     hp: 607, hpPerLevel: 110,
     hpRegen5: 6, hpRegen5PerLevel: 0.55,

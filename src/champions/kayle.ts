@@ -105,9 +105,6 @@ export const KAYLE: ChampionDef = {
     sword_blade: { gradient: 'kayle_gradient', v: 0.5 }, sword_blade_combined: { gradient: 'kayle_gradient', v: 0.5 },
   },
   conformPath: [['L_Wing_Lo_1', 'L_Wing_Lo_4'], ['R_Wing_Lo_1', 'R_Wing_Lo_4']], // the lower wings trail her path
-  itemPool: 'ap',
-  // AP on-hit core (u.gg / OP.GG top): Nashor's Tooth, Guinsoo's Rageblade, Rabadon's, Shadowflame, Void Staff, Lich Bane
-  build: ['3115', '3124', '3089', '4645', '3135', '3100'],
   base: {
     hp: 670, hpPerLevel: 92,
     hpRegen5: 5, hpRegen5PerLevel: 0.5,

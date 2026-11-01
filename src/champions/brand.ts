@@ -67,9 +67,6 @@ export const BRAND: ChampionDef = {
   scale: 1.45, // the export stands ~125 tall, Ezreal ~183
   title: t('champion.brand.title'), splash: 'https://ddragon.leagueoflegends.com/cdn/img/champion/splash/Brand_0.jpg',
   roles: ['mage', 'support'], difficulty: 4,
-  itemPool: 'ap',
-  // OP.GG mid 16.21: Blackfire Torch, Rylai's, Liandry's; then Shadowflame, Rabadon's, Void Staff (Zhonya's has an active)
-  build: ['2503', '3116', '6653', '4645', '3089', '3135'],
   base: {
     hp: 570, hpPerLevel: 105,
     hpRegen5: 5.5, hpRegen5PerLevel: 0.55,

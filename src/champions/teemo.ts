@@ -69,9 +69,6 @@ export const TEEMO: ChampionDef = {
   title: t('champion.teemo.title'), splash: 'https://ddragon.leagueoflegends.com/cdn/img/champion/splash/Teemo_0.jpg',
   roles: ['marksman', 'mage'], difficulty: 6,
   hide: ['Mushroom', 'Harmonica'],
-  itemPool: 'ap',
-  // on-hit AP: Nashor's Tooth, Liandry's, Riftmaker; then Rabadon's, Void Staff, Shadowflame
-  build: ['3115', '6653', '4633', '3089', '3135', '4645'],
   base: {
     hp: 615, hpPerLevel: 104,
     hpRegen5: 5.5, hpRegen5PerLevel: 0.65,

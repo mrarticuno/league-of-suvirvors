@@ -129,6 +129,7 @@ export interface RunSnapshot {
   slots: Slot[]; legendary: number; boots: string | null; dragonSlain: boolean; blueprintDropped: boolean;
   buffs: Record<BuffKey, number>; buffSpawnAt: Record<BuffKey, number>; bonusRunePoints: number; flashReady: number;
   nextEvent: number; nextHordeAt: number; dragon: string; pendingLevelUps: number; autoAttack: boolean;
+  declinedItems?: boolean; // absent in saves older than item lines
   fx: { items: Record<string, unknown>; runes: unknown[] }; // ItemEffect.saved of the owned items (by id) and runes (page order)
 }
 
@@ -195,6 +196,8 @@ export class Game {
   private hordes = new Map<string, Horde>(); // instanced non-epic enemies, one per model
   manualTarget: Enemy | null = null; // left-click target when auto attack is off
   pendingLevelUps = 1; // LoL grants a skill point at level 1
+  /** The player declined the last item list: the next one brings a type they never picked (src/items.ts rollOffers). */
+  declinedItems = false;
   private attackTimer = 0;
   private windup = -1;
   private windupTarget: Enemy | null = null;
@@ -318,7 +321,7 @@ export class Game {
       focus: null, manualTarget: null, pendingLevelUps: 1,
       attackTimer: 0, windup: -1, windupTarget: null, windupProp: null, castLock: 0, animLock: 0, pendingCast: null, dashMove: null,
       enemies: [], aliveCount: 0, epics: [], nextId: 0, missiles: [], floaters: [], nextEvent: 0, spawnBudget: 0,
-      nextHordeAt: HORDE.every, legendary: -1, boots: null, dragonSlain: false, blueprintDropped: false,
+      nextHordeAt: HORDE.every, legendary: -1, boots: null, dragonSlain: false, blueprintDropped: false, declinedItems: false,
       stasis: 0, stasisEnd: null, stunned: 0, stunLength: 0, airborne: true, arena: null,
       page, shield: 0, shieldUntil: 0, choices: [], bonusRunePoints: 0, flashReady: 0,
       buffs: { blue: 0, red: 0 }, buffDrops: [], crowd: 0, lastHurtAt: -Infinity, stillFor: 0,
@@ -380,7 +383,7 @@ export class Game {
       buffs: { ...this.buffs }, buffSpawnAt: { blue: respawn(this.buffSpawnAt.blue), red: respawn(this.buffSpawnAt.red) },
       bonusRunePoints: this.bonusRunePoints, flashReady: this.flashReady,
       nextEvent: live < 0 ? this.nextEvent : live, nextHordeAt: this.nextHordeAt, dragon: this.dragon,
-      pendingLevelUps: this.pendingLevelUps, autoAttack: this.autoAttack,
+      pendingLevelUps: this.pendingLevelUps, autoAttack: this.autoAttack, declinedItems: this.declinedItems,
       fx: {
         items: Object.fromEntries(this.slots.flatMap(({ id }) => {
           const fx = this.fxCache.get(id);
