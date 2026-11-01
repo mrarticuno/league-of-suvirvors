@@ -340,9 +340,11 @@ export const AD_PASSIVES: Record<string, ItemPassive> = {
         for (const e of g.enemiesNear(target.pos, 500, near)) {
           if (left > 0 && e !== target && e.deadFor < 0 && e.pos.distanceTo(target.pos) - e.def.radius <= 500) {
             left--;
+            g.vfx.bolt(target.pos, e.pos);
             g.hurtEnemy(e, 60 * power(), ITEM_MAGIC);
           }
         }
+        g.vfx.bolt(g.pos, target.pos);
         return 60 * power();
       }, 27);
       return { tick: en.tick, onHitMagic: en.onHitMagic };

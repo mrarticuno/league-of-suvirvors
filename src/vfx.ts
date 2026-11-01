@@ -19,21 +19,26 @@ const _q = new THREE.Quaternion();
 // PARTICLE_BUDGET live particles every new one-shot thins too. Every hit still shows its effect.
 const SAME_FULL = 8;
 const PARTICLE_BUDGET = 6000;
+const BOLT_LIFE = 0.25; // seconds a lightning arc stays on screen
+const BOLT_KINKS = 7; // straight segments per arc
 
 export class Vfx {
   private live: Live[] = [];
   private time = 0;
   private shots = new Map<string, number>(); // live one-shot systems per key
   private particles = 0; // live particles, counted each update
-  private flashes: { s: THREE.Sprite; age: number }[] = [];
+  private flashes: { s: THREE.Sprite; age: number; size: number }[] = [];
+  private bolts: { m: THREE.Mesh[]; age: number }[] = [];
   private enemyTex = glowTexture(); // drawn in code: enemy skillshots look the same for every champion
   constructor(private scene: THREE.Scene) {}
 
   clear() {
     for (const l of this.live) l.sys.dispose();
     for (const f of this.flashes) f.s.removeFromParent();
+    for (const b of this.bolts) this.endBolt(b);
     this.live = [];
     this.flashes = [];
+    this.bolts = [];
     this.shots.clear();
   }
 
@@ -48,8 +53,13 @@ export class Vfx {
     compact(this.flashes, (f) => {
       f.age += dt;
       f.s.material.opacity = 1 - f.age / 0.2;
-      f.s.scale.setScalar(90 * (1 + f.age * 2));
+      f.s.scale.setScalar(f.size * (1 + f.age * 2));
       return f.age < 0.2 || !f.s.removeFromParent();
+    });
+    compact(this.bolts, (b) => {
+      b.age += dt;
+      for (const m of b.m) (m.material as THREE.MeshBasicMaterial).opacity = (m.userData.alpha as number) * (1 - b.age / BOLT_LIFE);
+      return b.age < BOLT_LIFE || this.endBolt(b);
     });
     compact(this.live, (l) => {
       if (l.follow) {
@@ -139,11 +149,46 @@ export class Vfx {
     return { root, update: () => {} };
   }
 
-  enemyHit(at: THREE.Vector3) {
-    const s = this.sprite(0xff5a3a, 90);
+  enemyHit(at: THREE.Vector3) { this.flash(at, 0xff5a3a, 90); }
+
+  private flash(at: THREE.Vector3, color: number, size: number) {
+    const s = this.sprite(color, size);
     s.position.copy(at).setY(at.y || 100);
     this.scene.add(s);
-    this.flashes.push({ s, age: 0 });
+    this.flashes.push({ s, age: 0, size });
+  }
+
+  // ---- item procs (hand-made: only the champion's particle systems are loaded) ----
+
+  /** Jagged lightning arc from `a` to `b` at hit height, with a spark at the struck end (Statikk Shiv's chain). */
+  bolt(a: THREE.Vector3, b: THREE.Vector3, color = 0x9fd8ff) {
+    const from = a.clone().setY(a.y || 100), to = b.clone().setY(b.y || 100);
+    const path = new THREE.CurvePath<THREE.Vector3>();
+    let prev = from;
+    for (let i = 1; i <= BOLT_KINKS; i++) {
+      const p = from.clone().lerp(to, i / BOLT_KINKS);
+      if (i < BOLT_KINKS) p.add(new THREE.Vector3((Math.random() - 0.5) * 50, (Math.random() - 0.5) * 40, (Math.random() - 0.5) * 50));
+      path.add(new THREE.LineCurve3(prev, p));
+      prev = p;
+    }
+    const tube = (radius: number, c: number, alpha: number) => {
+      const m = new THREE.Mesh(new THREE.TubeGeometry(path, BOLT_KINKS * 4, radius, 5),
+        new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: alpha, blending: THREE.AdditiveBlending, depthWrite: false }));
+      m.userData.alpha = alpha;
+      this.scene.add(m);
+      return m;
+    };
+    this.bolts.push({ m: [tube(5, 0xffffff, 1), tube(16, color, 0.45)], age: 0 });
+    this.flash(to, color, 110);
+  }
+
+  private endBolt(b: { m: THREE.Mesh[] }) {
+    for (const m of b.m) {
+      m.removeFromParent();
+      m.geometry.dispose();
+      (m.material as THREE.Material).dispose();
+    }
+    return false;
   }
 }
 
