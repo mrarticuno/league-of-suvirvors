@@ -5,6 +5,7 @@ import { RUNES, SHARDS, TREES, type TreeId } from './runes';
 export const KILLS_PER_POINT = 100;
 export const NODE_COST_STEP = 8; // the n-th node unlocked in a tree costs 8 × n
 export const SHARD_ROW_COST = [20, 40, 60];
+export const BARON_BONUS = 30; // rune points for the first Baron kill with each champion
 const KEY = 'los.runes.v1';
 
 export interface Page {
@@ -22,12 +23,13 @@ export interface Progress {
   unlocked: string[];
   shardRows: number[];
   pages: Record<string, Page>; // last page used, per champion id
+  baronWins: string[]; // champion ids that have slain the Baron (BARON_BONUS paid once each)
 }
 
 export const emptyPage = (): Page => ({
   primary: null, keystone: null, primaryRunes: [null, null, null], secondary: null, secondaryRunes: [], shards: [null, null, null],
 });
-export const emptyProgress = (): Progress => ({ points: 0, killRemainder: 0, unlocked: [], shardRows: [], pages: {} });
+export const emptyProgress = (): Progress => ({ points: 0, killRemainder: 0, unlocked: [], shardRows: [], pages: {}, baronWins: [] });
 
 export const nodeCost = (p: Progress, tree: TreeId) =>
   NODE_COST_STEP * (p.unlocked.filter((id) => RUNES[id]?.tree === tree).length + 1);
@@ -44,6 +46,12 @@ export function unlockShardRow(p: Progress, row: number): Progress | null {
   const cost = SHARD_ROW_COST[row];
   if (cost === undefined || p.shardRows.includes(row) || p.points < cost) return null;
   return { ...p, points: p.points - cost, shardRows: [...p.shardRows, row] };
+}
+
+/** The Baron fell to `champ`: BARON_BONUS the first time with that champion, nothing after. */
+export function baronSlain(p: Progress, champ: string): { progress: Progress; bonus: number } {
+  if (p.baronWins.includes(champ)) return { progress: p, bonus: 0 };
+  return { progress: { ...p, baronWins: [...p.baronWins, champ] }, bonus: BARON_BONUS };
 }
 
 export function credit(p: Progress, kills: number, bonusPoints = 0) {
@@ -137,6 +145,7 @@ function sanitize(raw: Partial<Progress>): Progress {
     unlocked: (raw.unlocked ?? []).filter(known),
     shardRows,
     pages,
+    baronWins: (raw.baronWins ?? []).filter((id) => typeof id === 'string'),
   };
 }
 

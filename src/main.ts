@@ -3,7 +3,7 @@ import { Game, type RunSnapshot } from './game';
 import { MAX_ENEMIES } from './data';
 import { FrameGovernor } from './perf';
 import { t, type Key } from './i18n';
-import { browserStorage, credit, loadProgress, saveProgress } from './progress';
+import { baronSlain, browserStorage, credit, loadProgress, saveProgress } from './progress';
 import { showChampionSelect, showRunePage } from './runePage';
 import { IS_TOUCH, TouchControls } from './touch';
 import { fmt, Hud } from './ui';
@@ -245,12 +245,13 @@ function checkPrompts() {
     if (credited) return;
     credited = true; // once per run, however often this runs before Continuar
     clearRun(browserStorage); // the run is over: nothing left to continue
-    const r = credit(loadProgress(browserStorage), game.kills, game.bonusRunePoints);
+    const first = game.over === 'won' ? baronSlain(loadProgress(browserStorage), game.champ.id) : { progress: loadProgress(browserStorage), bonus: 0 };
+    const r = credit(first.progress, game.kills, game.bonusRunePoints + first.bonus);
     saveProgress(r.progress, browserStorage);
     hud.closePrompts();
     if (hud.menuOpen) hud.toggleMenu();
     cine = new Cinematic(game, camera, CAMERA_OFFSET, () =>
-      hud.showEnd(game, r.gained, r.progress, { runePage: () => openRunes(game.champ), again: openMenus }));
+      hud.showEnd(game, r.gained, r.progress, { runePage: () => openRunes(game.champ), again: openMenus }, first.bonus));
   } else if (game.choices.length && !hud.choosing) {
     game.paused = true;
     hud.choice(game.choices.shift()!, () => { game.paused = game.pendingLevelUps > 0; });

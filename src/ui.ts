@@ -467,7 +467,7 @@ export class Hud {
    * the rune points it earned and the cheapest rune they can buy now (the reason to start the next run).
    * `progress` is already credited with `gained`.
    */
-  showEnd(g: Game, gained: number, progress: Progress, actions: { runePage: () => void; again: () => void }) {
+  showEnd(g: Game, gained: number, progress: Progress, actions: { runePage: () => void; again: () => void }, baronBonus = 0) {
     const won = g.over === 'won';
     $('end').className = `overlay ${won ? 'won' : 'lost'}`;
     const title = t(won ? 'end.won' : 'end.lost');
@@ -492,6 +492,7 @@ export class Hud {
     $('end-items').innerHTML = g.inventory.map((id) => `<img src="${itemIcon(id)}" title="${ITEMS[id].name}" alt="">`).join('');
     $('end-reward-label').textContent = t(won ? 'end.reward' : 'end.keep');
     $('end-runes').textContent = t('end.runes', { kills: KILLS_PER_POINT - progress.killRemainder });
+    $('end-bonus').textContent = baronBonus ? t('end.baronBonus', { n: baronBonus, boss: ENEMIES.baron.name ?? '', champ: g.champ.name }) : '';
     countUp($('end-kills'), g.kills, 1200, 900);
     countUp($('end-points'), gained, 1300, 1300, '+');
     $('end-hook').innerHTML = hook(progress, page);

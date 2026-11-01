@@ -140,6 +140,8 @@ export function propModel(id: string): THREE.Object3D {
 }
 
 const _a = new THREE.Vector3(), _b = new THREE.Vector3(), UP = new THREE.Vector3(0, 1, 0);
+/** A conformed joint chain: last frame's joint positions, the mixer's pose and the bent pose written over it. */
+type PathRig = { joints: THREE.Object3D[]; trail: THREE.Vector3[]; pose: THREE.Quaternion[]; bent: THREE.Quaternion[] };
 const _q = new THREE.Quaternion(), _pq = new THREE.Quaternion(), _pq2 = new THREE.Quaternion();
 
 /** An animated instance of a loaded model. */
@@ -156,7 +158,7 @@ export class Actor {
   onEvent?: (ev: { t: number }) => void;
   private nextEvent = 0;
   private lastTime = 0;
-  private path?: { joints: THREE.Object3D[]; trail: THREE.Vector3[] };
+  private path?: PathRig;
   private collapsed = new Set<THREE.Object3D>();
   /** Detached rig: the bone hierarchy lives outside `root` (not in the scene), so moving the actor costs one matrix and the
    *  bones only recompute when `update` runs. Bone world positions are then rig-local (unusable for world VFX). */
@@ -238,10 +240,20 @@ export class Actor {
     const start = this.bone(from);
     const joints: THREE.Object3D[] = [];
     for (let o = this.bone(to); o && !joints.includes(start!); o = o.parent ?? undefined) joints.unshift(o);
-    if (start && joints[0] === start) this.path = { joints, trail: joints.map(() => new THREE.Vector3()) };
+    if (start && joints[0] === start) {
+      const q = () => joints.map(() => new THREE.Quaternion());
+      this.path = { joints, trail: joints.map(() => new THREE.Vector3()), pose: q(), bent: q() };
+    }
   }
 
-  private followPath({ joints, trail }: { joints: THREE.Object3D[]; trail: THREE.Vector3[] }) {
+  private followPath({ joints, trail, pose, bent }: PathRig) {
+    // the mixer skips writing a value that did not change since its last write (a held key): such a joint still carries
+    // last frame's bend, so restore its animated pose, or the bends stack every frame and the chain blows up
+    for (let i = 0; i < joints.length; i++) {
+      const q = joints[i].quaternion;
+      if (q.equals(bent[i])) q.copy(pose[i]);
+      else pose[i].copy(q);
+    }
     joints[0].updateWorldMatrix(true, true);
     for (let i = 0; i < joints.length - 1; i++) {
       const p = joints[i].getWorldPosition(_a), c = joints[i + 1].getWorldPosition(_b), prev = trail[i + 1];
@@ -255,7 +267,7 @@ export class Actor {
       joints[i].quaternion.premultiply(_q);
       joints[i].updateWorldMatrix(false, true);
     }
-    for (let i = 0; i < joints.length; i++) joints[i].getWorldPosition(trail[i]);
+    for (let i = 0; i < joints.length; i++) { joints[i].getWorldPosition(trail[i]); bent[i].copy(joints[i].quaternion); }
   }
 
   /** A node of the model by name, case-insensitive (League bins mix the case of bone names). */

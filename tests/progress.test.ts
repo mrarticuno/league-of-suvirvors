@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  choosePrimary, chooseSecondary, credit, defaultShards, emptyPage, emptyProgress, equipRune, equipShard, loadProgress, nodeCost, saveProgress, unlockRune, unlockShardRow,
+  BARON_BONUS, baronSlain, choosePrimary, chooseSecondary, credit, defaultShards, emptyPage, emptyProgress, equipRune, equipShard, loadProgress, nodeCost, saveProgress, unlockRune, unlockShardRow,
   type Progress,
 } from '../src/progress';
 
@@ -45,6 +45,14 @@ describe('economy', () => {
     expect(r.progress.points).toBe(35);
     expect(credit(emptyProgress(), 299).gained).toBe(2);
     expect(credit(emptyProgress(), 0, 3).gained).toBe(3);
+  });
+
+  it('the Baron pays a bonus once per champion', () => {
+    const a = baronSlain(emptyProgress(), 'ezreal');
+    expect(a.bonus).toBe(BARON_BONUS);
+    expect(a.progress.baronWins).toEqual(['ezreal']);
+    expect(baronSlain(a.progress, 'ezreal')).toEqual({ progress: a.progress, bonus: 0 });
+    expect(baronSlain(a.progress, 'twitch').bonus).toBe(BARON_BONUS);
   });
 });
 

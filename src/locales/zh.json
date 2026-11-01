@@ -35,6 +35,7 @@
  "end.kills": "击杀",
  "end.reward": "奖励",
  "end.keep": "符文进度永久保留",
+ "end.baronBonus": "+{n}奖励：首次使用{champ}击杀{boss}",
  "end.hookReady": "现在可以解锁{rune}",
  "end.hookMissing": "再获得{n}点即可解锁{rune}",
  "end.runePage": "符文页",

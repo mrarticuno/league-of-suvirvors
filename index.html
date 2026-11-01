@@ -646,6 +646,7 @@
       .gain .gem { width: 56px; height: 56px; filter: drop-shadow(0 0 14px rgba(143, 199, 255, 0.8)); }
       #end-points { display: block; font-size: 54px; line-height: 1; color: #ddeeff; text-shadow: 0 0 20px rgba(143, 199, 255, 0.7); font-variant-numeric: tabular-nums; }
       #end-runes { font-size: 13px; color: var(--muted); }
+      #end-bonus { display: block; font-size: 13px; color: var(--gold-hi); } #end-bonus:empty { display: none; }
       #end-hook { display: flex; align-items: center; gap: 12px; padding: 12px 14px; background: rgba(0, 0, 0, 0.3); box-shadow: inset 0 0 0 1px var(--gold-dim); font-size: 13px; line-height: 1.4; animation: hookglow 2.4s ease-in-out 1.8s infinite; }
       #end-hook:empty { display: none; }
       #end-hook img { width: 40px; height: 40px; flex: none; border-radius: 50%; border: 2px solid var(--gold); background: #05080f; }
@@ -892,7 +893,7 @@
         <section class="end-card end-reward">
           <small id="end-reward-label"></small>
           <div class="gain"><svg class="gem" viewBox="0 0 48 48" aria-hidden="true"><path d="M24 4L40 18L24 44L8 18Z" fill="#8fc7ff" opacity=".3"/><path d="M24 4L40 18L24 44L8 18Z M8 18h32M24 4l-6 14 6 26 6-26z" fill="none" stroke="#ddeeff" stroke-width="2" stroke-linejoin="round"/></svg>
-            <div><b id="end-points"></b><span id="end-runes"></span></div></div>
+            <div><b id="end-points"></b><span id="end-runes"></span><span id="end-bonus"></span></div></div>
           <div id="end-hook"></div>
         </section>
       </div>

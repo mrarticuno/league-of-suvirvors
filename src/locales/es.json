@@ -35,6 +35,7 @@
  "end.kills": "Asesinatos",
  "end.reward": "Recompensa",
  "end.keep": "Tus runas se quedan contigo",
+ "end.baronBonus": "+{n} de bonificación: primer asesinato de {boss} con {champ}",
  "end.hookReady": "Ya puedes desbloquear {rune}",
  "end.hookMissing": "Faltan {n} puntos para desbloquear {rune}",
  "end.runePage": "Página de runas",

@@ -35,6 +35,7 @@
  "end.kills": "Kills",
  "end.reward": "Reward",
  "end.keep": "Your runes stay with you",
+ "end.baronBonus": "+{n} bonus: first {boss} kill with {champ}",
  "end.hookReady": "You can now unlock {rune}",
  "end.hookMissing": "{n} more points to unlock {rune}",
  "end.runePage": "Rune page",

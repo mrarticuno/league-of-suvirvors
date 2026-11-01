@@ -35,6 +35,7 @@
  "end.kills": "Abates",
  "end.reward": "Recompensa",
  "end.keep": "As runas ficam com você",
+ "end.baronBonus": "+{n} de bônus: primeiro abate de {boss} com {champ}",
  "end.hookReady": "Agora dá para desbloquear {rune}",
  "end.hookMissing": "Faltam {n} pontos para desbloquear {rune}",
  "end.runePage": "Página de runas",
