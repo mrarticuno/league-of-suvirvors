@@ -136,10 +136,6 @@ export const HWEI: ChampionDef = {
   textures: { Brush: 'hwei_weapon', PaletteA: 'hwei_weapon' }, // materialOverride: the brush texture (the palette's diffuse)
   title: t('champion.hwei.title'), splash: 'https://ddragon.leagueoflegends.com/cdn/img/champion/splash/Hwei_0.jpg',
   roles: ['mage', 'support'], difficulty: 9,
-  itemPool: 'ap',
-  // OP.GG mid core: Luden's Companion, Shadowflame, Rabadon's, Void Staff; then Banshee's Veil, Horizon Focus
-  // (Zhonya's has an active)
-  build: ['6655', '4645', '3089', '3135', '3102', '4628'],
   base: {
     hp: 580, hpPerLevel: 109,
     hpRegen5: 5.5, hpRegen5PerLevel: 0.55,

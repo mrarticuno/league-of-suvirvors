@@ -93,8 +93,6 @@ export const SIVIR: ChampionDef = {
     armor: 30, armorPerLevel: 4.45,
   },
   skills: SKILLS,
-  // OP.GG 16.21: Essence Reaver, Navori Flickerblade, Infinity Edge; then Lord Dominik's, Bloodthirster, Guardian Angel
-  build: ['3508', '6675', '3031', '3036', '3072', '3026'],
   passive: { name: t('champion.sivir.passive'), icon: `${ICON}/passive/Sivir_Passive.png` },
   // the animation graph: Attack1/Attack2 alternate, Crit is attack_02, Spell2 (E and R) is attack_01, Spell4 (W) spell4
   anims: {

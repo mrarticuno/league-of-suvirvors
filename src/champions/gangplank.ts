@@ -126,8 +126,6 @@ export const GANGPLANK: ChampionDef = {
     armor: 31, armorPerLevel: 4.7,
   },
   skills: SKILLS,
-  // OP.GG 16.21: Essence Reaver, The Collector, Infinity Edge; then Lord Dominik's, Immortal Shieldbow, Guardian Angel
-  build: ['3508', '6676', '3031', '3036', '6673', '3026'],
   passive: { name: t('champion.gangplank.passive'), icon: `${ICON}/passive/Gangplank_Passive.png` },
   // the animation graph: Attack1/Attack2, Crit, Passive_Attack (Trial by Fire), Spell1 picks Spell1_Alt/Spell1_Alt2
   // (Spell1_Base on a crit), Run turns to Run_Haste from 575 Move Speed

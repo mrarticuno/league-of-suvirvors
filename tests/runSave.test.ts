@@ -44,3 +44,18 @@ it('a boss alive at save time is fought again; a buff monster alive respawns; st
   expect(s.fx).toEqual({ items: { 3084: 30 }, runes: [null, 4] });
   expect(JSON.parse(JSON.stringify(s))).toEqual(s);
 });
+
+it('the item decline is kept; an old save without it loads with none pending', () => {
+  const fake = (declinedItems: boolean) => ({
+    declinedItems, slots: [], fxCache: new Map(), runeFx: [], maxHp: 100, maxMana: 100, ranks: {}, cooldowns: {}, buffs: {},
+    buffSpawnAt: { blue: 0, red: 0 }, enemies: [], eventEnemy: (k: string) => k, setSlots(this: { slots: unknown }, s: unknown) { this.slots = s; },
+  });
+  const g = fake(true);
+  expect(Game.prototype.snapshot.call(g as unknown as Game).declinedItems).toBe(true);
+  const old = { ...state, hp: 50, mana: 50 } as RunSnapshot;
+  const fresh = fake(false);
+  Game.prototype.restore.call(fresh as unknown as Game, old);
+  expect(fresh.declinedItems).toBe(false);
+  Game.prototype.restore.call(fresh as unknown as Game, { ...old, declinedItems: true });
+  expect(fresh.declinedItems).toBe(true);
+});

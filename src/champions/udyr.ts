@@ -173,8 +173,6 @@ export const UDYR: ChampionDef = {
   skills: SKILLS,
   // four basic abilities with six ranks: one rank every other level, no ultimate
   rankLevels: { Q: [1, 3, 5, 7, 9, 11], W: [1, 3, 5, 7, 9, 11], E: [1, 3, 5, 7, 9, 11], R: [1, 3, 5, 7, 9, 11] },
-  // OP.GG 16.21: Trinity Force, Spear of Shojin, Sterak's Gage; then Dead Man's Plate, Force of Nature, Spirit Visage
-  build: ['3078', '3161', '3053', '3742', '4401', '3065'],
   passive: { name: t('champion.udyr.passive'), icon: `${ICON}/passive/Udyr_P.png` },
   // stance-less Udyr animates as Mantle (the graph binds Idle1/Run1/Attack1 to the spell2 clips)
   anims: { idle: CLIPS.W.idle, run: CLIPS.W.run, death: 'death', attacks: CLIPS.W.attacks, crit: CLIPS.W.attacks[0] },

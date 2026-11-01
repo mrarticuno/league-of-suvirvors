@@ -8,7 +8,7 @@ import type { Choice, Game } from './game';
 import { KILLS_PER_POINT, nodeCost, type Page, type Progress } from './progress';
 import { PASSIVES, type FxStat } from './itemEffects';
 import {
-  BOOTS, BOOTS_AT, buildComplete, describeStats, itemIcon, ITEMS, LEGENDARY_BONUS, MAX_ITEMS, PLATING, MAX_LEVEL, offerScore, PASSIVE_LEVEL, PASSIVE_POWER, POTIONS, rollOffers, statsAt, statValue,
+  BOOTS, BOOTS_AT, buildComplete, CHAMP_ITEMS, describeStats, itemIcon, ITEMS, LEGENDARY_BONUS, MAX_ITEMS, PLATING, MAX_LEVEL, offerScore, onCore, PASSIVE_LEVEL, PASSIVE_POWER, POTIONS, rollOffers, statsAt, statValue,
   type ItemStats, type Offer,
 } from './items';
 import { RUNES, TREES } from './runes';
@@ -352,9 +352,14 @@ export class Hud {
     this.invStrip(g);
     if (buildComplete(g.slots)) return this.potionStep(g, done);
     $('continue').textContent = t('levelup.declineItems');
-    const build = g.champ.build;
-    const offers = rollOffers(g.slots, g.champ.itemPool ?? 'ad', build);
-    const best = offers.reduce<Offer | null>((a, o) => (!a || offerScore(o, g.slots, build) > offerScore(a, g.slots, build) ? o : a), null);
+    const champ = CHAMP_ITEMS[g.champ.id];
+    const offers = rollOffers(g.slots, champ, g.declinedItems);
+    g.declinedItems = false;
+    $('continue').onclick = () => { g.declinedItems = offers.some((o) => o.kind === 'new'); done(); };
+    // the tag follows the most popular core until the player leaves it
+    const core = champ.core;
+    const top = onCore(g.slots, core) ? offers.reduce<Offer | null>((a, o) => (!a || offerScore(o, g.slots, core) > offerScore(a, g.slots, core) ? o : a), null) : null;
+    const best = top && core.includes(top.id) ? top : null;
     $('offers').innerHTML = offers.map((o, i) => itemCard(g, o, i, o === best)).join('') || `<div class="ioffer">${t('levelup.noItems')}</div>`;
     const mark = (o: Offer | null) => $('inv-edit').querySelectorAll<HTMLElement>('[data-cell]').forEach((c) => c.classList.toggle('target', !!o && o.slot === Number(c.dataset.cell)));
     this.keyActions = offers.map((o, i) => () => this.pickItem(g, o, i, done));
@@ -600,7 +605,7 @@ function itemCard(g: Game, o: Offer, n: number, best: boolean) {
   const passive = PASSIVES[o.id];
   if (passive && next >= PASSIVE_LEVEL) rows.push(row(t('itemsel.passive'), PASSIVE_POWER[now - 1] ? pct(PASSIVE_POWER[now - 1]) : null, pct(PASSIVE_POWER[next - 1])));
   const pips = Array.from({ length: MAX_LEVEL }, (_, i) => `<i class="pip ${i < now ? 'on' : i === now ? 'next' : ''}"></i>`).join('');
-  const why = best && g.champ.build.includes(o.id) ? t('itemsel.inBuild') : next >= MAX_LEVEL ? t('itemsel.toMax') : '';
+  const why = best && CHAMP_ITEMS[g.champ.id].core.includes(o.id) ? t('itemsel.inBuild') : next >= MAX_LEVEL ? t('itemsel.toMax') : '';
   return `<article class="ioffer skc ${best ? 'best' : ''}" style="animation-delay:${n * 0.07}s">
     <header class="io-head"><span class="io-icon"><img src="${itemIcon(o.id)}" alt=""></span>
       <div><b>${it.name}</b><small>${o.kind === 'new' ? t('itemsel.new') : t('itemsel.level', { from: now, to: next })}</small></div></header>

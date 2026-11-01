@@ -141,8 +141,6 @@ export const APHELIOS: ChampionDef = {
   // skill points buy stats: one stat reaches rank 6 at level 9 at the earliest (1/2/3/5/7/9); R ranks up on its own
   rankLevels: { Q: [1, 2, 3, 5, 7, 9], W: [1, 2, 3, 5, 7, 9], E: [1, 2, 3, 5, 7, 9] },
   autoRank: ['R'],
-  // OP.GG 16.21: The Collector, Infinity Edge, Lord Dominik's; then Runaan's Hurricane, Guardian Angel, Bloodthirster
-  build: ['6676', '3031', '3036', '3085', '3026', '3072'],
   passive: { name: t('champion.aphelios.passive'), icon: `${ICON}/passive/ApheliosP.png` },
   anims: { idle: clip('calibrum', 'idle1'), run: clip('calibrum', 'run1'), death: 'aphelios_death', attacks: [clip('calibrum', 'attack1'), clip('calibrum', 'attack2')], crit: clip('calibrum', 'attack2') },
   vfx: { auto: 'Aphelios_BA_calibrum_mis', crit: 'Aphelios_BA_calibrum_mis', autoHit: 'Aphelios_BA_calibrum_hit', critHit: 'Aphelios_BA_calibrum_hit' },

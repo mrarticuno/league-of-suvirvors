@@ -66,7 +66,7 @@ export interface Offer { id: string; slot: number; kind: 'new' | 'level' }
 
 /** A champion's items (src/championItems.json): [id, popularity] by popularity, and the most popular core build. */
 export interface ChampItems { items: readonly (readonly [string, number])[]; core: readonly string[] }
-export const CHAMP_ITEMS = champData.champions as Record<string, ChampItems>;
+export const CHAMP_ITEMS = champData.champions as unknown as Record<string, ChampItems>;
 /** The player still follows the core: every owned item is in it. */
 export const onCore = (slots: Slot[], core: readonly string[]) => slots.every((s) => core.includes(s.id));
 
