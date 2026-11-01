@@ -23,7 +23,7 @@ import { SpatialGrid } from './spatial';
 import { t } from './i18n';
 import { compact, TimeWindow } from './util';
 import { animEvents, facingQuat, type ClipEvent, type ParticleSystem } from './particles';
-import { loadVfx, Vfx, type MissileFx } from './vfx';
+import { loadItemParticles, loadVfx, Vfx, type MissileFx } from './vfx';
 
 const SPAWN_RADIUS = 1800;
 const BASIC_LEVELS = [1, 3, 5, 7, 9], ULT_LEVELS = [6, 11, 16]; // LoL skill point rules (ChampionDef.rankLevels)
@@ -264,6 +264,7 @@ export class Game {
     let done = 0;
     await Promise.all([
       audio.load(),
+      loadItemParticles('assets/vfx/items/'),
       ...starters.map((key) => {
         this.requested.add(key);
         return this.loadEnemy(key).then(() => onProgress(++done, starters.length));

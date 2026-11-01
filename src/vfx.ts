@@ -1,10 +1,11 @@
 // Ability VFX: League particle systems (src/particles.ts, data from tools/build_vfx.py) played by key, as named by the
 // champion's skin ResourceResolver; champions pass their own keys. Enemy skillshots keep a small hand-made look.
 import * as THREE from 'three';
-import { createSystem, facingQuat, loadParticles, missileQuat, type ParticleSystem, type SystemOpts } from './particles';
+import { createSystem, facingQuat, loadItemParticles, loadParticles, missileQuat, type ParticleSystem, type SystemOpts } from './particles';
 import { compact } from './util';
 
 export const loadVfx = loadParticles;
+export { loadItemParticles };
 
 /**
  * A running system, optionally following an object (missile root, W mark) until that object leaves the scene,

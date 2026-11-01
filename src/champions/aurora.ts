@@ -70,9 +70,10 @@ const SKILLS = {
     cooldown: [140, 120, 100], cost: [80, 80, 80],
     damage: [175, 275, 375], apRatio: 0.7, slow: 0.3, slowDuration: 2,
     aim: 700, castTime: 0.05, leap: 250, leapTime: 0.4,
-    // AoESize 700 is the rift's diameter (its ring meshes are authored ~340 across the radius); the centre is 425 ahead of
-    // where she cast from, so she lands inside it. border: the edge's collision band
-    ahead: 425, radius: 350, expand: 0.75, border: 40,
+    // AoESize 700 is the rift's radius (castRadius 750 is its indicator; the official clip shows a ring ~7.7x her height
+    // across). Its ring meshes are authored ~340 across the radius, so the rift's systems play at radius / fxRadius.
+    // The centre is 425 ahead of where she cast from, so she lands inside it. border: the edge's collision band
+    ahead: 425, radius: 700, fxRadius: 340, expand: 0.75, border: 40,
     rift: [2.25, 2.75, 3.25], hopper: [3.25, 3.75, 4.25], borderSlow: 0.5, borderSlowDuration: [1.5, 1.75, 2],
     recastAfter: 1, travelTime: 0.4,
   },
@@ -329,27 +330,31 @@ function auroraKit(g: Game): ChampionKit {
   };
 
   // ---- Between Worlds ----
+  const riftFx = (key: string, at: THREE.Vector3, facing: number, opts?: Parameters<typeof g.vfx.play>[3]) => {
+    const sys = g.vfx.play(key, at, facingQuat(facing), opts);
+    if (sys) sys.scale = SKILLS.R.radius / SKILLS.R.fxRadius;
+  };
   let rift: Rift | null = null;
   let pendingShock: { at: number; rank: number; dir: THREE.Vector3; from: THREE.Vector3 } | null = null;
   let traveling: { until: number; fx: THREE.Object3D } | null = null;
   const closeRift = (recast: boolean) => {
     if (!rift) return;
     rift.fx.removeFromParent();
-    if (recast) g.vfx.playAt('0x36a96cdb', rift.center); // Aurora_Base_R_AoERingRecast, the allied (blue) close
+    if (recast) riftFx('0x36a96cdb', rift.center, 0); // Aurora_Base_R_AoERingRecast, the allied (blue) close
     rift = null;
   };
   const shockwave = (rank: number, dir: THREE.Vector3, from: THREE.Vector3) => {
     const R = SKILLS.R;
     const center = from.clone().addScaledVector(dir, R.ahead).setY(0);
     const facing = Math.atan2(dir.x, dir.z);
-    g.vfx.playAt('Aurora_R_AoERingExpand', center, facing);
+    riftFx('Aurora_R_AoERingExpand', center, facing);
     audio.play('aurora_R_buff');
     closeRift(false);
     // the static ring lingers past the rift; removing its anchor stops it emitting and lets it fade out
     const fx = new THREE.Group();
     fx.position.copy(center);
     g.scene.add(fx);
-    g.vfx.play('Aurora_R_AoERingStatic', center, facingQuat(facing), { follow: fx, killOnStop: false });
+    riftFx('Aurora_R_AoERingStatic', center, facing, { follow: fx, killOnStop: false });
     rift = {
       center, rank, born: g.time, until: g.time + R.expand + R.rift[rank], hit: new Set(), inside: new Map(),
       armed: false, fx, dir: new THREE.Vector3(),

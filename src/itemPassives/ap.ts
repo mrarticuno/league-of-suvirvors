@@ -1,6 +1,7 @@
 // Passives of the ability power items (src/itemEffects.ts explains `power`).
 import type * as THREE from 'three';
 import type { Hit } from '../champion';
+import { boundSize } from '../data';
 import type { Enemy, Game } from '../game';
 import { t } from '../i18n';
 import type { ItemPassive } from '../itemEffects';
@@ -115,8 +116,14 @@ export const AP_PASSIVES: Record<string, ItemPassive> = {
           readyAt = g.time + 10;
           const echo = (50 + 0.05 * g.ap) * power();
           const others = within(g, e.pos, 400, near).filter((x) => x !== e).slice(0, 5);
+          // the client's systems: a flash on the target, then a shot (6655Cone: 2100 speed) from her to each other enemy
+          g.vfx.hit('6655_Hit_Tar', e.pos, 0, { owner: e.actor.root, size: boundSize(e) });
           g.hurtEnemy(e, echo * (1 + 0.2 * (5 - others.length)), ITEM_MAGIC);
-          for (const x of others) g.hurtEnemy(x, echo, ITEM_MAGIC);
+          for (const x of others) {
+            g.spawnMissile('6655_Hit_Missile', g.pos, x.pos, {
+              speed: 2100, range: 2000, radius: 0, damage: echo, hit: ITEM_MAGIC, target: x, hitFx: '6655_Hit_Missile_Tar',
+            });
+          }
         },
       };
     },

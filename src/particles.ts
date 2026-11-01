@@ -25,13 +25,27 @@ let clipEvents: Record<string, ClipEvent[]> = {};
 /** The loaded champion's clip particle events, by clip name, in time order. */
 export const animEvents = () => clipEvents;
 
-/** `dir`: the champion's folder from tools/build_vfx.py (assets/vfx/<id>/). */
+let itemSystems: Record<string, Bin> = {};
+
+/** `dir`: the champion's folder from tools/build_vfx.py (assets/vfx/<id>/). The item systems stay loaded. */
 export async function loadParticles(dir: string) {
-  systems = await (await fetch(asset(`${dir}systems.json`))).json();
+  const own = await (await fetch(asset(`${dir}systems.json`))).json();
+  systems = { ...itemSystems, ...own };
   clipEvents = await fetch(asset(`${dir}events.json`)).then((r) => r.json()).catch(() => ({})); // older exports have none
   for (const evs of Object.values(clipEvents)) evs.sort((a, b) => a.t - b.t);
+  await loadAssets(dir, own);
+}
+
+/** The item procs' systems (tools/build_item_vfx.py, assets/vfx/items/): loaded once, kept across champion switches. */
+export async function loadItemParticles(dir: string) {
+  itemSystems = await (await fetch(asset(`${dir}systems.json`))).json();
+  systems = { ...itemSystems, ...systems };
+  await loadAssets(dir, itemSystems);
+}
+
+async function loadAssets(dir: string, defs: Record<string, Bin>) {
   const names = new Set<string>();
-  assetNames(systems, names);
+  assetNames(defs, names);
   const loader = new THREE.TextureLoader();
   await Promise.all([...names].map(async (n) => {
     if (n.endsWith('.json')) meshes.set(n, await (await fetch(asset(dir + n))).json());
