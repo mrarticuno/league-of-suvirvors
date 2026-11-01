@@ -693,8 +693,10 @@ function hweiKit(g: Game): ChampionKit {
     const at = clampPoint(point, S.range);
     const dir = toward(at).clone();
     const facing = Math.atan2(dir.x, dir.z);
-    // the jaws are authored from their near end: the bite's center sits 150 units (scaled) ahead of the system
-    const fx = g.vfx.play('Hwei_E_E_Hand', at.clone().addScaledVector(dir, -150 * S.fxScale), facingQuat(facing));
+    // the jaws are authored lengthwise along the system's Z from one end (its layers 150-275 ahead): turned a quarter
+    // they lie across the cast like the client's maw (long across, short along), moved back by ~175 to centre the bite
+    const across = new THREE.Vector3(dir.z, 0, -dir.x); // the system's forward once turned by +90°
+    const fx = g.vfx.play('Hwei_E_E_Hand', at.clone().addScaledVector(across, -175 * S.fxScale), facingQuat(facing + Math.PI / 2));
     if (fx) fx.scale = S.fxScale;
     audio.playAt('hwei_EE_zone', at, g.pos);
     const c = newCast('EE', 'E', true);
