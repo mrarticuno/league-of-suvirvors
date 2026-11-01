@@ -37,6 +37,9 @@ MODELS = {
     "oriannaball": ("oriannaball", "orianna_base_tx_cm.png", []),
     "twitch": ("twitch", "twitch_base_tx_cm.png", []),
     "udyr": ("udyr", "udyr_base_main_tx_cm.png", []),
+    "hwei": ("hwei", "hwei_base_tx_cm.png", []),
+    # brush and palette texture of the hwei mesh (ChampionDef.textures)
+    "hwei_weapon": ("hwei", "../hwei/hwei_base_weapon_tx_cm.png", []),
     # stance arms and horns texture of the udyr mesh (ChampionDef.textures)
     "udyr_arms": ("udyr", "../udyr/udyr_submesharms_tx_cm.png", []),
     "aurora": ("aurora", "aurora_base_tx_cm.png", []),
@@ -91,6 +94,7 @@ SKIP_CLIPS = {
     "aurora": re.compile(r"_to|torun|towalk|_in|homeguard|homguard|channel|dance|joke|laugh|taunt|recall|respawn|knockup|stunned|catch|walk"),
     "auroraspirits": re.compile(r"dance"),
     "udyr": re.compile(r"channel|dance|joke|laugh|taunt|recall|recal_|respawn|homeguard"),
+    "hwei": re.compile(r"_to|channel|dance|joke|laugh|taunt|recall|respawn|varsitting|idlevar|idle1_|idlein|knockup|stun|additive|activationerunslow"),
 }
 
 # entries whose "../" texture belongs to another folder but that still have a mesh of their own

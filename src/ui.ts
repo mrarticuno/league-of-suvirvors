@@ -151,17 +151,19 @@ export class Hud {
     if (changed('gauge-ready', String(!!gauge?.ready))) $('gauge').classList.toggle('ready', !!gauge?.ready);
     for (const k of SKILL_KEYS) {
       const el = this.skillEls[k];
-      const rank = g.ranks[k];
-      const cd = g.learned(k) ? g.cooldowns[k] : 0;
+      const view = g.kit.skillView?.(k);
+      const s = view?.as === undefined ? k : view.as; // the skill whose numbers the slot shows (null: a free action)
+      const rank = g.ranks[s ?? k];
+      const on = s ? g.learned(s) : true;
+      const cd = s && on ? g.cooldowns[s] : 0;
+      const cost = s && on ? g.costOf(s) : 0;
       const cls = el.root.classList;
-      const on = g.learned(k);
       cls.toggle('locked', !on);
-      cls.toggle('nomana', on && g.mana < g.costOf(k));
-      cls.toggle('blocked', on && g.kit.canCast?.(k) === false);
+      cls.toggle('nomana', on && g.mana < cost);
+      cls.toggle('blocked', on && g.kit.canCast?.(s ?? k) === false);
       cls.toggle('empowered', on && !!gauge?.ready && gauge.skill === k);
       cls.toggle('cooling', cd > 0);
       cls.toggle('ready', on && cd <= 0);
-      const view = g.kit.skillView?.(k);
       if (changed(`view-${k}`, `${view?.icon}|${view?.name}|${view?.badge}`)) {
         el.img.src = view?.icon ?? g.champ.skills[k].icon;
         el.root.title = view?.name ?? g.champ.skills[k].name;
@@ -176,12 +178,13 @@ export class Hud {
       // text stays centered on the icon while the sweep turns, so the last seconds stay readable
       const cdText = cd > 0 ? (cd < 1 ? num(cd, 1) : String(Math.ceil(cd))) : '';
       if (changed(`cd-text-${k}`, cdText)) el.cdText.textContent = cdText;
-      const sweep = cd > 0 ? ((1 - cd / g.cooldownOf(k)) * 360).toFixed(1) : '360';
+      const sweep = cd > 0 && s ? ((1 - cd / g.cooldownOf(s)) * 360).toFixed(1) : '360';
       if (changed(`cd-${k}`, sweep)) el.sweep.style.setProperty('--p', sweep);
-      const cost = g.learned(k) && g.costOf(k) > 0 ? String(g.costOf(k)) : '';
-      if (changed(`cost-${k}`, cost)) el.cost.textContent = cost;
-      if (changed(`pips-${k}`, String(rank))) {
-        el.pips.innerHTML = Array.from({ length: g.champ.skills[k].maxRank }, (_, i) => `<i class="${i < rank ? 'on' : ''}"></i>`).join('');
+      const costText = cost > 0 ? String(cost) : '';
+      if (changed(`cost-${k}`, costText)) el.cost.textContent = costText;
+      const maxRank = g.champ.skills[s ?? k].maxRank;
+      if (changed(`pips-${k}`, `${rank}/${maxRank}`)) {
+        el.pips.innerHTML = Array.from({ length: maxRank }, (_, i) => `<i class="${i < rank ? 'on' : ''}"></i>`).join('');
       }
     }
     style('flash-slot', 'display', g.hasFlash ? 'block' : 'none');

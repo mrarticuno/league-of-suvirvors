@@ -81,21 +81,30 @@ const DEG = Math.PI / 180;
 // ---- materials ----
 
 const vertexShader = /* glsl */ `
-attribute vec4 aColor; attribute vec2 aLife; attribute float aErode;
-varying vec2 vUv; varying vec4 vColor; varying vec2 vLife; varying float vErode;
+attribute vec4 aColor; attribute vec2 aLife; attribute float aErode; attribute float aPal;
+varying vec2 vUv; varying vec4 vColor; varying vec2 vLife; varying float vErode; varying float vPal;
 void main() {
-  vUv = uv; vColor = aColor; vLife = aLife; vErode = aErode;
+  vUv = uv; vColor = aColor; vLife = aLife; vErode = aErode; vPal = aPal;
   gl_Position = projectionMatrix * viewMatrix * vec4(position, 1.0);
 }`;
 const fragmentShader = /* glsl */ `
 uniform sampler2D map; uniform sampler2D colorTex; uniform sampler2D erosionTex; uniform sampler2D multTex;
+uniform sampler2D paletteTex; uniform float paletteV;
 uniform float alphaRef; uniform float slice;
-varying vec2 vUv; varying vec4 vColor; varying vec2 vLife; varying float vErode;
+varying vec2 vUv; varying vec4 vColor; varying vec2 vLife; varying float vErode; varying float vPal;
 void main() {
 #ifdef USE_CLAMP
   if (vUv.x < 0.0 || vUv.x > 1.0 || vUv.y < 0.0 || vUv.y > 1.0) discard;
 #endif
+#ifdef USE_PALETTE
+  // gradient map: the grey texture's value, scaled over the particle's life (PaletteUAnimationCurve), picks the
+  // colour along the palette row (compared with the client's videos: a scale clamped to the row, not an offset)
+  vec4 t = texture2D(map, vUv);
+  float u = clamp(t.r * vPal, 0.0, 1.0);
+  vec4 c = vec4(texture2D(paletteTex, vec2(u, paletteV)).rgb, t.a) * vColor;
+#else
   vec4 c = texture2D(map, vUv) * vColor;
+#endif
 #ifdef USE_COLORTEX
   c *= texture2D(colorTex, vLife); // x: particle life, y: its row
 #endif
@@ -130,6 +139,7 @@ void main() {
   gl_FragColor = c;
 }`;
 
+
 // one material per emitter definition, kept for the run: disposing it would delete its shader program once no
 // instance is alive, and the next burst of that effect would compile and link it again (a frame hitch)
 const materials = new WeakMap<Bin, THREE.ShaderMaterial>();
@@ -147,6 +157,7 @@ function newMaterial(e: Bin) {
     alphaRef: { value: (e.alphaRef ?? 0) / 255 },
     slice: { value: e.alphaErosionDefinition?.erosionSliceWidth ?? 0.1 },
     colorTex: { value: null }, erosionTex: { value: null }, multTex: { value: null },
+    paletteTex: { value: null }, paletteV: { value: 0.5 },
   };
   // clamped emitters (e.g. a swipe sliding across once) must not repeat; textures are shared, so clip in the shader
   if (e.uvScrollClamp || e.texAddressModeBase === 2) defines.USE_CLAMP = '';
@@ -156,6 +167,15 @@ function newMaterial(e: Bin) {
   if (erosion) { defines.USE_EROSION = ''; uniforms.erosionTex.value = erosion; }
   const mult = textures.get(e.textureMult?.textureMult);
   if (mult) { defines.USE_MULT = ''; uniforms.multTex.value = mult; }
+  // VfxPaletteDefinitionData: grey textures coloured by a row of a gradient texture (paletteCount rows, paletteSelector picks one)
+  const pal = e.paletteDefinition;
+  const palTex = textures.get(pal?.paletteTexture);
+  if (palTex) {
+    defines.USE_PALETTE = '';
+    uniforms.paletteTex.value = palTex;
+    const rows = pal.paletteCount || 1;
+    uniforms.paletteV.value = ((val(pal.paletteSelector, 0)?.[0] ?? 0) + 0.5) / rows;
+  }
   // only blendMode 1 is alpha blended (its textures carry real alpha); the default and the others are additive:
   // most particle textures are DXT1 with an opaque black background
   return new THREE.ShaderMaterial({
@@ -170,12 +190,13 @@ function newMaterial(e: Bin) {
 
 class Buffers {
   geo = new THREE.BufferGeometry();
-  pos!: Float32Array; uv!: Float32Array; col!: Float32Array; life!: Float32Array; erode!: Float32Array; idx!: Uint32Array;
+  pos!: Float32Array; uv!: Float32Array; col!: Float32Array; life!: Float32Array; erode!: Float32Array; pal!: Float32Array; idx!: Uint32Array;
   nv = 0; ni = 0;
   private cap = 0;
   private icap = 0;
 
   look = 0.5; // colour texture row of the particle being written (see Particle.look)
+  palU = 1; // palette U scale of the particle being written (PaletteUAnimationCurve over its life)
 
   begin() { this.nv = 0; this.ni = 0; }
 
@@ -184,12 +205,13 @@ class Buffers {
       this.cap = Math.max(256, (this.nv + verts) * 2);
       const grow = (a: Float32Array | undefined, n: number) => { const b = new Float32Array(this.cap * n); if (a) b.set(a.subarray(0, Math.min(a.length, b.length))); return b; };
       this.pos = grow(this.pos, 3); this.uv = grow(this.uv, 2); this.col = grow(this.col, 4);
-      this.life = grow(this.life, 2); this.erode = grow(this.erode, 1);
+      this.life = grow(this.life, 2); this.erode = grow(this.erode, 1); this.pal = grow(this.pal, 1);
       this.geo.setAttribute('position', new THREE.BufferAttribute(this.pos, 3));
       this.geo.setAttribute('uv', new THREE.BufferAttribute(this.uv, 2));
       this.geo.setAttribute('aColor', new THREE.BufferAttribute(this.col, 4));
       this.geo.setAttribute('aLife', new THREE.BufferAttribute(this.life, 2));
       this.geo.setAttribute('aErode', new THREE.BufferAttribute(this.erode, 1));
+      this.geo.setAttribute('aPal', new THREE.BufferAttribute(this.pal, 1));
     }
     if (this.ni + idx > this.icap) {
       this.icap = Math.max(512, (this.ni + idx) * 2);
@@ -205,13 +227,13 @@ class Buffers {
     this.pos[i * 3] = p.x; this.pos[i * 3 + 1] = p.y; this.pos[i * 3 + 2] = p.z;
     this.uv[i * 2] = u; this.uv[i * 2 + 1] = v;
     this.col.set(c, i * 4);
-    this.life[i * 2] = life; this.life[i * 2 + 1] = this.look; this.erode[i] = erode;
+    this.life[i * 2] = life; this.life[i * 2 + 1] = this.look; this.erode[i] = erode; this.pal[i] = this.palU;
     return i;
   }
 
   commit() {
     // upload only the vertices written this frame (pooled buffers can be much larger)
-    for (const name of ['position', 'uv', 'aColor', 'aLife', 'aErode']) {
+    for (const name of ['position', 'uv', 'aColor', 'aLife', 'aErode', 'aPal']) {
       const a = this.geo.getAttribute(name) as THREE.BufferAttribute;
       a.clearUpdateRanges();
       a.addUpdateRange(0, this.nv * a.itemSize);
@@ -388,7 +410,7 @@ class Emitter {
     const e = this.e;
     const sc = vec3(val(e.scale0, pt), 1);
     if (e.isUniformScale) sc.set(sc.x, sc.x, sc.x);
-    s.copy(sc.multiply(p.scale)).multiplyScalar(this.sys.scale);
+    s.copy(sc.multiply(p.scale)).multiplyScalar(this.sys.scale * this.sys.authoredScale);
     const r = _v.copy(p.rot).addScaledVector(p.rotVel, p.age).add(vec3(val(e.rotation0, pt)));
     return q.copy(p.quat).multiply(_q2.setFromEuler(_e.set(r.x * DEG, r.y * DEG, r.z * DEG, 'YXZ')));
   }
@@ -450,7 +472,7 @@ class Emitter {
     const shape = e.SpawnShape;
     // FlexShape: offsets and sizes authored per unit of the bound object's size (a bigger target gets a bigger effect)
     const flex = sys.size ? e.FlexShapeDefinition : undefined;
-    const kOffset = (flex?.scaleEmitOffsetByBoundObjectSize ? flex.scaleEmitOffsetByBoundObjectSize * sys.size! : 1) * sys.scale;
+    const kOffset = (flex?.scaleEmitOffsetByBoundObjectSize ? flex.scaleEmitOffsetByBoundObjectSize * sys.size! : 1) * sys.scale * sys.authoredScale;
     let rot: THREE.Quaternion | null = null;
     if (shape) {
       const r = Math.random;
@@ -549,14 +571,16 @@ class Emitter {
       _up.setFromMatrixColumn(camera.matrixWorld, 1);
     }
 
+    const palCurve = e.paletteDefinition?.PaletteUAnimationCurve;
     for (const p of this.particles) {
       b.look = p.look;
       const pt = p.age / p.life;
+      b.palU = palCurve ? val(palCurve, pt) ?? 1 : 1;
       const cc = val(e.Color, pt) ?? [1, 1, 1, 1];
       const c = [p.color[0] * cc[0], p.color[1] * cc[1], p.color[2] * cc[2], p.color[3] * cc[3]];
       const sc = vec3(val(e.scale0, pt), 1);
       if (e.isUniformScale) sc.set(sc.x, sc.x, sc.x);
-      const s = sc.multiply(p.scale).multiplyScalar(this.sys.scale);
+      const s = sc.multiply(p.scale).multiplyScalar(this.sys.scale * this.sys.authoredScale);
       const erode = val(e.alphaErosionDefinition?.erosionDriveCurve, pt) ?? 0;
       if (trail) { points.push({ p, c, w: s.x, pt, erode }); continue; }
       if (p.overlay) { p.overlay.uniforms.color.value.set(c[0], c[1], c[2], c[3]); continue; }
@@ -718,6 +742,7 @@ class Emitter {
     for (let i = 0; i < points.length; i++) {
       const { p, c, w, pt, erode } = points[i];
       b.look = p.look;
+      b.palU = e.paletteDefinition?.PaletteUAnimationCurve ? val(e.paletteDefinition.PaletteUAnimationCurve, pt) ?? 1 : 1;
       if (i > 0) dist += p.pos.distanceTo(points[i - 1].p.pos);
       let sv = side;
       if (this.kind === 'camtrail' && camera) {
@@ -763,9 +788,13 @@ export interface SystemOpts { owner?: THREE.Object3D; size?: number; target?: TH
 
 export class ParticleSystem {
   readonly matrix = new THREE.Matrix4();
-  readonly quat = new THREE.Quaternion();
+  readonly quat = new THREE.Quaternion(); // the effective frame: the placement times the system's own Transform
   readonly pos = new THREE.Vector3();
+  readonly frameQuat = new THREE.Quaternion(); // the placement as given to setFrame
   stopped = false;
+  // the system's own `Transform` (offset, turn, uniform scale it is authored with, e.g. a shield raised to the chest)
+  private local?: { pos: THREE.Vector3; quat: THREE.Quaternion };
+  readonly authoredScale: number = 1;
   private emitters: Emitter[] = [];
   private prev = new THREE.Matrix4();
   private delta = new THREE.Matrix4();
@@ -795,6 +824,12 @@ export class ParticleSystem {
     this.target = opts.target;
     this.targetQuat = opts.targetQuat;
     this.afterimage = !!def.mIsPoseAfterimage;
+    if (Array.isArray(def.Transform) && def.Transform.length === 16) {
+      const p = new THREE.Vector3(), q = new THREE.Quaternion(), sc = new THREE.Vector3();
+      new THREE.Matrix4().fromArray(def.Transform as number[]).decompose(p, q, sc);
+      this.authoredScale = Math.abs(sc.x) || 1;
+      if (p.lengthSq() > 1e-6 || Math.abs(q.w) < 1 - 1e-6) this.local = { pos: p, quat: q };
+    }
     this.setFrame(pos, quat);
     this.prev.copy(this.matrix);
     for (const e of [...(def.complexEmitterDefinitionData ?? []), ...(def.simpleEmitterDefinitionData ?? [])]) {
@@ -806,9 +841,15 @@ export class ParticleSystem {
   }
 
   setFrame(pos: THREE.Vector3, quat: THREE.Quaternion) {
-    this.pos.copy(pos);
-    this.quat.copy(quat);
-    this.matrix.compose(pos, quat, _v.set(1, 1, 1));
+    this.frameQuat.copy(quat);
+    if (this.local) {
+      this.pos.copy(this.local.pos).applyQuaternion(quat).add(pos);
+      this.quat.copy(quat).multiply(this.local.quat);
+    } else {
+      this.pos.copy(pos);
+      this.quat.copy(quat);
+    }
+    this.matrix.compose(this.pos, this.quat, _v.set(1, 1, 1));
   }
 
   stop() { this.stopped = true; }

@@ -86,7 +86,9 @@ export interface Enemy {
   blindUntil: number; // basic attacks miss while time < blindUntil (generic loop only, like stunUntil)
   airUntil: number; // knocked up: the model arcs into the air while time < airUntil (Game.knockUp)
   airFor: number; // length of that knock-up
-  push?: { x: number; z: number; done: number }; // knocked back (Game.knockBack): ground offset and the share of it applied
+  push?: { x: number; z: number; done: number; end: number; len: number }; // knocked back or pulled (Game.knockBack, pullEnemy): ground offset, share applied, its timing
+  fearUntil: number; // flees from fearFrom, no attacking, while time < fearUntil (generic loop only, like stunUntil)
+  fearFrom: THREE.Vector3;
   ai?: EnemyAI; // own behaviour (src/enemies), replaces the generic chase-and-attack loop
   animDt: number; // animation time not yet applied (animation LOD)
 }
@@ -108,12 +110,13 @@ export interface Missile {
   hitFx?: string;
   hitSound?: string;
   onHit?: (e: Enemy, m: Missile) => void; // replaces the default impact (Game.impact)
+  onEnd?: (m: Missile) => void; // reached its range without being stopped (e.g. a fireball that explodes there)
 }
 
 export interface MissileOpts {
   speed: number; range: number; radius: number; damage: number;
   hit?: Hit; target?: Enemy; pierce?: boolean; height?: number; arc?: number;
-  hitFx?: string; hitSound?: string; onHit?: Missile['onHit'];
+  hitFx?: string; hitSound?: string; onHit?: Missile['onHit']; onEnd?: Missile['onEnd'];
 }
 
 /**
@@ -568,7 +571,18 @@ export class Game {
   knockBack(e: Enemy, offset: THREE.Vector3, seconds: number) {
     e.airUntil = 0; // a new knock-back restarts the arc
     this.knockUp(e, seconds);
-    e.push = { x: offset.x, z: offset.z, done: 0 };
+    e.push = { x: offset.x, z: offset.z, done: 0, end: this.time + seconds, len: seconds };
+  }
+  /** Pull: the enemy is dragged along the ground to `to` over `seconds` (a stun that moves it, no arc; e.g. Crushing Maw). */
+  pullEnemy(e: Enemy, to: THREE.Vector3, seconds: number) {
+    this.stunEnemy(e, seconds);
+    e.push = { x: to.x - e.pos.x, z: to.z - e.pos.z, done: 0, end: this.time + seconds, len: seconds };
+  }
+  /** Fear: the enemy runs away from `from` and cannot attack for `seconds` (generic loop only, like stunEnemy). */
+  fearEnemy(e: Enemy, seconds: number, from: THREE.Vector3) {
+    e.fearUntil = Math.max(e.fearUntil, this.time + seconds);
+    e.fearFrom.copy(from);
+    e.windup = -1;
   }
   inWater() { return this.map.inWater(this.pos.x, this.pos.z); }
 
@@ -616,9 +630,13 @@ export class Game {
     return best;
   }
 
-  cast(key: SkillKey, point: THREE.Vector3) {
+  cast(pressed: SkillKey, point: THREE.Vector3) {
+    if (!this.alive || this.castLock > 0) return;
+    const routed = this.kit.press?.(pressed, point);
+    if (routed === null) return; // the kit took the press (e.g. opened a spell menu)
+    const key = routed ?? pressed;
     const skill = this.champ.skills[key];
-    if (!this.alive || (this.stunned > 0 && !skill.cleanse) || !this.learned(key) || this.castLock > 0) return;
+    if ((this.stunned > 0 && !skill.cleanse) || !this.learned(key)) return;
     if (this.cooldowns[key] > 0) return this.kit.recast?.(key, point);
     if (this.mana < this.costOf(key) || this.kit.canCast?.(key) === false) return;
     if (skill.cleanse) this.cleanse();
@@ -638,6 +656,9 @@ export class Game {
     this.gestureRun = false;
   }
 
+  /** How a key's skill aims right now (ChampionKit.aim, else SkillDef.aim). */
+  aimOf(key: SkillKey) { return this.kit.aim?.(key) ?? this.champ.skills[key].aim; }
+
   /** The player gave a new move order (main.ts: click on the ground, arrow key or joystick pressed). */
   moveOrder() { this.kit.onMoveOrder?.(); }
 
@@ -649,7 +670,7 @@ export class Game {
    * (at the aim range, or AIM_FAR for 'move' so the kit's own range caps it). Null for 'none': keep the cursor.
    */
   aimPoint(key: SkillKey, moveDir: THREE.Vector3): THREE.Vector3 | null {
-    const aim = this.champ.skills[key].aim;
+    const aim = this.aimOf(key);
     if (aim === 'none') return null;
     if (aim !== 'move') {
       const target = this.aimTarget(aim);
@@ -987,7 +1008,7 @@ export class Game {
     this.missiles.push({
       mesh: missileFx.root, fx: missileFx, pos, dir, travelled: 0, speed: o.speed, range: o.range, radius: o.radius,
       damage: o.damage, hit: o.hit, target: o.target, pierce: o.pierce ? new Set() : undefined,
-      hitFx: o.hitFx, hitSound: o.hitSound, onHit: o.onHit, arc: o.arc,
+      hitFx: o.hitFx, hitSound: o.hitSound, onHit: o.onHit, onEnd: o.onEnd, arc: o.arc,
     });
   }
 
@@ -1028,7 +1049,9 @@ export class Game {
           m.pierce.add(e);
         }
       }
-      return m.travelled < m.range || this.removeMesh(m.mesh);
+      if (m.travelled < m.range) return true;
+      m.onEnd?.(m);
+      return this.removeMesh(m.mesh);
     });
   }
 
@@ -1305,6 +1328,7 @@ export class Game {
       id: this.nextId++, def, actor, pos: at ?? new THREE.Vector3(this.pos.x + Math.cos(a) * r, 0, this.pos.z + Math.sin(a) * r),
       hp, maxHp: hp, attackTimer: 0, windup: -1, deadFor: -1, animDt: 0,
       armor: (def.armor ?? ENEMY_ARMOR[def.tier]) * (epic ? 1 : enemyArmorScale(this.time)), shred: 0, shredUntil: 0, slowPct: 0, slowUntil: 0, slowFade: 0, stunUntil: 0, rootUntil: 0, blindUntil: 0, airUntil: 0, airFor: 0,
+      fearUntil: 0, fearFrom: new THREE.Vector3(),
       mr: ENEMY_MR[def.tier] * (epic ? 1 : enemyArmorScale(this.time)), mrShred: 0, mrShredUntil: 0,
     };
     e.ai = AI[def.model]?.(this, e);
@@ -1358,12 +1382,21 @@ export class Game {
         e.actor.play(e.def.anims.idle, { fade: 0.1 });
         if (e.push) {
           // offset applied by the share of the arc flown (real time: the arc is timed on this.time, not enemy-side dt)
-          const k = Math.min(1, 1 - (e.airUntil - this.time) / e.airFor);
+          const k = Math.min(1, 1 - (e.push.end - this.time) / e.push.len);
           e.pos.x += e.push.x * (k - e.push.done);
           e.pos.z += e.push.z * (k - e.push.done);
           e.push.done = k;
           if (k >= 1) e.push = undefined;
         }
+        continue;
+      }
+      if (e.fearUntil > this.time) {
+        const away = toPlayer.copy(e.pos).sub(e.fearFrom).setY(0);
+        if (away.lengthSq() < 1) away.set(Math.sin(e.id), 0, Math.cos(e.id));
+        const speed = e.def.tier === 'epic' ? e.def.speed : Math.min(e.def.speed, ENEMY_SPEED_CAP * B.moveSpeed);
+        e.pos.addScaledVector(away.normalize(), speed * (1 - this.slowAmount(e)) * dt / this.pace);
+        e.actor.play(e.def.anims.run, { fade: 0.2 });
+        e.actor.root.rotation.y = Math.atan2(away.x, away.z);
         continue;
       }
       if (dist > DESPAWN_RADIUS && e.def.tier !== 'epic') {
