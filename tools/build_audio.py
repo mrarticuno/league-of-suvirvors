@@ -38,6 +38,7 @@ GP = "Play_sfx_Gangplank_Gangplank"
 OR = "Play_sfx_Orianna_Orianna"
 TW = "Play_sfx_Twitch_Twitch"
 UD = "Play_sfx_Udyr_Udyr"
+HW = "Play_sfx_Hwei_Hwei"
 
 # bank path (without _events/_audio) -> {sound key: event name candidates (first match wins) or an event id}
 BANKS: dict[str, dict[str, list[str] | int]] = {
@@ -304,6 +305,60 @@ BANKS: dict[str, dict[str, list[str] | int]] = {
         "lux_R_end": [LX + "RBeam_beamend"],
         "lux_death": ["Play_sfx_Lux_Death3D_cast"],
     },
+    SFX + "characters/hwei/skins/base/hwei_base_sfx": {
+        "hwei_auto": [HW + "BasicAttack_OnCast"],
+        "hwei_auto2": [HW + "BasicAttack2_OnCast"],
+        "hwei_crit": [HW + "CritAttack_OnCast"],
+        "hwei_auto_launch": [HW + "BasicAttack_OnMissileLaunch", HW + "BasicAttack2_OnMissileLaunch"],
+        "hwei_auto_hit": [HW + "BasicAttack_OnHit", HW + "BasicAttack2_OnHit"],
+        "hwei_crit_hit": [HW + "CritAttack_OnHit"],
+        "hwei_mood_Q": [HW + "Q_cast"],
+        "hwei_mood_W": [HW + "W_cast"],
+        "hwei_mood_E": [HW + "E_cast"],
+        "hwei_wash": [HW + "WashBrush_cast"],
+        "hwei_QQ": [HW + "QQ_OnCast"],
+        "hwei_QQ_launch": [HW + "QQ_OnMissileLaunch"],
+        "hwei_QQ_hit": [HW + "QQ_explosion"],
+        "hwei_QW": [HW + "QW_OnCast"],
+        "hwei_QW_warning": [HW + "QW_AoE_warning"],
+        "hwei_QW_hit": [HW + "QW_AoE_explode"],
+        "hwei_QE": [HW + "QE_OnCast"],
+        "hwei_QE_launch": [HW + "QETell_OnMissileLaunch"],
+        "hwei_QE_lava": [HW + "QE_lava_explode"],
+        "hwei_WQ": [HW + "WQ_OnCast"],
+        "hwei_WQ_launch": [HW + "WQ_OnMissileLaunch"],
+        "hwei_WQ_loop": [HW + "WQ_AoE_buffactivate_loop"],
+        "hwei_WQ_speed": [HW + "WQMoveSpeed_OnBuffActivate"],
+        "hwei_WW": [HW + "WW_OnCast"],
+        "hwei_WW_zone": [HW + "WW_AoE_buffactivate"],
+        "hwei_WW_shield": [HW + "WWShield_OnBuffActivate"],
+        "hwei_WW_shield_end": [HW + "WWShield_OnBuffDeactivate"],
+        "hwei_WE": [HW + "WE_OnCast"],
+        "hwei_WE_buff": [HW + "WEBuffCounter_OnBuffActivate"],
+        "hwei_WE_end": [HW + "WEBuffCounter_OnBuffDeactivate"],
+        "hwei_WE_hit": [HW + "WE_empowered_damage_hit"],
+        "hwei_EQ": [HW + "EQ_OnCast"],
+        "hwei_EQ_launch": [HW + "EQ_OnMissileLaunch"],
+        "hwei_EQ_hit": [HW + "EQ_OnHit"],
+        "hwei_EW": [HW + "EW_OnCast"],
+        "hwei_EW_launch": [HW + "EW_OnMissileLaunch"],
+        "hwei_EW_zone": [HW + "EW_AoE_buffactivate"],
+        "hwei_EW_zone_end": [HW + "EW_AoE_buffdeactivate"],
+        "hwei_EW_warning": [HW + "EW_target_warning"],
+        "hwei_EW_hit": [HW + "EW_hit"],
+        "hwei_EE": [HW + "EE_OnCast"],
+        "hwei_EE_zone": [HW + "EE_AoE_buffactivate"],
+        "hwei_EE_hit": [HW + "EE_hit"],
+        "hwei_R": [HW + "R_OnCast"],
+        "hwei_R_launch": [HW + "R_OnMissileLaunch"],
+        "hwei_R_hit": [HW + "R_OnHit"],
+        "hwei_R_grow": [HW + "R_AoE_grow_buffactivate"],
+        "hwei_R_shatter": [HW + "R_AoE_shatter_buffactivate"],
+        "hwei_P_mark": [HW + "P_mark_buffactivate"],
+        "hwei_P_warning": [HW + "P_explosion_warning_buffactivate"],
+        "hwei_P_explode": [HW + "P_explosion_buffactivate"],
+        "hwei_death": ["Play_sfx_Hwei_Death3D_cast"],
+    },
     SFX + "characters/udyr/skins/base/udyr_base_sfx": {
         "udyr_auto": [UD + "BasicAttack_OnCast"],
         "udyr_auto2": [UD + "BasicAttack2_OnCast"],
@@ -490,7 +545,7 @@ def render(txtp_path, mp3, music):
 
 def main(wwiser, out_dir, final_dir):
     final = Path(final_dir)
-    wads = [Wad(final / w) for w in ("Champions/Ezreal.wad.client", "Champions/Samira.wad.client", "Champions/Brand.wad.client", "Champions/Aphelios.wad.client", "Champions/AurelionSol.wad.client", "Champions/Lux.wad.client", "Champions/Teemo.wad.client", "Champions/Ziggs.wad.client", "Champions/Sivir.wad.client", "Champions/Twitch.wad.client", "Champions/Orianna.wad.client", "Champions/Gangplank.wad.client", "Champions/Udyr.wad.client", "Maps/Shipping/Map11.wad.client", "Maps/Shipping/Common.wad.client")]
+    wads = [Wad(final / w) for w in ("Champions/Ezreal.wad.client", "Champions/Samira.wad.client", "Champions/Brand.wad.client", "Champions/Aphelios.wad.client", "Champions/AurelionSol.wad.client", "Champions/Lux.wad.client", "Champions/Teemo.wad.client", "Champions/Ziggs.wad.client", "Champions/Sivir.wad.client", "Champions/Twitch.wad.client", "Champions/Orianna.wad.client", "Champions/Gangplank.wad.client", "Champions/Udyr.wad.client", "Champions/Hwei.wad.client", "Maps/Shipping/Map11.wad.client", "Maps/Shipping/Common.wad.client")]
     read = lambda p: next((d for d in (w.read(p) for w in wads) if d is not None), None)
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)

@@ -15,6 +15,8 @@ function rig(nearest: Enemy | null, over: Record<string, unknown> = {}) {
     nearestEnemy: vi.fn(() => nearest),
     aimTarget: Game.prototype.aimTarget,
     aimPoint: Game.prototype.aimPoint,
+    aimOf: Game.prototype.aimOf,
+    kit: {},
     ...over,
   };
 }

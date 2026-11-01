@@ -170,6 +170,15 @@ export interface ChampionKit {
   cast(key: SkillKey, rank: number, point: THREE.Vector3): void;
   /** Animation for this cast when the skill has more than one form (e.g. gun or blade); default `SkillDef.anim`. */
   castAnim?(key: SkillKey, point: THREE.Vector3): string | undefined;
+  /**
+   * A skill key was pressed, before anything else is checked (e.g. spell menus: Hwei's Q opens Disaster, then Q/W/E
+   * picks one of its spells). Returns the skill whose rank, mana, cooldown and cast pipeline this press uses (the kit
+   * remembers which spell it picked), null when the kit handled the press itself (opened or closed a menu), or
+   * undefined for the pressed key as usual.
+   */
+  press?(key: SkillKey, point: THREE.Vector3): SkillKey | null | undefined;
+  /** How a key aims right now when it changes (e.g. per spell menu); default `SkillDef.aim`. */
+  aim?(key: SkillKey): number | 'move' | 'none' | undefined;
   /** When the cast starts (cast VFX). */
   castStart?(key: SkillKey, point: THREE.Vector3): void;
   /** Stats from the champion's own mechanics, on top of items and runes (e.g. points spent on attack damage). */
@@ -223,7 +232,11 @@ export interface ChampionKit {
   /** Passive gauge next to the skills (e.g. a stack grade): big label, fill 0..1, `ready` glows it and `skill`'s slot; `icon` replaces the passive's. */
   gauge?(): { label: string; fill: number; ready: boolean; skill?: SkillKey; icon?: string };
   /** A skill slot's look right now when it changes (e.g. per weapon): icon, name (tooltip) and a small badge (ammo). */
-  skillView?(key: SkillKey): { icon?: string; name?: string; badge?: string } | undefined;
+  skillView?(key: SkillKey): {
+    icon?: string; name?: string; badge?: string;
+    /** The skill whose rank, cooldown and cost the slot shows (a spell menu of another skill); null: free, no cooldown nor cost. */
+    as?: SkillKey | null;
+  } | undefined;
   /** Small icons shown above the skills (e.g. a weapon queue). */
   tray?(): readonly { icon: string; title: string; label?: string }[];
 }

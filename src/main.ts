@@ -203,7 +203,7 @@ const touch = IS_TOUCH ? new TouchControls(
     // tap: like casting while moving with the arrows (auto-aim, else the joystick or facing direction); drag: that way
     const along = dir ?? (touch!.move.lengthSq() ? touch!.move : new THREE.Vector3(Math.sin(game.facing), 0, Math.cos(game.facing)));
     if (key === 'flash') return game.flash(game.pos.clone().addScaledVector(along, 5000)); // Flash caps its range
-    const aim = game.champ.skills[key].aim;
+    const aim = game.aimOf(key);
     // same reach as aimPoint, without its auto-target when aimed by hand
     const point = (!dir && game.aimPoint(key, along)) || game.pos.clone().addScaledVector(along, typeof aim === 'number' ? aim : aim === 'move' ? 5000 : 0);
     game.cast(key, point);

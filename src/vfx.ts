@@ -58,12 +58,12 @@ export class Vfx {
           l.sys.kill(); // the followed object (missile) is gone: only lingering particles stay
         }
         else {
-          l.sys.setFrame(l.follow.position, l.dir ? missileQuat(l.dir, l.sys.quat) : l.sys.quat);
+          l.sys.setFrame(l.follow.position, l.dir ? missileQuat(l.dir, _q) : l.sys.frameQuat);
           l.sys.scale = l.follow.scale.x; // scaling the followed object scales its effect (a growing area)
         }
       }
       // `orient`: the system turns with the bone too (offsets authored along it, e.g. flames running down a blade)
-      if (l.bone) l.sys.setFrame(l.bone.getWorldPosition(_p), l.orient ? l.bone.getWorldQuaternion(_q) : l.sys.quat);
+      if (l.bone) l.sys.setFrame(l.bone.getWorldPosition(_p), l.orient ? l.bone.getWorldQuaternion(_q) : l.sys.frameQuat);
       if (l.until !== undefined && this.time >= l.until) l.sys.stop();
       l.sys.update(dt);
       if (!l.sys.done) return true;
