@@ -267,7 +267,7 @@ WASD is not used because it clashes with Q/W/E.
   - **W (Command: Dissonance)**: a pulse at the Ball, 70–230 + 85% AP within 225; its field lasts 3 s: enemies inside are slowed 20–40% and Orianna inside gains as much Move Speed, both fading over 2 s after leaving it.
   - **E (Command: Protect)**: the Ball flies back to her (1850 speed), dealing 60–180 + 30% AP to enemies on the way, and shields her for 55–195 + 45% AP for 2.5 s; while she holds it, +6–30 Armor and Magic Resist.
   - **R (Command: Shockwave)**: after 0.5 s, 225/350/475 + 110% AP within 415 of the Ball, tossing enemies 325 toward it and stunning them 0.75 s. W and R pressed while the Ball flies to an Attack point go off when it lands.
-  - Not from LoL: Command: Protect only targets Orianna (no allies); the arrow's colour thresholds (60%/80% of the leash) and when the leash arc shows are estimates (script-side, not in the bin); W plays the `spell2` clip (the bin names Spell1 for both Q and W). Mana costs and cooldowns are LoL's.
+  - Not from LoL: Command: Protect only targets Orianna (no allies); the arrow's colour thresholds (60%/80% of the leash) and when the leash arc shows are estimates (script-side, not in the bin); W plays the `spell2` clip (the bin names Spell1 for both Q and W). Cooldowns are LoL's; Q costs 25 (35) and W refunds its cost when it hits 3 or more enemies.
 - **Twitch** (the DataValues of his spell bins, patch 26.21; LoL Wiki V26.16 for script rules): 550 range, 2500 u/s bolts, 20.2% windup. Every gameplay particle system of the skin is used (bolts and impacts, the rat-skull stack icons and poison smoke, the cask, burst, pool, ring and slow debuff, the toxin and its burst, the Ambush poof, hand glow and haste, the Spray and Pray aura, crossbow glow, bolts and hits, the idle smoke).
   - **Passive (Deadly Venom)**: on-hit (basic attacks, Runaan's bolts, every enemy a Spray and Pray bolt hits) and Venom Cask apply a stack for 6 s (refreshed, up to 6): 1/2/3/4/5 (levels 1/5/9/13/17) + 3% AP true damage per stack every second.
   - **Q (Ambush)**: 10% Move Speed for 10–14 s and 40–60% Attack Speed for 6 s; 16 s cooldown, 40 mana.
@@ -358,7 +358,7 @@ Mages cast nonstop against hordes, so their LoL mana costs are lowered and their
 | Lux | Q 40, W 40–60, E 50–70, R 80 | 10–30 when an illuminated enemy dies |
 | Ziggs | Q 30–40 (50–70), W 55 (80), E 50–75 (70–110), R 80 (100) | 10–30 on ability kills |
 | Sivir | LoL's (Q 55–75, W 60, E 0, R 100): she lives off basic attacks | none |
-| Orianna | LoL's (Q 35, W 60–80, E 60, R 100) | none |
+| Orianna | Q 25 (35), W 60–80, E 60, R 100 | W refunds its cost when it hits 3+ enemies |
 | Twitch | LoL's except E 40–60 (50–90): Q 40, W 70, R 100; he lives off basic attacks | none |
 | Gangplank | Q 30–18 (50–30), W 40–70 (60–100), E charges, R 80 (100) | 10–30 on kills by Parrrley or a keg |
 | Udyr | Q 15 (20), W/E/R 28–18 (40–23) | 10–30 on kills by empowered attacks, lightning or the storm |

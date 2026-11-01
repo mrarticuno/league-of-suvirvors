@@ -1,5 +1,7 @@
 // Orianna. Numbers mirror League of Legends V26.21 (sources: the League wiki, the client's orianna.bin spell data and
-// the skin bins). Mana costs and cooldowns are League's, unchanged.
+// the skin bins). Cooldowns are League's. Adapted for hordes (she lives on her skills and starved of mana without the
+// Blue buff): Q costs 25 (League 35) and Dissonance refunds its cost when it hits 3 or more enemies, so a crowd sustains
+// her and a boss fight drains her.
 // The Ball is part of Orianna's own mesh while she holds it (the BallDown/BallUpper joints, collapsed while it is away;
 // League swaps to the OriannaNoBall model, the same body without it). Away from her it is the OriannaBall model resting
 // on the ground, and the skin's Ghost particle meshes while it flies. It attaches back when she walks within 135 of it
@@ -38,7 +40,7 @@ const PASSIVE = { damage: [10, 50], apRatio: 0.15, stackMult: 0.15, maxStacks: 2
 const SKILLS = {
   Q: {
     name: t('champion.orianna.Q'), desc: t('champion.orianna.Q.desc'), damageType: 'magic', maxRank: 5, anim: 'orianna_spell1_right', icon: `${ICON}/spell/OrianaIzunaCommand.png`,
-    cooldown: [7, 6, 5, 4, 3], cost: [35, 35, 35, 35, 35],
+    cooldown: [7, 6, 5, 4, 3], cost: [25, 25, 25, 25, 25], // League 35
     damage: [60, 90, 120, 150, 180], apRatio: 0.6, reduced: 0.7,
     range: 825, aim: 825, minTravel: 150, speed: 1400, radius: 175, castTime: 0.05,
   },
@@ -48,6 +50,7 @@ const SKILLS = {
     damage: [70, 110, 150, 190, 230], apRatio: 0.85, speed: [0.2, 0.25, 0.3, 0.35, 0.4],
     extra: { label: t('champion.orianna.speed'), values: [0.2, 0.25, 0.3, 0.35, 0.4], percent: true },
     radius: 225, field: 3, decay: 2, aim: 'none', castTime: 0.05,
+    refundHits: 3, // adapted: hitting this many enemies refunds the cost
   },
   E: {
     name: t('champion.orianna.E'), desc: t('champion.orianna.E.desc'), damageType: 'magic', maxRank: 5, anim: 'orianna_spell3', icon: `${ICON}/spell/OrianaRedactCommand.png`,
@@ -316,14 +319,15 @@ function oriannaKit(g: Game): ChampionKit {
     g.scene.add(field);
     audio.playAt('orianna_W_hit', at, g.pos);
     const damage = W.damage[rank] + W.apRatio * g.ap;
-    let fx = 0, any = false;
+    let fx = 0;
     for (const e of g.enemiesNear(at, W.radius, near)) {
       if (e.deadFor >= 0 || flat(e.pos, at) > W.radius + e.def.radius) continue;
-      if (fx++ < BALL.maxHitFx) g.vfx.playAt('Orianna_W_Dissonance_tar', e.pos.clone().setY(0), 0, { size: boundSize(e) });
+      if (fx < BALL.maxHitFx) g.vfx.playAt('Orianna_W_Dissonance_tar', e.pos.clone().setY(0), 0, { size: boundSize(e) });
+      fx++;
       g.hurtEnemy(e, damage, HITS.W);
-      any = true;
     }
-    if (any) audio.play('orianna_Q_hit');
+    if (fx > 0) audio.play('orianna_Q_hit');
+    if (fx >= W.refundHits) g.mana = Math.min(g.maxMana, g.mana + W.cost[rank]);
     fields.push({ at, until: g.time + W.field, rank, fx: field, stop: audio.play('orianna_W_field') });
   };
   const updateFields = () => {
