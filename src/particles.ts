@@ -135,7 +135,11 @@ void main() {
   c.a *= clamp((texture2D(erosionTex, vUv).r - vErode * (1.0 + slice) + slice) / slice, 0.0, 1.0);
 #endif
   if (c.a <= alphaRef) discard;
+#ifdef PREMUL
+  gl_FragColor = vec4(c.rgb * c.a, c.a);
+#else
   gl_FragColor = c;
+#endif
 }`;
 
 // VfxPrimitiveAttachedMesh: the owner's skinned mesh redrawn with the emitter's texture and colour (glows, afterimages)
@@ -156,7 +160,11 @@ varying vec2 vUv;
 void main() {
   vec4 c = texture2D(map, vUv) * color;
   if (c.a <= 0.0) discard;
+#ifdef PREMUL
+  gl_FragColor = vec4(c.rgb * c.a, c.a);
+#else
   gl_FragColor = c;
+#endif
 }`;
 
 
@@ -170,15 +178,21 @@ function material(e: Bin) {
   return m;
 }
 
-/** Three blending of a League blendMode: 1 alpha, 2 subtractive (destination minus source), others additive. */
-function blendOf(mode: number | undefined): Partial<THREE.ShaderMaterialParameters> {
+/**
+ * Three blending of a League blendMode: 1 alpha, 2 darkens (destination × (1 − source), source premultiplied by its
+ * alpha), others additive. A plain subtraction for 2 crushed the dark map to black under the "Subtract" layers; League's
+ * videos show the ground darkened with its detail kept (Kayle's R).
+ */
+export function blendOf(mode: number | undefined): Partial<THREE.ShaderMaterialParameters> {
   if (mode === 1) return { blending: THREE.NormalBlending };
   if (mode === 2) return {
-    blending: THREE.CustomBlending, blendEquation: THREE.ReverseSubtractEquation,
-    blendSrc: THREE.SrcAlphaFactor, blendDst: THREE.OneFactor,
+    blending: THREE.CustomBlending, blendEquation: THREE.AddEquation,
+    blendSrc: THREE.ZeroFactor, blendDst: THREE.OneMinusSrcColorFactor,
   };
   return { blending: THREE.AdditiveBlending };
 }
+/** Whether the shader writes colour premultiplied by alpha (the PREMUL define) for this blendMode. */
+export const premultiplied = (mode: number | undefined) => mode === 2;
 
 function newMaterial(e: Bin) {
   const defines: Record<string, string> = {};
@@ -197,6 +211,7 @@ function newMaterial(e: Bin) {
   if (erosion) { defines.USE_EROSION = ''; uniforms.erosionTex.value = erosion; }
   const mult = textures.get(e.textureMult?.textureMult);
   if (mult) { defines.USE_MULT = ''; uniforms.multTex.value = mult; }
+  if (premultiplied(e.blendMode)) defines.PREMUL = '';
   // VfxPaletteDefinitionData: grey textures coloured by a row of a gradient texture (paletteCount rows, paletteSelector picks one)
   const pal = e.paletteDefinition;
   const palTex = textures.get(pal?.paletteTexture);
@@ -206,7 +221,7 @@ function newMaterial(e: Bin) {
     const rows = pal.paletteCount || 1;
     uniforms.paletteV.value = ((val(pal.paletteSelector, 0)?.[0] ?? 0) + 0.5) / rows;
   }
-  // blendMode 1 is alpha blended (its textures carry real alpha), 2 subtracts (the "Subtract"/shadow layers that darken
+  // blendMode 1 is alpha blended (its textures carry real alpha), 2 darkens (the "Subtract"/shadow layers that darken
   // the ground under a glow); the default and the others are additive: most particle textures are DXT1 on opaque black
   return new THREE.ShaderMaterial({
     vertexShader, fragmentShader, uniforms, defines, transparent: true, depthWrite: false, side: THREE.DoubleSide,
@@ -564,6 +579,7 @@ class Emitter {
     const mat = overlays.get(e)?.pop() ?? new THREE.ShaderMaterial({
       vertexShader: overlayVertex, fragmentShader: overlayFragment,
       uniforms: { map: { value: textures.get(e.texture) }, color: { value: new THREE.Vector4(1, 1, 1, 1) } },
+      defines: premultiplied(e.blendMode) ? { PREMUL: '' } : {},
       transparent: true, depthWrite: false, side: e.disableBackfaceCull ? THREE.DoubleSide : THREE.FrontSide,
       polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -8, // drawn over the owner's own surface
       ...blendOf(e.blendMode),
