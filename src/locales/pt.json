@@ -749,5 +749,18 @@
  "champion.kayle.Q.desc": "Abre um portal à sua frente; após 0,25s uma espada celestial sai dele e se expande no primeiro inimigo atingido, causando dano mágico numa área em cruz, aplicando Lentidão de 25-45% por 2s e reduzindo Armadura e Resistência Mágica em 15% por 4s.",
  "champion.kayle.W.desc": "Cura a si mesma em 55-155 (+25% do PdH) e ganha 24-40% (+8% a cada 100 de PdH) de Velocidade de Movimento por 2s.",
  "champion.kayle.E.desc": "Passiva: seus ataques básicos causam dano mágico adicional ao acertar. Ativa: reinicia o ataque básico; o próximo em até 5s causa 8-10% (+1,5% a cada 100 de PdH) da Vida perdida do alvo como dano mágico (até 400 contra monstros) e alcança 525 antes do nível 6. A partir do nível 11 explode no alvo, atingindo todos os inimigos a até 350.",
- "champion.kayle.R.desc": "Fica invulnerável por 2,5s e conjura espadas flamejantes, depois as faz chover ao seu redor, causando dano mágico a todos os inimigos a até 675-775."
+ "champion.kayle.R.desc": "Fica invulnerável por 2,5s e conjura espadas flamejantes, depois as faz chover ao seu redor, causando dano mágico a todos os inimigos a até 675-775.",
+ "champion.veigar.name": "Veigar",
+ "champion.veigar.title": "o Pequeno Mestre do Mal",
+ "champion.veigar.passive": "Poder Maligno Fenomenal",
+ "champion.veigar.Q": "Golpe Maligno",
+ "champion.veigar.W": "Matéria Escura",
+ "champion.veigar.E": "Horizonte de Eventos",
+ "champion.veigar.R": "Explosão Primordial",
+ "champion.veigar.hud": "Mal Fenomenal: {n}",
+ "champion.veigar.stun": "Atordoamento",
+ "champion.veigar.Q.desc": "Dispara um raio sombrio que causa dano mágico aos dois primeiros inimigos atingidos. Um abate concede 1 acúmulo de Mal Fenomenal (3 contra tropas grandes e monstros).",
+ "champion.veigar.W.desc": "Matéria escura cai na área-alvo 1,2s após o início da conjuração, causando dano mágico aos inimigos a até 240 unidades. Cada 50 acúmulos de Mal Fenomenal reduzem em 10% sua recarga de 8s.",
+ "champion.veigar.E.desc": "Após 0,5s, ergue uma jaula na área-alvo por 3s. Inimigos que tocam suas bordas ficam atordoados por 1,5-2,5s (uma vez por conjuração, no máximo a cada 4,5s por inimigo).",
+ "champion.veigar.R.desc": "Lança uma explosão primordial no inimigo-alvo que causa dano mágico, aumentado em 1,5% para cada 1% de Vida perdida dele, até o dobro do dano."
 }

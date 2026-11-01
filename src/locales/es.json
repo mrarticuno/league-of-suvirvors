@@ -749,5 +749,18 @@
  "champion.kayle.Q.desc": "Abre un portal frente a ella; tras 0,25 s una espada celestial sale de él y se expande en el primer enemigo alcanzado, infligiendo daño mágico en un área en cruz, aplicando una Ralentización de 25-45% durante 2 s y reduciendo la Armadura y la Resistencia Mágica un 15% durante 4 s.",
  "champion.kayle.W.desc": "Se cura 55-155 (+25% del PH) y gana 24-40% (+8% por cada 100 de PH) de Velocidad de Movimiento durante 2 s.",
  "champion.kayle.E.desc": "Pasiva: sus ataques básicos infligen daño mágico adicional al impactar. Activa: reinicia su ataque básico; el siguiente en 5 s inflige 8-10% (+1,5% por cada 100 de PH) de la Vida faltante del objetivo como daño mágico (hasta 400 contra monstruos) y alcanza 525 antes del nivel 6. Desde el nivel 11 explota en el objetivo y alcanza a todos los enemigos a 350.",
- "champion.kayle.R.desc": "Se vuelve invulnerable durante 2,5 s y conjura espadas en llamas, luego las hace llover a su alrededor, infligiendo daño mágico a todos los enemigos a 675-775."
+ "champion.kayle.R.desc": "Se vuelve invulnerable durante 2,5 s y conjura espadas en llamas, luego las hace llover a su alrededor, infligiendo daño mágico a todos los enemigos a 675-775.",
+ "champion.veigar.name": "Veigar",
+ "champion.veigar.title": "el Pequeño Maestro del Mal",
+ "champion.veigar.passive": "Poder Maligno Fenomenal",
+ "champion.veigar.Q": "Ataque Maligno",
+ "champion.veigar.W": "Materia Oscura",
+ "champion.veigar.E": "Horizonte de Sucesos",
+ "champion.veigar.R": "Estallido Primordial",
+ "champion.veigar.hud": "Mal Fenomenal: {n}",
+ "champion.veigar.stun": "Aturdimiento",
+ "champion.veigar.Q.desc": "Lanza un rayo oscuro que inflige daño mágico a los dos primeros enemigos alcanzados. Un asesinato otorga 1 acumulación de Mal Fenomenal (3 contra súbditos grandes y monstruos).",
+ "champion.veigar.W.desc": "La materia oscura cae en la zona objetivo 1,2 s después de iniciar el lanzamiento e inflige daño mágico a los enemigos a menos de 240 unidades. Cada 50 acumulaciones de Mal Fenomenal reducen un 10% su enfriamiento de 8 s.",
+ "champion.veigar.E.desc": "Tras 0,5 s, levanta una jaula en la zona objetivo durante 3 s. Los enemigos que tocan sus bordes quedan aturdidos durante 1,5-2,5 s (una vez por lanzamiento, como máximo cada 4,5 s por enemigo).",
+ "champion.veigar.R.desc": "Lanza un estallido primordial al enemigo objetivo que inflige daño mágico, aumentado un 1,5% por cada 1% de Vida faltante del objetivo, hasta el doble de daño."
 }

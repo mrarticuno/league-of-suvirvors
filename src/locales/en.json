@@ -749,5 +749,18 @@
  "champion.kayle.Q.desc": "Opens a portal in front of her; after 0.25s a celestial sword flies from it and expands on the first enemy hit, dealing magic damage in a cross-shaped area, slowing by 25-45% for 2s and reducing Armor and Magic Resist by 15% for 4s.",
  "champion.kayle.W.desc": "Heals herself for 55-155 (+25% AP) and gains 24-40% (+8% per 100 AP) Move Speed for 2s.",
  "champion.kayle.E.desc": "Passive: her basic attacks deal bonus magic damage on-hit. Active: resets her basic attack; the next one within 5s deals 8-10% (+1.5% per 100 AP) of the target's missing Health as magic damage (up to 400 against monsters) and reaches 525 range before level 6. From level 11 it explodes on the target, hitting every enemy within 350.",
- "champion.kayle.R.desc": "Becomes invulnerable for 2.5s and conjures flaming swords, then rains them down around herself, dealing magic damage to every enemy within 675-775."
+ "champion.kayle.R.desc": "Becomes invulnerable for 2.5s and conjures flaming swords, then rains them down around herself, dealing magic damage to every enemy within 675-775.",
+ "champion.veigar.name": "Veigar",
+ "champion.veigar.title": "the Tiny Master of Evil",
+ "champion.veigar.passive": "Phenomenal Evil Power",
+ "champion.veigar.Q": "Baleful Strike",
+ "champion.veigar.W": "Dark Matter",
+ "champion.veigar.E": "Event Horizon",
+ "champion.veigar.R": "Primordial Burst",
+ "champion.veigar.hud": "Phenomenal Evil: {n}",
+ "champion.veigar.stun": "Stun",
+ "champion.veigar.Q.desc": "Blasts a dark bolt that deals magic damage to the first two enemies hit. A kill grants 1 stack of Phenomenal Evil (3 against large minions and monsters).",
+ "champion.veigar.W.desc": "Dark matter falls on the target area 1.2s after the cast starts, dealing magic damage to enemies within 240 units. Every 50 stacks of Phenomenal Evil cut its 8s cooldown by 10%.",
+ "champion.veigar.E.desc": "After 0.5s, erects a cage at the target area for 3s. Enemies touching its edges are stunned for 1.5-2.5s (once per cast, at most every 4.5s per enemy).",
+ "champion.veigar.R.desc": "Sends a primordial burst at the target enemy that deals magic damage, increased by 1.5% per 1% of its missing Health, up to double damage."
 }

@@ -21,3 +21,8 @@ it('blendMode 2 darkens in proportion instead of subtracting to black', () => {
   expect(blend(2, 0.25, 1, 0.5)).toBeCloseTo(0.125); // the colour's alpha scales the darkening
   expect(blend(2, 0.25, 0.02, 1)).toBeCloseTo(0.245); // the glow's faint edge leaves the ground almost as it was
 });
+
+it('blendMode 3 (solid props: bombs, bottles, pillars) is drawn alpha-blended and writes depth, not added', () => {
+  expect(blendOf(3)).toEqual({ blending: THREE.NormalBlending, depthWrite: true });
+  expect(blendOf(4).blending).toBe(THREE.AdditiveBlending);
+});

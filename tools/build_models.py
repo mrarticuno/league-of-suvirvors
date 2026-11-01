@@ -53,6 +53,7 @@ MODELS = {
     "kayle_sword": ("kayle", "../kayle/kayle_base_sword_tx_cm.png", []),
     # the sword blade's colour ramp (its Kayle_Sword material's Gradient_Texture; ChampionDef.remap)
     "kayle_gradient": ("kayle", "../kayle/kayle_base_wing_transform_gradient.png", []),
+    "veigar": ("veigar", "veigar_turnaround_b.png", []),
     "aphelios_guns": ("aphelios", "../aphelios/aphelios_base_guns_tx_cm.png", []),
     # Crescendum's sentry: own mesh and clips, wearing Aphelios' gun texture (OWN_MESH)
     "apheliosturret": ("apheliosturret", "../aphelios/aphelios_base_guns_tx_cm.png", []),
@@ -101,6 +102,7 @@ SKIP_CLIPS = {
     "auroraspirits": re.compile(r"dance"),
     "udyr": re.compile(r"channel|dance|joke|laugh|taunt|recall|recal_|respawn|homeguard"),
     "kayle": re.compile(r"channel|dance|joke|laugh|taunt|recall|respawn|homeguard|turn_"),
+    "veigar": re.compile(r"channel|dance|taunt"),
     "hwei": re.compile(r"_to|channel|dance|joke|laugh|taunt|recall|respawn|varsitting|idlevar|idle1_|idlein|knockup|stun|additive|activationerunslow"),
 }
 

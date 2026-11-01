@@ -180,11 +180,13 @@ function material(e: Bin) {
 
 /**
  * Three blending of a League blendMode: 1 alpha, 2 darkens (destination × (1 − source), source premultiplied by its
- * alpha), others additive. A plain subtraction for 2 crushed the dark map to black under the "Subtract" layers; League's
+ * alpha), 3 opaque (solid props: bombs, bottles, shuriken, Event Horizon's pillars; alpha still fades and cuts them, and
+ * they write depth), others additive. A plain subtraction for 2 crushed the dark map to black under the "Subtract" layers; League's
  * videos show the ground darkened with its detail kept (Kayle's R).
  */
 export function blendOf(mode: number | undefined): Partial<THREE.ShaderMaterialParameters> {
   if (mode === 1) return { blending: THREE.NormalBlending };
+  if (mode === 3) return { blending: THREE.NormalBlending, depthWrite: true };
   if (mode === 2) return {
     blending: THREE.CustomBlending, blendEquation: THREE.AddEquation,
     blendSrc: THREE.ZeroFactor, blendDst: THREE.OneMinusSrcColorFactor,

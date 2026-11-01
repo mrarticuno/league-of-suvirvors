@@ -50,6 +50,7 @@ Twelve playable champions, each with a full kit ported from LoL (details in [Imp
 | Aurora | Mage · Assassin | Curses that fly back, a hop into the spirit realm, a recoiling blast and a rift she jumps across |
 | Hwei | Mage · Support | Three moods of three spells each (Disaster, Serenity, Torment), a mark that a second spell detonates and a growing aura of despair |
 | Kayle | Marksman · Mage | Ascends at levels 1/6/11/16: melee to ranged, Zeal stacks to Exalted, fire waves; a celestial sword, a heal, an empowered strike and a rain of swords |
+| Veigar | Mage | Phenomenal Evil: every Baleful Strike kill makes him stronger for good; dark matter from the sky, a stunning cage and an execute burst |
 
 ## Gallery
 
@@ -97,6 +98,10 @@ Twelve playable champions, each with a full kit ported from LoL (details in [Imp
 |---|
 | ![Kayle: her four forms, Radiant Blast, Starfire Spellblade, the fire waves and Divine Judgment against a horde](docs/media/kayle.gif) |
 
+| Veigar |
+|---|
+| ![Veigar: Baleful Strike, Dark Matter, Event Horizon and Primordial Burst against a horde](docs/media/veigar.gif) |
+
 | Baron Nashor (20:00) | Pause menu: stats, items and boots |
 |---|---|
 | ![Baron arena with telegraphed attacks](docs/media/baron.gif) | ![Pause menu with every champion stat and each item's stats and passive](docs/media/stats-menu.jpg) |
@@ -128,7 +133,7 @@ The models are **not in the repository** (they are Riot assets). Generate them l
 2. Hash list (the game's `.bin` files reference textures/animations by xxh64 hash):
    ```bash
    curl -s https://raw.communitydragon.org/data/hashes/lol/hashes.game.txt \
-     | grep -E "assets/characters/(ezreal|samira|brand|aphelios|aurelionsol|lux|teemo|ziggs|sivir|twitch|orianna|gangplank|gangplankbarrel|udyr|aurora|auroraspirits|hwei|kayle|sru_|turret|inhibitor|nexus)" > assets-raw/hashes.filtered.txt
+     | grep -E "assets/characters/(ezreal|samira|brand|aphelios|aurelionsol|lux|teemo|ziggs|sivir|twitch|orianna|gangplank|gangplankbarrel|udyr|aurora|auroraspirits|hwei|kayle|veigar|sru_|turret|inhibitor|nexus)" > assets-raw/hashes.filtered.txt
    ```
 3. Extract from the WADs (`tools/extract_lol.py`) and convert to `.glb` (`tools/build_models.py`):
    ```bash
@@ -147,6 +152,7 @@ The models are **not in the repository** (they are Riot assets). Generate them l
    for c in aurora auroraspirits; do .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt $c assets-raw/$c "$G/Champions/Aurora.wad.client"; done
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt hwei assets-raw/hwei "$G/Champions/Hwei.wad.client"
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt kayle assets-raw/kayle "$G/Champions/Kayle.wad.client"
+   .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt veigar assets-raw/veigar "$G/Champions/Veigar.wad.client"
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt teemomushroom assets-raw/teemomushroom "$G/Champions/Teemo.wad.client"
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt lux assets-raw/lux "$G/Champions/Lux.wad.client"
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt ziggs assets-raw/ziggs "$G/Champions/Ziggs.wad.client"
@@ -173,7 +179,7 @@ The models are **not in the repository** (they are Riot assets). Generate them l
    `pieces` is a limited `.mapgeo` v14 parser: if it is skipped or fails (different format version, missing WAD), the runtime draws dark boxes/cylinders from the layout obstacles. Nothing breaks.
 5. Ability VFX: Ezreal's particle systems read from the skin `.bin`, with every texture and mesh they use. Uses the hash lists downloaded in step 4:
    ```bash
-   for c in ezreal samira brand aphelios aurelionsol lux teemo ziggs sivir twitch orianna gangplank udyr hwei kayle; do (cd tools && ../.venv-tools/bin/python build_vfx.py ../assets-raw/hashes $c ../public/assets/vfx/$c "$G"); done
+   for c in ezreal samira brand aphelios aurelionsol lux teemo ziggs sivir twitch orianna gangplank udyr hwei kayle veigar; do (cd tools && ../.venv-tools/bin/python build_vfx.py ../assets-raw/hashes $c ../public/assets/vfx/$c "$G"); done
    (cd tools && ../.venv-tools/bin/python build_vfx.py ../assets-raw/hashes aurora ../public/assets/vfx/aurora "$G" auroraspirits)  # + her spirits' own systems
    ```
    Generates `systems.json` (effects indexed by `ResourceResolver` keys, e.g. `Ezreal_Q_mis`), `spells.json` (missile speed/width/range) and the asset PNG/JSON files. `tools/read_bin.py` alone converts any `.bin` into JSON. The emitter runtime lives in `src/particles.ts`; `src/vfx.ts` only picks which system to play and where.
@@ -333,12 +339,19 @@ WASD is not used because it clashes with Q/W/E.
 - **Two-step level-up**:
   1. One ability rank, by LoL's rule: basic abilities at levels 1/3/5/7/9, R at levels 6/11/16 (Aphelios: stat points, see above). The step is skipped when no rank is available.
   2. One item out of 3 rolled (or a potion, once the build is complete).
+- **Veigar** (his character and skin bins: DataValues, spell calculations, missile specs, mana, cooldowns and the animation graph; the wiki for the cage's radii): model at League's size next to Ezreal (SkinScale 1.85 against 1.1). Every gameplay system of the skin plays where League plays it: the staff's idle glow, the attack flash (from Attack1's event; Attack2's is played by the kit, since Attack2, Crit, Spell1 and Spell4 share one clip), the bolt and its hit, Baleful Strike's cast flash, missile, hit and the power-up on a stacking kill, Dark Matter's hand flash, the falling meteor with its ally indicator and the explosion, Event Horizon's cast, warning ring and the cage with its pillars, Primordial Burst's charge, cast, missile and hit (the "max" variants on a target at full execute).
+  - **Passive (Phenomenal Evil Power)**: each stack is 1 AP, no cap. Baleful Strike kills give 1 stack (3 against large minions and monsters); every ability hit on an elite or epic monster gives 1 and their takedown 5 (League: champions).
+  - **Q (Baleful Strike)**: a 2200 u/s bolt (990 range, 70 radius) hitting the first two enemies for 80–240 +50–70% AP.
+  - **W (Dark Matter)**: falls on a point within 950 1.2 s after the cast starts (it lands even if the cast is cut): 85–305 +70–110% AP within 240. Cooldown 8 s ×0.9 per 50 stacks.
+  - **E (Event Horizon)**: after 0.5 s a cage within 725 stands for 3 s; enemies touching its edge (290–411 from the centre) are stunned 1.5–2.5 s, once per cast and at most every 4.5 s.
+  - **R (Primordial Burst)**: a missile accelerating from 500 to 4000 u/s at an enemy within 650: 175/250/325 +65–75% AP, +1.5% per 1% of the target's missing Health (double at 66.7% missing).
+  - Not from LoL: any enemy can be targeted by Primordial Burst (League: champions); the knockdown of the cage is a plain stun; mana costs lowered like the other mages' and ability kills restore mana (see Balance).
 - **Items**: real Data Dragon data (stats, names, icons), generated by `tools/build_items.py` into `src/items.json`; passives in `src/itemPassives/`.
   - No recipes: a level-up offers a finished legendary item or one more level for an item you own, like the weapons of a survivors game. Inventory of at most 6 items; items cannot be discarded.
   - Every item has 5 levels. Stats grow from 40% (level 1) to 100% (level 5); the passive unlocks at level 3 at 60% strength, 80% at level 4, 100% at level 5. Manamune, Archangel's Staff and Winter's Approach gain their transformed passive (Muramana, Seraph's Embrace, Fimbulwinter) at level 5.
   - Pool: every Summoner's Rift legendary except items with an active (Zhonya's, Youmuu's, the Hydras...), support items, anti-heal items (Mortal Reminder, Chempunk, Morellonomicon; Thornmail keeps only its reflect) and passives that need vision or champion shields (Umbral Glaive, Serpent's Fang). AD champions get attack items, AP champions ability power items, both get tanks and hybrids.
   - Passives adapted to hordes: "champion" triggers become elite/epic monster kills; spell shields block the next damage taken.
-  - Recommended build per champion (OP.GG, patch 16.21): offered three times as often and tagged "Recommended". Ezreal: Trinity Force, Manamune, Spear of Shojin, Serylda's Grudge, Endless Hunger, Guardian Angel. Samira: The Collector, Infinity Edge, Lord Dominik's Regards, Immortal Shieldbow, Bloodthirster, Guardian Angel. Brand: Blackfire Torch, Rylai's, Liandry's, Shadowflame, Rabadon's, Void Staff. Aphelios: The Collector, Infinity Edge, Lord Dominik's Regards, Runaan's Hurricane, Guardian Angel, Bloodthirster. Aurelion Sol: Liandry's, Rylai's, Rabadon's, Void Staff, Shadowflame, Cosmic Drive. Teemo: Nashor's Tooth, Liandry's Torment, Riftmaker, Rabadon's Deathcap, Void Staff, Shadowflame. Lux: Luden's Echo, Shadowflame, Rabadon's, Horizon Focus, Void Staff, Malignance. Ziggs: Luden's Echo, Shadowflame, Rabadon's Deathcap, Void Staff, Banshee's Veil, Horizon Focus. Kayle: Nashor's Tooth, Dusk and Dawn, Rabadon's Deathcap. Sivir: Essence Reaver, Navori Flickerblade, Infinity Edge, Lord Dominik's Regards, Bloodthirster, Guardian Angel. Twitch: Blade of the Ruined King, Guinsoo's Rageblade, Runaan's Hurricane, Infinity Edge, Lord Dominik's Regards, Guardian Angel. Orianna: Luden's Echo, Shadowflame, Rabadon's Deathcap, Void Staff, Cryptbloom, Banshee's Veil. Gangplank: Essence Reaver, The Collector, Infinity Edge, Lord Dominik's Regards, Immortal Shieldbow, Guardian Angel. Udyr: Trinity Force, Spear of Shojin, Sterak's Gage, Dead Man's Plate, Force of Nature, Spirit Visage. Aurora: Luden's Echo, Shadowflame, Rabadon's Deathcap, Void Staff, Stormsurge, Banshee's Veil. Hwei: Luden's Companion, Shadowflame, Rabadon's Deathcap, Void Staff, Banshee's Veil, Horizon Focus.
+  - Recommended build per champion (OP.GG, patch 16.21): offered three times as often and tagged "Recommended". Ezreal: Trinity Force, Manamune, Spear of Shojin, Serylda's Grudge, Endless Hunger, Guardian Angel. Samira: The Collector, Infinity Edge, Lord Dominik's Regards, Immortal Shieldbow, Bloodthirster, Guardian Angel. Brand: Blackfire Torch, Rylai's, Liandry's, Shadowflame, Rabadon's, Void Staff. Aphelios: The Collector, Infinity Edge, Lord Dominik's Regards, Runaan's Hurricane, Guardian Angel, Bloodthirster. Aurelion Sol: Liandry's, Rylai's, Rabadon's, Void Staff, Shadowflame, Cosmic Drive. Teemo: Nashor's Tooth, Liandry's Torment, Riftmaker, Rabadon's Deathcap, Void Staff, Shadowflame. Lux: Luden's Echo, Shadowflame, Rabadon's, Horizon Focus, Void Staff, Malignance. Ziggs: Luden's Echo, Shadowflame, Rabadon's Deathcap, Void Staff, Banshee's Veil, Horizon Focus. Kayle: Nashor's Tooth, Dusk and Dawn, Rabadon's Deathcap. Veigar: Luden's Echo, Stormsurge, Rabadon's Deathcap. Sivir: Essence Reaver, Navori Flickerblade, Infinity Edge, Lord Dominik's Regards, Bloodthirster, Guardian Angel. Twitch: Blade of the Ruined King, Guinsoo's Rageblade, Runaan's Hurricane, Infinity Edge, Lord Dominik's Regards, Guardian Angel. Orianna: Luden's Echo, Shadowflame, Rabadon's Deathcap, Void Staff, Cryptbloom, Banshee's Veil. Gangplank: Essence Reaver, The Collector, Infinity Edge, Lord Dominik's Regards, Immortal Shieldbow, Guardian Angel. Udyr: Trinity Force, Spear of Shojin, Sterak's Gage, Dead Man's Plate, Force of Nature, Spirit Visage. Aurora: Luden's Echo, Shadowflame, Rabadon's Deathcap, Void Staff, Stormsurge, Banshee's Veil. Hwei: Luden's Companion, Shadowflame, Rabadon's Deathcap, Void Staff, Banshee's Veil, Horizon Focus.
   - Complete build (6 items at level 5): level-ups offer a Health or Mana Potion (5% of max), and each kill has a 1% chance to drop a blueprint (blue scroll, 1 per run) that makes a random item Legendary (+50% stats; its slot gets an animated gold ring and a "Legendary" ribbon).
   - Boots: a 7th slot outside the six. Boots (+25 Move Speed) at 5:00; killing the Rift Scuttler offers a pick of Berserker's Greaves, Boots of Swiftness, Sorcerer's Shoes, Plated Steelcaps (Plating: physical hits deal 10% less), Mercury's Treads or Ionian Boots of Lucidity; killing the dragon turns them into their tier 3 (Gunmetal Greaves, Swiftmarch, Spellslinger's Shoes, Armored Advance, Chainlaced Crushers, Crimson Lucidity: stats only).
   - Pace: the enemy side (movement, attacks, animations, boss attacks, enemy projectiles, spawn rate) speeds up from x1 at 0:00 to x1.5 at 5:00, then stays at x1.5. The clock, cooldowns, buffs and the champion keep real time.
@@ -406,6 +419,7 @@ Mages cast nonstop against hordes, so their LoL mana costs are lowered and their
 | Aurora | Q 35 (60), W/E 50 (80), R 80 (100) | 10–30 on kills by an ability or of an enemy with Spirit Abjuration stacks or a curse |
 | Hwei | moods Q 30 (80–120), W 45 (90–110), E 25 (50–70), R 80 (100) | none; Stirring Lights restores 45–65 per empowered hit |
 | Kayle | Q 30–50 (60–100), W 35–55 (70–90), E 0, R 50/25/0 (100/50/0) | none: she lives off basic attacks |
+| Veigar | Q 25 (30–50), W 45–65 (60–80), E 55–75 (70–90), R 80 (100) | 20–40 on ability kills |
 
 Horde tuning of the newer mages (LoL values in brackets): Aurora Q cooldown 6–5 s (9–7), E 10–8 s (15–11), R 90/80/70 s (140/120/100), Twofold Hex 75% to minions (40%), the passive's Spirits heal 10–20 (3–20). Hwei's mood cooldowns are 30% shorter: Q 7–4.2 s (10–6), W 12.6–11.2 s (18–16), E 8.4–7 s (12–10); Severing Bolt 300 radius (225) and 75% to minions and monsters (50%), Molten Fissure 90% to minions (60%) with lava 6–24 (5–20), Pool of Reflection heals 30% of its shield.
 

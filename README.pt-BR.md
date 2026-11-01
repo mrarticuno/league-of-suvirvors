@@ -50,6 +50,7 @@ Doze campeões jogáveis, cada um com o kit completo do LoL adaptado (detalhes e
 | Aurora | Maga · Assassina | Maldições que voltam, um salto ao reino espiritual, uma explosão com recuo e uma fenda que ela atravessa de um lado a outro |
 | Hwei | Mago · Suporte | Três temas de três feitiços cada (Desastre, Serenidade, Tormento), uma marca que um segundo feitiço detona e uma aura de desespero que cresce |
 | Kayle | Atiradora · Maga | Ascende nos níveis 1/6/11/16: de corpo a corpo a distância, acúmulos de Fervor até Exaltada, ondas de fogo; uma espada celestial, uma cura, um golpe fortalecido e uma chuva de espadas |
+| Veigar | Mago | Mal Fenomenal: cada abate do Golpe Maligno o deixa mais forte para sempre; matéria escura do céu, uma jaula que atordoa e uma explosão que executa |
 
 ## Galeria
 
@@ -97,6 +98,10 @@ Doze campeões jogáveis, cada um com o kit completo do LoL adaptado (detalhes e
 |---|
 | ![Kayle: as quatro formas, Explosão Radiante, Lâmina de Fogo Estelar, as ondas de fogo e Sentença Divina contra uma horda](docs/media/kayle.gif) |
 
+| Veigar |
+|---|
+| ![Veigar: Golpe Maligno, Matéria Escura, Horizonte de Eventos e Explosão Primordial contra uma horda](docs/media/veigar.gif) |
+
 | Barão Na'Shor (20:00) | Menu de pausa: atributos, itens e botas |
 |---|---|
 | ![Arena do Barão com ataques telegrafados](docs/media/baron.gif) | ![Menu de pausa com todos os atributos do campeão e os atributos e a passiva de cada item](docs/media/stats-menu.jpg) |
@@ -128,7 +133,7 @@ Os modelos **não estão no repositório** (são assets da Riot). Gere-os localm
 2. Lista de hashes (os `.bin` do jogo referenciam texturas/animações por hash xxh64):
    ```bash
    curl -s https://raw.communitydragon.org/data/hashes/lol/hashes.game.txt \
-     | grep -E "assets/characters/(ezreal|samira|brand|aphelios|aurelionsol|lux|teemo|ziggs|sivir|twitch|orianna|gangplank|gangplankbarrel|udyr|aurora|auroraspirits|hwei|kayle|sru_|turret|inhibitor|nexus)" > assets-raw/hashes.filtered.txt
+     | grep -E "assets/characters/(ezreal|samira|brand|aphelios|aurelionsol|lux|teemo|ziggs|sivir|twitch|orianna|gangplank|gangplankbarrel|udyr|aurora|auroraspirits|hwei|kayle|veigar|sru_|turret|inhibitor|nexus)" > assets-raw/hashes.filtered.txt
    ```
 3. Extrair dos WADs (`tools/extract_lol.py`) e converter para `.glb` (`tools/build_models.py`):
    ```bash
@@ -147,6 +152,7 @@ Os modelos **não estão no repositório** (são assets da Riot). Gere-os localm
    for c in aurora auroraspirits; do .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt $c assets-raw/$c "$G/Champions/Aurora.wad.client"; done
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt hwei assets-raw/hwei "$G/Champions/Hwei.wad.client"
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt kayle assets-raw/kayle "$G/Champions/Kayle.wad.client"
+   .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt veigar assets-raw/veigar "$G/Champions/Veigar.wad.client"
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt teemomushroom assets-raw/teemomushroom "$G/Champions/Teemo.wad.client"
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt lux assets-raw/lux "$G/Champions/Lux.wad.client"
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt ziggs assets-raw/ziggs "$G/Champions/Ziggs.wad.client"
@@ -173,7 +179,7 @@ Os modelos **não estão no repositório** (são assets da Riot). Gere-os localm
    O `pieces` é um parser limitado do `.mapgeo` v14: se for pulado ou falhar (versão diferente do formato, WAD ausente), o runtime desenha caixas/cilindros escuros a partir dos obstáculos do layout — nada quebra.
 5. VFX das habilidades: sistemas de partículas do Ezreal lidos do `.bin` da skin, com todas as texturas e malhas que eles usam. Usa as listas de hashes baixadas no passo 4:
    ```bash
-   for c in ezreal samira brand aphelios aurelionsol lux teemo ziggs sivir twitch orianna gangplank udyr hwei kayle; do (cd tools && ../.venv-tools/bin/python build_vfx.py ../assets-raw/hashes $c ../public/assets/vfx/$c "$G"); done
+   for c in ezreal samira brand aphelios aurelionsol lux teemo ziggs sivir twitch orianna gangplank udyr hwei kayle veigar; do (cd tools && ../.venv-tools/bin/python build_vfx.py ../assets-raw/hashes $c ../public/assets/vfx/$c "$G"); done
    (cd tools && ../.venv-tools/bin/python build_vfx.py ../assets-raw/hashes aurora ../public/assets/vfx/aurora "$G" auroraspirits)  # + her spirits' own systems
    ```
    Gera `systems.json` (efeitos indexados pelas chaves do `ResourceResolver`, ex. `Ezreal_Q_mis`), `spells.json` (velocidade/largura/alcance dos mísseis) e os PNG/JSON dos assets. `tools/read_bin.py` sozinho converte qualquer `.bin` em JSON. O runtime dos emissores fica em `src/particles.ts`; `src/vfx.ts` só escolhe qual sistema tocar e onde.
@@ -333,12 +339,19 @@ WASD não é usado porque colide com Q/W/E.
 - **Level-up em duas etapas**:
   1. Um rank de habilidade, pela regra do LoL: básicas nos níveis 1/3/5/7/9, R nos níveis 6/11/16 (Aphelios: pontos de atributo, ver acima). A etapa é pulada quando não há rank disponível.
   2. Um item entre 3 sorteados (ou uma poção, com a build completa).
+- **Veigar** (bins de personagem e de skin: DataValues, cálculos de feitiço, mísseis, mana, recargas e o grafo de animação; a wiki para os raios da jaula): modelo no tamanho do LoL ao lado do Ezreal (SkinScale 1,85 contra 1,1). Todo sistema de gameplay da skin toca onde o LoL toca: o brilho do cajado, o clarão do ataque (evento do Attack1; o do Attack2 o kit toca, pois Attack2, Crit, Spell1 e Spell4 dividem um clip), o projétil e o impacto, o clarão de conjuração do Golpe Maligno, o míssil, o impacto e o fortalecimento num abate que dá acúmulos, o clarão na mão da Matéria Escura, o meteoro com o indicador aliado e a explosão, a conjuração, o anel de aviso e a jaula com seus pilares do Horizonte de Eventos, a carga, a conjuração, o míssil e o impacto da Explosão Primordial (as variantes "max" num alvo em execução total).
+  - **Passiva (Poder Maligno Fenomenal)**: cada acúmulo é 1 PdH, sem limite. Abates do Golpe Maligno dão 1 acúmulo (3 contra tropas grandes e monstros); todo acerto de habilidade num monstro elite ou épico dá 1 e o abate dele 5 (LoL: campeões).
+  - **Q (Golpe Maligno)**: projétil de 2200 u/s (alcance 990, raio 70) que atinge os dois primeiros inimigos: 80–240 +50–70% PdH.
+  - **W (Matéria Escura)**: cai num ponto a até 950, 1,2 s após o início da conjuração (cai mesmo se a conjuração for interrompida): 85–305 +70–110% PdH num raio de 240. Recarga 8 s ×0,9 a cada 50 acúmulos.
+  - **E (Horizonte de Eventos)**: após 0,5 s uma jaula a até 725 fica de pé por 3 s; inimigos que tocam a borda (290–411 do centro) ficam atordoados por 1,5–2,5 s, uma vez por conjuração e no máximo a cada 4,5 s.
+  - **R (Explosão Primordial)**: míssil que acelera de 500 a 4000 u/s até um inimigo a até 650: 175/250/325 +65–75% PdH, +1,5% por 1% de Vida perdida do alvo (dobro com 66,7% perdida).
+  - Fora do LoL: a Explosão Primordial mira qualquer inimigo (LoL: campeões); a derrubada da jaula é um atordoamento simples; custos de mana reduzidos como os dos outros magos e abates por habilidade restauram mana (ver Balanceamento).
 - **Itens**: dados reais do Data Dragon (atributos, nomes, ícones), gerados por `tools/build_items.py` em `src/items.json`; passivas em `src/itemPassives/`.
   - Sem receitas: o level-up oferece um item lendário pronto ou mais um nível para um item seu, como as armas de um survivors. Inventário de no máximo 6 itens; não é possível descartar.
   - Cada item tem 5 níveis. Os atributos crescem de 40% (nível 1) a 100% (nível 5); a passiva é liberada no nível 3 com 60% da força, 80% no nível 4 e 100% no nível 5. Manamune, Cajado do Arcanjo e Aproximação do Inverno ganham a passiva transformada (Muramana, Abraço do Serafim, Fimbulwinter) no nível 5.
   - Catálogo: todos os lendários do Summoner's Rift, menos itens com ativa (Zhonya, Youmuu, as Hidras...), itens de suporte, itens de corta-cura (Lembrete Mortal, Serrespada Quimtec, Morellonomicon; a Armadura de Espinhos fica só com o reflexo) e passivas que dependem de visão ou de escudos de campeão (Glaive Umbral, Presa da Serpente). Campeões AD recebem itens de ataque, campeões AP itens de poder de habilidade, e os dois recebem tanques e híbridos.
   - Passivas adaptadas às hordas: gatilhos de "campeão" viram abates de monstro elite/épico; escudos de feitiço bloqueiam o próximo dano sofrido.
-  - Build recomendada por campeão (OP.GG, patch 16.21): ofertada três vezes mais e marcada como "Recomendado". Ezreal: Força da Trindade, Manamune, Lança de Shojin, Rancor de Serylda, Fome Eterna, Anjo Guardião. Samira: O Coletor, Gume do Infinito, Lembranças do Lorde Dominik, Arco-escudo Imortal, Sanguinária, Anjo Guardião. Brand: Tocha de Fogo Negro, Rylai, Liandry, Chama Sombria, Rabadon, Cajado do Vazio. Aphelios: A Coletora, Gume do Infinito, Lembranças do Lorde Dominik, Furacão de Runaan, Anjo Guardião, Sedenta por Sangue. Aurelion Sol: Liandry, Rylai, Rabadon, Cajado do Vazio, Chama Sombria, Ímpeto Cósmico. Teemo: Dente de Na'Shor, Tormento de Liandry, Criafendas, Capuz da Morte de Rabadon, Cajado do Vazio, Chama Sombria. Lux: Eco de Luden, Chama Sombria, Rabadon, Foco do Horizonte, Cajado do Vazio, Malevolência. Ziggs: Eco de Luden, Chama Sombria, Capuz da Morte de Rabadon, Cajado do Vazio, Véu da Banshee, Foco do Horizonte. Kayle: Dente de Na'Shor, Aurora e Crepúsculo, Capuz da Morte de Rabadon. Sivir: Ceifador de Essência, Lâmina Fugaz de Navori, Lâmina do Infinito, Lembrete Mortal de Lorde Dominik, Sedenta por Sangue, Anjo Guardião. Twitch: Lâmina do Rei Destruído, Lâmina da Fúria de Guinsoo, Furacão de Runaan, Gume do Infinito, Lembranças do Lorde Dominik, Anjo Guardião. Orianna: Eco de Luden, Chama Sombria, Capuz da Morte de Rabadon, Cajado do Vazio, Criptoflora, Véu da Banshee. Gangplank: Colhedor de Essência, A Coletora, Gume do Infinito, Lembranças do Lorde Dominik, Arco-escudo Imortal, Anjo Guardião. Udyr: Força da Trindade, Lança de Shojin, Manopla de Sterak, Placa do Homem Morto, Força da Natureza, Rosto Espiritual. Aurora: Eco de Luden, Chama Sombria, Capuz da Morte de Rabadon, Cajado do Vazio, Ápice da Tempestade, Véu da Banshee. Hwei: Companheiro de Luden, Chamas Sombrias, Capuz da Morte de Rabadon, Cajado do Vazio, Véu da Banshee, Foco do Horizonte.
+  - Build recomendada por campeão (OP.GG, patch 16.21): ofertada três vezes mais e marcada como "Recomendado". Ezreal: Força da Trindade, Manamune, Lança de Shojin, Rancor de Serylda, Fome Eterna, Anjo Guardião. Samira: O Coletor, Gume do Infinito, Lembranças do Lorde Dominik, Arco-escudo Imortal, Sanguinária, Anjo Guardião. Brand: Tocha de Fogo Negro, Rylai, Liandry, Chama Sombria, Rabadon, Cajado do Vazio. Aphelios: A Coletora, Gume do Infinito, Lembranças do Lorde Dominik, Furacão de Runaan, Anjo Guardião, Sedenta por Sangue. Aurelion Sol: Liandry, Rylai, Rabadon, Cajado do Vazio, Chama Sombria, Ímpeto Cósmico. Teemo: Dente de Na'Shor, Tormento de Liandry, Criafendas, Capuz da Morte de Rabadon, Cajado do Vazio, Chama Sombria. Lux: Eco de Luden, Chama Sombria, Rabadon, Foco do Horizonte, Cajado do Vazio, Malevolência. Ziggs: Eco de Luden, Chama Sombria, Capuz da Morte de Rabadon, Cajado do Vazio, Véu da Banshee, Foco do Horizonte. Kayle: Dente de Na'Shor, Aurora e Crepúsculo, Capuz da Morte de Rabadon. Veigar: Eco de Luden, Ápice da Tempestade, Capuz da Morte de Rabadon. Sivir: Ceifador de Essência, Lâmina Fugaz de Navori, Lâmina do Infinito, Lembrete Mortal de Lorde Dominik, Sedenta por Sangue, Anjo Guardião. Twitch: Lâmina do Rei Destruído, Lâmina da Fúria de Guinsoo, Furacão de Runaan, Gume do Infinito, Lembranças do Lorde Dominik, Anjo Guardião. Orianna: Eco de Luden, Chama Sombria, Capuz da Morte de Rabadon, Cajado do Vazio, Criptoflora, Véu da Banshee. Gangplank: Colhedor de Essência, A Coletora, Gume do Infinito, Lembranças do Lorde Dominik, Arco-escudo Imortal, Anjo Guardião. Udyr: Força da Trindade, Lança de Shojin, Manopla de Sterak, Placa do Homem Morto, Força da Natureza, Rosto Espiritual. Aurora: Eco de Luden, Chama Sombria, Capuz da Morte de Rabadon, Cajado do Vazio, Ápice da Tempestade, Véu da Banshee. Hwei: Companheiro de Luden, Chamas Sombrias, Capuz da Morte de Rabadon, Cajado do Vazio, Véu da Banshee, Foco do Horizonte.
   - Build completa (6 itens no nível 5): o level-up oferece Poção de Vida ou de Mana (5% do máximo), e cada abate tem 1% de chance de derrubar um blueprint (pergaminho azul, 1 por run) que torna um item aleatório Lendário (+50% dos atributos; o slot ganha um anel dourado animado e a faixa "Lendário").
   - Botas: um 7º slot fora dos seis. Botas (+25 de Velocidade de Movimento) aos 5:00; abater o Aronguejo oferece Grevas do Berserker, Botas da Rapidez, Sapatos do Feiticeiro, Botas Galvanizadas de Aço (Blindagem: golpes físicos causam 10% menos dano), Passos de Mercúrio ou Botas Ionianas da Lucidez; abater o dragão as transforma no nível 3 (só atributos).
   - Ritmo: o lado dos inimigos (movimento, ataques, animações, ataques dos chefes, projéteis inimigos, ritmo de spawn) acelera de x1 aos 0:00 até x1,5 aos 5:00 e fica em x1,5. O relógio, as recargas, os buffs e o campeão seguem o tempo real.
@@ -406,6 +419,7 @@ Magos conjuram sem parar contra hordas, então os custos de mana do LoL foram re
 | Aurora | Q 35 (60), W/E 50 (80), R 80 (100) | 10–30 em abates por habilidade ou de inimigos com acúmulos de Abjuração Espiritual ou maldição |
 | Hwei | temas Q 30 (80–120), W 45 (90–110), E 25 (50–70), R 80 (100) | nenhuma; Luzes Vivas restaura 45–65 por acerto fortalecido |
 | Kayle | Q 30–50 (60–100), W 35–55 (70–90), E 0, R 50/25/0 (100/50/0) | nenhuma: vive de ataques básicos |
+| Veigar | Q 25 (30–50), W 45–65 (60–80), E 55–75 (70–90), R 80 (100) | 20–40 em abates por habilidade |
 
 Ajustes de horda dos magos mais novos (valores do LoL entre parênteses): Aurora Q com recarga de 6–5s (9–7), E 10–8s (15–11), R 90/80/70s (140/120/100), Feitiço Dúplice 75% em tropas (40%), os Espíritos da passiva curam 10–20 (3–20). As recargas dos temas do Hwei são 30% menores: Q 7–4,2s (10–6), W 12,6–11,2s (18–16), E 8,4–7s (12–10); Raio Cortante com raio 300 (225) e 75% em tropas e monstros (50%), Fissura Derretida 90% em tropas (60%) com lava de 6–24 (5–20), Lagoa da Reflexão cura 30% do seu Escudo.
 

@@ -50,6 +50,7 @@
 | 阿萝拉 | 法师 · 刺客 | 会飞回的诅咒、跃入灵界、带后跳的爆发，以及可从一侧传送到另一侧的交界领域 |
 | 彗 | 法师 · 辅助 | 三种主题，各含三个技能（灾、靖、悚），被第二个技能引爆的标记，以及不断扩大的绝望光环 |
 | 凯尔 | 射手 · 法师 | 在 1/6/11/16 级登神：由近战变为远程，热忱叠满后升华并发射火焰波；天界之剑、治疗、强化一击与剑雨 |
+| 维迦 | 法师 | 超凡邪力：黑暗祭祀每次击杀都让他永久变强；天降黑暗物质、眩晕牢笼与斩杀爆裂 |
 
 ## 截图
 
@@ -97,6 +98,10 @@
 |---|
 | ![凯尔：四种形态、耀焰冲击、星火符刃、火焰波与圣裁之刻对抗怪潮](docs/media/kayle.gif) |
 
+| 维迦 |
+|---|
+| ![维迦：黑暗祭祀、黑暗物质、扭曲空间与能量爆裂对抗怪潮](docs/media/veigar.gif) |
+
 | 纳什男爵（20:00） | 暂停菜单：属性、装备与鞋子 |
 |---|---|
 | ![男爵竞技场与预警攻击](docs/media/baron.gif) | ![暂停菜单：英雄的全部属性以及每件装备的属性与被动](docs/media/stats-menu.jpg) |
@@ -128,7 +133,7 @@ pnpm dev        # http://localhost:5173（在第一个界面选择英雄）
 2. 哈希列表（游戏的 `.bin` 通过 xxh64 哈希引用纹理和动画）：
    ```bash
    curl -s https://raw.communitydragon.org/data/hashes/lol/hashes.game.txt \
-     | grep -E "assets/characters/(ezreal|samira|brand|aphelios|aurelionsol|lux|teemo|ziggs|sivir|twitch|orianna|gangplank|gangplankbarrel|udyr|aurora|auroraspirits|hwei|kayle|sru_|turret|inhibitor|nexus)" > assets-raw/hashes.filtered.txt
+     | grep -E "assets/characters/(ezreal|samira|brand|aphelios|aurelionsol|lux|teemo|ziggs|sivir|twitch|orianna|gangplank|gangplankbarrel|udyr|aurora|auroraspirits|hwei|kayle|veigar|sru_|turret|inhibitor|nexus)" > assets-raw/hashes.filtered.txt
    ```
 3. 从 WAD 中提取（`tools/extract_lol.py`）并转换为 `.glb`（`tools/build_models.py`）：
    ```bash
@@ -147,6 +152,7 @@ pnpm dev        # http://localhost:5173（在第一个界面选择英雄）
    for c in aurora auroraspirits; do .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt $c assets-raw/$c "$G/Champions/Aurora.wad.client"; done
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt hwei assets-raw/hwei "$G/Champions/Hwei.wad.client"
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt kayle assets-raw/kayle "$G/Champions/Kayle.wad.client"
+   .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt veigar assets-raw/veigar "$G/Champions/Veigar.wad.client"
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt teemomushroom assets-raw/teemomushroom "$G/Champions/Teemo.wad.client"
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt lux assets-raw/lux "$G/Champions/Lux.wad.client"
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt ziggs assets-raw/ziggs "$G/Champions/Ziggs.wad.client"
@@ -173,7 +179,7 @@ pnpm dev        # http://localhost:5173（在第一个界面选择英雄）
    `pieces` 是一个有限的 `.mapgeo` v14 解析器：如果跳过或失败（格式版本不同、缺少 WAD），运行时会根据布局障碍物绘制深色方块/圆柱。不会出错。
 5. 技能特效：从皮肤的 `.bin` 读取伊泽瑞尔的粒子系统，以及它们使用的所有纹理和网格。使用第 4 步下载的哈希列表：
    ```bash
-   for c in ezreal samira brand aphelios aurelionsol lux teemo ziggs sivir twitch orianna gangplank udyr hwei kayle; do (cd tools && ../.venv-tools/bin/python build_vfx.py ../assets-raw/hashes $c ../public/assets/vfx/$c "$G"); done
+   for c in ezreal samira brand aphelios aurelionsol lux teemo ziggs sivir twitch orianna gangplank udyr hwei kayle veigar; do (cd tools && ../.venv-tools/bin/python build_vfx.py ../assets-raw/hashes $c ../public/assets/vfx/$c "$G"); done
    (cd tools && ../.venv-tools/bin/python build_vfx.py ../assets-raw/hashes aurora ../public/assets/vfx/aurora "$G" auroraspirits)  # + her spirits' own systems
    ```
    生成 `systems.json`（按 `ResourceResolver` 键索引的特效，例如 `Ezreal_Q_mis`）、`spells.json`（飞弹速度/宽度/射程）以及资源的 PNG/JSON。`tools/read_bin.py` 可以单独把任意 `.bin` 转为 JSON。发射器运行时位于 `src/particles.ts`；`src/vfx.ts` 只负责选择播放哪个系统以及在哪里播放。
@@ -333,12 +339,19 @@ pnpm dev        # http://localhost:5173（在第一个界面选择英雄）
 - **两步升级**：
   1. 按英雄联盟规则提升一个技能等级：基础技能在 1/3/5/7/9 级，R 在 6/11/16 级（厄斐琉斯：属性点，见上文）。没有可升级的技能时跳过此步。
   2. 从随机的 3 件装备中选 1 件（出装完成后改为药水）。
+- **维迦**（角色与皮肤 bin：DataValues、技能计算、弹道参数、法力、冷却与动画图；牢笼半径参考 wiki）：模型与伊泽瑞尔保持英雄联盟中的比例（SkinScale 1.85 对 1.1）。皮肤的每个玩法特效都在原版播放的位置播放：法杖的待机光芒、普攻闪光（Attack1 的动画事件；Attack2 的由技能组播放，因为 Attack2、Crit、Spell1 与 Spell4 共用一个动画）、弹道与命中、黑暗祭祀的施法闪光、弹道、命中及获得层数的击杀强化、黑暗物质的手部闪光、带友方指示器的陨石与爆炸、扭曲空间的施法、预警圈与带石柱的牢笼、能量爆裂的蓄力、施法、弹道与命中（目标达到完全斩杀时使用 "max" 版本）。
+  - **被动（超凡邪力）**：每层 1 点法术强度，无上限。黑暗祭祀击杀获得 1 层（大型小兵和野怪为 3 层）；技能每次命中精英或史诗野怪获得 1 层，击杀它们获得 5 层（原版：英雄）。
+  - **Q（黑暗祭祀）**：2200 速度的弹道（射程 990，半径 70），命中前两个敌人：80–240 +50–70%法强。
+  - **W（黑暗物质）**：施法开始 1.2秒后落在 950 内的位置（施法被打断也会落下）：240 范围内 85–305 +70–110%法强。冷却 8秒，每 50 层 ×0.9。
+  - **E（扭曲空间）**：0.5秒后在 725 内竖起持续 3秒的牢笼；触碰边缘（距中心 290–411）的敌人被眩晕 1.5–2.5秒，每次施放一次，每个敌人至多每 4.5秒一次。
+  - **R（能量爆裂）**：从 500 加速到 4000 速度的弹道，飞向 650 内的敌人：175/250/325 +65–75%法强，目标每损失 1% 生命值伤害 +1.5%（损失 66.7% 时双倍）。
+  - 非原版内容：能量爆裂可以指向任何敌人（原版：英雄）；牢笼的击倒为普通眩晕；法力值消耗按法师下调，技能击杀回复法力值（见平衡）。
 - **装备**：Data Dragon 的真实数据（属性、名称、图标），由 `tools/build_items.py` 生成到 `src/items.json`；被动在 `src/itemPassives/`。
   - 没有合成：升级时提供一件传说成装，或为已有装备提升一级，就像幸存者类游戏的武器。背包最多 6 件装备；不能丢弃。
   - 每件装备有 5 级。属性从 40%（1 级）成长到 100%（5 级）；被动在 3 级解锁，强度 60%，4 级 80%，5 级 100%。魔宗、大天使之杖和凛冬之临在 5 级获得转化后的被动（魔切、炽天使之拥、末日寒冬）。
   - 装备池：召唤师峡谷的全部传说装备，除了带主动效果的装备（中娅沙漏、幽梦之灵、九头蛇系列……）、辅助装备、重伤装备（凡性的提醒、炼金朋克链锯剑、莫雷洛秘典；荆棘之甲只保留反伤）以及需要视野或英雄护盾的被动（暗行者之爪、毒蛇之牙）。物理英雄获得攻击装备，法术英雄获得法强装备，坦克和混合装备两者都有。
   - 被动针对怪潮调整："英雄"触发改为击杀精英 / 史诗野怪；法术护盾格挡下一次受到的伤害。
-  - 每个英雄的推荐出装（OP.GG，16.21 版本）：出现概率为三倍，并标记为“推荐”。伊泽瑞尔：三相之力、魔宗、朔极之矛、赛瑞尔达的怨恨、无穷饥渴、守护天使。莎弥拉：收集者、无尽之刃、多米尼克领主的致意、不朽盾弓、饮血剑、守护天使。布兰德：黑焰火炬、瑞莱的冰晶节杖、兰德里的折磨、影焰、灭世者的死亡之帽、虚空之杖。厄斐琉斯：收集者、无尽之刃、多米尼克领主的致意、卢安娜的飓风、守护天使、饮血剑。 奥瑞利安·索尔：兰德里的折磨、瑞莱的冰晶节杖、灭世者的死亡之帽、虚空之杖、影焰、星界驱驰。 拉克丝：卢登的回声、影焰、灭世者的死亡之帽、视界专注、虚空之杖、残疫。希维尔：精华掠夺者、纳沃利迅刃、无尽之刃、多米尼克领主的致意、饮血剑、守护天使。 提莫：纳什之牙、兰德里的折磨、裂隙制造者、灭世者的死亡之帽、虚空之杖、影焰。吉格斯：卢登的回声、影焰、灭世者的死亡之帽、虚空之杖、女妖面纱、视界专注。凯尔：纳什之牙、黄昏与黎明、灭世者的死亡之帽。 图奇：破败王者之刃、鬼索的狂暴之刃、卢安娜的飓风、无尽之刃、多米尼克领主的致意、守护天使。 奥莉安娜：卢登的回声、影焰、灭世者的死亡之帽、虚空之杖、蜕生、女妖面纱。普朗克：夺萃之镰、收集者、无尽之刃、多米尼克领主的致意、不朽盾弓、守护天使。乌迪尔：三相之力、朔极之矛、斯特拉克的挑战护手、亡者的板甲、自然之力、振奋盔甲。阿萝拉：卢登的回声、影焰、灭世者的死亡之帽、虚空之杖、风暴狂涌、女妖面纱。彗：卢登的伙伴、影焰、灭世者的死亡之帽、虚空之杖、女妖面纱、视界专注。
+  - 每个英雄的推荐出装（OP.GG，16.21 版本）：出现概率为三倍，并标记为“推荐”。伊泽瑞尔：三相之力、魔宗、朔极之矛、赛瑞尔达的怨恨、无穷饥渴、守护天使。莎弥拉：收集者、无尽之刃、多米尼克领主的致意、不朽盾弓、饮血剑、守护天使。布兰德：黑焰火炬、瑞莱的冰晶节杖、兰德里的折磨、影焰、灭世者的死亡之帽、虚空之杖。厄斐琉斯：收集者、无尽之刃、多米尼克领主的致意、卢安娜的飓风、守护天使、饮血剑。 奥瑞利安·索尔：兰德里的折磨、瑞莱的冰晶节杖、灭世者的死亡之帽、虚空之杖、影焰、星界驱驰。 拉克丝：卢登的回声、影焰、灭世者的死亡之帽、视界专注、虚空之杖、残疫。希维尔：精华掠夺者、纳沃利迅刃、无尽之刃、多米尼克领主的致意、饮血剑、守护天使。 提莫：纳什之牙、兰德里的折磨、裂隙制造者、灭世者的死亡之帽、虚空之杖、影焰。吉格斯：卢登的回声、影焰、灭世者的死亡之帽、虚空之杖、女妖面纱、视界专注。凯尔：纳什之牙、黄昏与黎明、灭世者的死亡之帽。维迦：卢登的回声、风暴狂涌、灭世者的死亡之帽。 图奇：破败王者之刃、鬼索的狂暴之刃、卢安娜的飓风、无尽之刃、多米尼克领主的致意、守护天使。 奥莉安娜：卢登的回声、影焰、灭世者的死亡之帽、虚空之杖、蜕生、女妖面纱。普朗克：夺萃之镰、收集者、无尽之刃、多米尼克领主的致意、不朽盾弓、守护天使。乌迪尔：三相之力、朔极之矛、斯特拉克的挑战护手、亡者的板甲、自然之力、振奋盔甲。阿萝拉：卢登的回声、影焰、灭世者的死亡之帽、虚空之杖、风暴狂涌、女妖面纱。彗：卢登的伙伴、影焰、灭世者的死亡之帽、虚空之杖、女妖面纱、视界专注。
   - 出装完成（6 件装备均为 5 级）：升级时提供生命药水或法力药水（恢复 5% 最大值），每次击杀有 1% 概率掉落图纸（蓝色卷轴，每局 1 张），使随机一件装备变为传说（属性 +50%；该格获得动态金色光环与“传说”标签）。
   - 鞋子：六格之外的第 7 格。5:00 获得鞋子（+25 移动速度）；击杀峡谷迅捷蟹后可选择一双二级鞋（镀甲之靴带镀层：物理攻击造成的伤害降低 10%）；击杀小龙后升级为三级鞋（仅属性）。
   - 节奏：敌人一方（移动、攻击、动画、首领攻击、敌方投射物、刷怪速度）从 0:00 的 x1 逐渐加速到 5:00 的 x1.5，之后保持 x1.5。计时器、冷却、增益和英雄保持真实时间。
@@ -406,6 +419,7 @@ pnpm dev        # http://localhost:5173（在第一个界面选择英雄）
 | 阿萝拉 | Q 35（60）、W/E 50（80）、R 80（100） | 技能击杀或击杀带有驱灵奇术层数或诅咒的敌人回复 10–30 |
 | 彗 | 主题 Q 30（80–120）、W 45（90–110）、E 25（50–70）、R 80（100） | 无；宿墨每次强化命中回复 45–65 |
 | 凯尔 | Q 30–50（60–100）、W 35–55（70–90）、E 0、R 50/25/0（100/50/0） | 无：依靠普攻 |
+| 维迦 | Q 25（30–50）、W 45–65（60–80）、E 55–75（70–90）、R 80（100） | 技能击杀回复 20–40 |
 
 较新法师的怪潮调整（括号内为英雄联盟数值）：阿萝拉 Q 冷却 6–5秒（9–7），E 10–8秒（15–11），R 90/80/70秒（140/120/100），飞去来咒对小兵 75%（40%），被动灵物治疗 10–20（3–20）。彗的主题冷却缩短 30%：Q 7–4.2秒（10–6），W 12.6–11.2秒（18–16），E 8.4–7秒（12–10）；攒聚雷半径 300（225），对小兵和野怪 75%（50%），连皴山对小兵 90%（60%），熔岩 6–24（5–20），渲浓回复其护盾 30% 的生命值。
 

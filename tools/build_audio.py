@@ -41,6 +41,7 @@ UD = "Play_sfx_Udyr_Udyr"
 AU = "Play_sfx_Aurora_Aurora"
 HW = "Play_sfx_Hwei_Hwei"
 KA = "Play_sfx_Kayle_Kayle"
+VE = "Play_sfx_Veigar_Veigar"
 
 # bank path (without _events/_audio) -> {sound key: event name candidates (first match wins) or an event id}
 BANKS: dict[str, dict[str, list[str] | int]] = {
@@ -387,6 +388,26 @@ BANKS: dict[str, dict[str, list[str] | int]] = {
         "kayle_R_self": [KA + "R_hit_self"],
         "kayle_death": ["Play_sfx_Kayle_Death3D_cast"],
     },
+    SFX + "characters/veigar/skins/base/veigar_base_sfx": {
+        "veigar_auto": [VE + "BasicAttack_OnCast"],
+        "veigar_auto2": [VE + "BasicAttack2_OnCast"],
+        "veigar_crit": [VE + "CritAttack_OnCast"],
+        "veigar_auto_launch": [VE + "BasicAttack_OnMissileLaunch", VE + "BasicAttack2_OnMissileLaunch"],
+        "veigar_crit_launch": [VE + "CritAttack_OnMissileLaunch"],
+        "veigar_auto_hit": [VE + "BasicAttack_OnHit", VE + "BasicAttack2_OnHit"],
+        "veigar_crit_hit": [VE + "CritAttack_OnHit"],
+        "veigar_Q": [VE + "BalefulStrike_OnCast"],
+        "veigar_Q_launch": [VE + "BalefulStrikeMis_OnMissileLaunch"],
+        "veigar_Q_hit": [VE + "BalefulStrikeMis_OnHit"],
+        "veigar_W": [VE + "DarkMatter_OnCast"],
+        "veigar_W_hit": [VE + "DarkMatter_hit"],
+        "veigar_E": [VE + "EventHorizon_OnCast"],
+        "veigar_E_cage": [VE + "EventHorizon_buffactivate"],
+        "veigar_E_loop": [VE + "EventHorizon_loop"],
+        "veigar_R": [VE + "R_OnCast"],
+        "veigar_R_launch": [VE + "R_OnMissileLaunch"],
+        "veigar_R_hit": [VE + "R_OnHit"],
+    },
     SFX + "characters/hwei/skins/base/hwei_base_sfx": {
         "hwei_auto": [HW + "BasicAttack_OnCast"],
         "hwei_auto2": [HW + "BasicAttack2_OnCast"],
@@ -627,7 +648,7 @@ def render(txtp_path, mp3, music):
 
 def main(wwiser, out_dir, final_dir):
     final = Path(final_dir)
-    wads = [Wad(final / w) for w in ("Champions/Ezreal.wad.client", "Champions/Samira.wad.client", "Champions/Brand.wad.client", "Champions/Aphelios.wad.client", "Champions/AurelionSol.wad.client", "Champions/Lux.wad.client", "Champions/Teemo.wad.client", "Champions/Ziggs.wad.client", "Champions/Sivir.wad.client", "Champions/Twitch.wad.client", "Champions/Orianna.wad.client", "Champions/Gangplank.wad.client", "Champions/Udyr.wad.client", "Champions/Aurora.wad.client", "Champions/Hwei.wad.client", "Champions/Kayle.wad.client", "Maps/Shipping/Map11.wad.client", "Maps/Shipping/Common.wad.client")]
+    wads = [Wad(final / w) for w in ("Champions/Ezreal.wad.client", "Champions/Samira.wad.client", "Champions/Brand.wad.client", "Champions/Aphelios.wad.client", "Champions/AurelionSol.wad.client", "Champions/Lux.wad.client", "Champions/Teemo.wad.client", "Champions/Ziggs.wad.client", "Champions/Sivir.wad.client", "Champions/Twitch.wad.client", "Champions/Orianna.wad.client", "Champions/Gangplank.wad.client", "Champions/Udyr.wad.client", "Champions/Aurora.wad.client", "Champions/Hwei.wad.client", "Champions/Kayle.wad.client", "Champions/Veigar.wad.client", "Maps/Shipping/Map11.wad.client", "Maps/Shipping/Common.wad.client")]
     read = lambda p: next((d for d in (w.read(p) for w in wads) if d is not None), None)
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
