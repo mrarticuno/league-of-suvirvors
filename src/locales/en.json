@@ -699,5 +699,17 @@
  "champion.udyr.Q.desc": "Claw Stance: your next two attacks reach 50 farther and deal 3-8% (+3.5% per 100 bonus AD) of the target's max Health as physical damage. For 4s you gain Attack Speed and your attacks deal the bonus physical damage shown (+20% bonus AD +0.8-1.8% bonus Health). Awaken: 20-70% more Attack Speed, the empowered attacks deal 2-4% (+5% per 100 bonus AD) more max Health, and your next two attacks call lightning 6 times over 1s for 1.5-3% (+0.6% per 100 AP) of max Health magic damage, chaining between up to 3 nearby enemies.",
  "champion.udyr.W.desc": "Mantle Stance: your next two attacks life steal 15-20% and heal 1.2% max Health (+8% AP) on hit (60% against minions). You gain the shield shown (+2-3.5% max Health +40% AP +50% bonus AD) for 4s. Awaken: a second shield of 20-150 (by level) + the first +65% AP +8% max Health +100% bonus AD, half of it healed over 4s, and the empowered attacks heal twice as much.",
  "champion.udyr.E.desc": "Stampede Stance: your next two attacks pounce onto the target and stun it for 0.75s (once per target every 6-4s). For 4s you pass through enemies and gain the Move Speed shown (+5% per 100 bonus AD), decaying to 30% over 1.5s. Awaken: +75 attack range, 30-40% (by level) more Move Speed and immunity to crowd control for 1.5s.",
- "champion.udyr.R.desc": "Storm Stance: your next two attacks deal 10-40 (by level) +35% AP magic damage to enemies around the target. A blizzard follows you for 4s, dealing the magic damage shown every 0.5s to enemies within 370 and slowing them (minions take 50-80%). Awaken: the blizzard becomes a glacial storm that hunts the nearest enemy, adding 1-1.75% (+0.44% per 100 AP) max Health per tick and 5% more slow; the empowered attacks hit every enemy inside it."
+ "champion.udyr.R.desc": "Storm Stance: your next two attacks deal 10-40 (by level) +35% AP magic damage to enemies around the target. A blizzard follows you for 4s, dealing the magic damage shown every 0.5s to enemies within 370 and slowing them (minions take 50-80%). Awaken: the blizzard becomes a glacial storm that hunts the nearest enemy, adding 1-1.75% (+0.44% per 100 AP) max Health per tick and 5% more slow; the empowered attacks hit every enemy inside it.",
+ "champion.aurora.name": "Aurora",
+ "champion.aurora.title": "the Witch Between Worlds",
+ "champion.aurora.passive": "Spirit Abjuration",
+ "champion.aurora.Q": "Twofold Hex",
+ "champion.aurora.W": "Across the Veil",
+ "champion.aurora.E": "The Weirding",
+ "champion.aurora.R": "Between Worlds",
+ "champion.aurora.hud": "Spirits: {n}/{max}",
+ "champion.aurora.Q.desc": "Fires cursed energy in a direction, dealing magic damage to enemies hit and cursing them for 3.5s. Recast (automatic when the curse ends): the curses fly back to Aurora, dealing magic damage to every enemy they pass through, up to 50% more by missing Health (40% against minions, 50% against monsters, 20% after the first bolt).",
+ "champion.aurora.W.desc": "Hops 300 units in a direction and enters Realm Hopper for 4s: walks through units and gains the Move Speed shown, doubled for the first 1-1.6s (instead of League's invisibility). Killing an elite or epic monster resets the cooldown.",
+ "champion.aurora.E.desc": "Blasts spirit magic in an 825-unit line, dealing magic damage and slowing enemies hit by 80%, decaying over 1s. Aurora then hops 250 units backward.",
+ "champion.aurora.R.desc": "Leaps 250 units, then a shockwave expands ahead of her, dealing magic damage and slowing enemies by 30% for 2s. The rift stays for 2.25-3.25s and grants Realm Hopper for 3.25-4.25s: walking into its edge jumps Aurora across, and enemies crossing it are slowed by 50% for 1.5-2s. Recast after 1s to close it."
 }

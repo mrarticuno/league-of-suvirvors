@@ -38,6 +38,7 @@ GP = "Play_sfx_Gangplank_Gangplank"
 OR = "Play_sfx_Orianna_Orianna"
 TW = "Play_sfx_Twitch_Twitch"
 UD = "Play_sfx_Udyr_Udyr"
+AU = "Play_sfx_Aurora_Aurora"
 
 # bank path (without _events/_audio) -> {sound key: event name candidates (first match wins) or an event id}
 BANKS: dict[str, dict[str, list[str] | int]] = {
@@ -304,6 +305,45 @@ BANKS: dict[str, dict[str, list[str] | int]] = {
         "lux_R_end": [LX + "RBeam_beamend"],
         "lux_death": ["Play_sfx_Lux_Death3D_cast"],
     },
+    SFX + "characters/aurora/skins/base/aurora_base_sfx": {
+        "aurora_auto": [AU + "BasicAttack_OnCast"],
+        "aurora_auto2": [AU + "BasicAttack2_OnCast"],
+        "aurora_crit": [AU + "CritAttack_OnCast"],
+        "aurora_auto_launch": [AU + "BasicAttack_OnMissileLaunch"],
+        "aurora_auto2_launch": [AU + "BasicAttack2_OnMissileLaunch"],
+        "aurora_crit_launch": [AU + "CritAttack_OnMissileLaunch"],
+        "aurora_auto_hit": [AU + "BasicAttack_OnHit", AU + "BasicAttack2_OnHit"],
+        "aurora_crit_hit": [AU + "CritAttack_OnHit"],
+        "aurora_P_debuff": [AU + "PDebuff_buffactivate"],
+        "aurora_P_spirit": [AU + "PSpiritMinion_buffactivate"],
+        "aurora_P_spirit_end": [AU + "PSpiritMinion_buffdeactivate"],
+        "aurora_P_mode": [AU + "PSpiritmode_buffactivate"],
+        "aurora_P_mode_end": [AU + "PSpiritmode_buffdeactivate"],
+        "aurora_Q": [AU + "Q_OnCast"],
+        "aurora_Q_launch": [AU + "Q_OnMissileLaunch"],
+        "aurora_Q_hit": [AU + "Q_OnHit"],
+        "aurora_Q_mark": [AU + "Q_mark"],
+        "aurora_Q_recast": [AU + "QRecast_OnCast"],
+        "aurora_Q_return": [AU + "QReturnMissile_OnMissileLaunch"],
+        "aurora_Q_return_hit": [AU + "QReturnMissile_buffcast"],
+        "aurora_Q_return_end": [AU + "QReturnMissile_buffdeactivate"],
+        "aurora_W": [AU + "W_OnCast"],
+        "aurora_W_portal": [AU + "W_portal_buffactivate"],
+        "aurora_W_invis": [AU + "WInvis_OnBuffActivate"],
+        "aurora_W_invis_end": [AU + "WInvis_OnBuffDeactivate"],
+        "aurora_E": [AU + "E_OnCast"],
+        "aurora_E_launch": [AU + "E_missilelaunch"],
+        "aurora_E_hit": [AU + "E_hit"],
+        "aurora_R": [AU + "R_OnCast"],
+        "aurora_R_buff": [AU + "R_buffactivate"],
+        "aurora_R_hit": [AU + "R_hit"],
+        "aurora_R_door": [AU + "R_portal_door"],
+        "aurora_R_loop": [AU + "R_portal_loop"],
+        "aurora_R_teleport": [AU + "R_teleport_buffactivate"],
+        "aurora_R_exit": [AU + "R_exit_minion_buffactivate"],
+        "aurora_R_exit_champ": [AU + "R_exit_champ_buffactivate"],
+        "aurora_death": ["Play_sfx_Aurora_Death3D_buffactivate"],
+    },
     SFX + "characters/udyr/skins/base/udyr_base_sfx": {
         "udyr_auto": [UD + "BasicAttack_OnCast"],
         "udyr_auto2": [UD + "BasicAttack2_OnCast"],
@@ -490,7 +530,7 @@ def render(txtp_path, mp3, music):
 
 def main(wwiser, out_dir, final_dir):
     final = Path(final_dir)
-    wads = [Wad(final / w) for w in ("Champions/Ezreal.wad.client", "Champions/Samira.wad.client", "Champions/Brand.wad.client", "Champions/Aphelios.wad.client", "Champions/AurelionSol.wad.client", "Champions/Lux.wad.client", "Champions/Teemo.wad.client", "Champions/Ziggs.wad.client", "Champions/Sivir.wad.client", "Champions/Twitch.wad.client", "Champions/Orianna.wad.client", "Champions/Gangplank.wad.client", "Champions/Udyr.wad.client", "Maps/Shipping/Map11.wad.client", "Maps/Shipping/Common.wad.client")]
+    wads = [Wad(final / w) for w in ("Champions/Ezreal.wad.client", "Champions/Samira.wad.client", "Champions/Brand.wad.client", "Champions/Aphelios.wad.client", "Champions/AurelionSol.wad.client", "Champions/Lux.wad.client", "Champions/Teemo.wad.client", "Champions/Ziggs.wad.client", "Champions/Sivir.wad.client", "Champions/Twitch.wad.client", "Champions/Orianna.wad.client", "Champions/Gangplank.wad.client", "Champions/Udyr.wad.client", "Champions/Aurora.wad.client", "Maps/Shipping/Map11.wad.client", "Maps/Shipping/Common.wad.client")]
     read = lambda p: next((d for d in (w.read(p) for w in wads) if d is not None), None)
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)

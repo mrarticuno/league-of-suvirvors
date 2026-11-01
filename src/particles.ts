@@ -20,7 +20,7 @@ function assetNames(v: Bin, out: Set<string>) {
 }
 
 /** A particle event of an animation clip (tools/build_vfx.py events.json): `key` at each bone, `t` seconds in. */
-export interface ClipEvent { t: number; key: string; bones: string[] }
+export interface ClipEvent { t: number; key: string; bones: string[]; end?: number }
 let clipEvents: Record<string, ClipEvent[]> = {};
 /** The loaded champion's clip particle events, by clip name, in time order. */
 export const animEvents = () => clipEvents;

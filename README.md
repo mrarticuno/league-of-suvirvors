@@ -47,6 +47,7 @@ Twelve playable champions, each with a full kit ported from LoL (details in [Imp
 | Twitch | Marksman · Assassin | Deadly Venom stacks, a venom cask pool, Contaminate and piercing Spray and Pray bolts |
 | Gangplank | Fighter | Powder kegs chained into explosions, a shot that blows them, a cleanse and a cannon barrage with upgrades |
 | Udyr | Fighter · Tank | Four stances instead of an ultimate, each empowering two attacks; Awaken one of them every so often |
+| Aurora | Mage · Assassin | Curses that fly back, a hop into the spirit realm, a recoiling blast and a rift she jumps across |
 
 ## Gallery
 
@@ -82,6 +83,10 @@ Twelve playable champions, each with a full kit ported from LoL (details in [Imp
 |---|---|
 | ![Gangplank: a Powder Keg chain, Parrrley on a keg, Remove Scurvy and Cannon Barrage against a horde](docs/media/gangplank.gif) | ![Udyr: the four stances, an Awakened Wilding Claw's lightning and the Wingborne Storm against a horde](docs/media/udyr.gif) |
 
+| Aurora |
+|---|
+| ![Aurora: Twofold Hex and its returning curses, The Weirding, Across the Veil and the Between Worlds rift against a horde](docs/media/aurora.gif) |
+
 | Baron Nashor (20:00) | Pause menu: stats, items and boots |
 |---|---|
 | ![Baron arena with telegraphed attacks](docs/media/baron.gif) | ![Pause menu with every champion stat and each item's stats and passive](docs/media/stats-menu.jpg) |
@@ -113,7 +118,7 @@ The models are **not in the repository** (they are Riot assets). Generate them l
 2. Hash list (the game's `.bin` files reference textures/animations by xxh64 hash):
    ```bash
    curl -s https://raw.communitydragon.org/data/hashes/lol/hashes.game.txt \
-     | grep -E "assets/characters/(ezreal|samira|brand|aphelios|aurelionsol|lux|teemo|ziggs|sivir|twitch|orianna|gangplank|gangplankbarrel|udyr|sru_|turret|inhibitor|nexus)" > assets-raw/hashes.filtered.txt
+     | grep -E "assets/characters/(ezreal|samira|brand|aphelios|aurelionsol|lux|teemo|ziggs|sivir|twitch|orianna|gangplank|gangplankbarrel|udyr|aurora|auroraspirits|sru_|turret|inhibitor|nexus)" > assets-raw/hashes.filtered.txt
    ```
 3. Extract from the WADs (`tools/extract_lol.py`) and convert to `.glb` (`tools/build_models.py`):
    ```bash
@@ -129,6 +134,7 @@ The models are **not in the repository** (they are Riot assets). Generate them l
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt gangplank assets-raw/gangplank "$G/Champions/Gangplank.wad.client"
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt gangplankbarrel assets-raw/gangplankbarrel "$G/Champions/Gangplank.wad.client"
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt udyr assets-raw/udyr "$G/Champions/Udyr.wad.client"
+   for c in aurora auroraspirits; do .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt $c assets-raw/$c "$G/Champions/Aurora.wad.client"; done
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt teemomushroom assets-raw/teemomushroom "$G/Champions/Teemo.wad.client"
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt lux assets-raw/lux "$G/Champions/Lux.wad.client"
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt ziggs assets-raw/ziggs "$G/Champions/Ziggs.wad.client"
@@ -156,6 +162,7 @@ The models are **not in the repository** (they are Riot assets). Generate them l
 5. Ability VFX: Ezreal's particle systems read from the skin `.bin`, with every texture and mesh they use. Uses the hash lists downloaded in step 4:
    ```bash
    for c in ezreal samira brand aphelios aurelionsol lux teemo ziggs sivir twitch orianna gangplank udyr; do (cd tools && ../.venv-tools/bin/python build_vfx.py ../assets-raw/hashes $c ../public/assets/vfx/$c "$G"); done
+   (cd tools && ../.venv-tools/bin/python build_vfx.py ../assets-raw/hashes aurora ../public/assets/vfx/aurora "$G" auroraspirits)  # + her spirits' own systems
    ```
    Generates `systems.json` (effects indexed by `ResourceResolver` keys, e.g. `Ezreal_Q_mis`), `spells.json` (missile speed/width/range) and the asset PNG/JSON files. `tools/read_bin.py` alone converts any `.bin` into JSON. The emitter runtime lives in `src/particles.ts`; `src/vfx.ts` only picks which system to play and where.
 
@@ -289,6 +296,13 @@ WASD is not used because it clashes with Q/W/E.
   - **E (Blazing Stampede)**: the empowered attacks pounce onto the target (a dash over the gap) and stun it 0.75 s, once per target every 6–4 s (a timer ring under it); for 4 s Udyr is ghosted and gains 25–55% (+5% per 100 bonus AD) Move Speed, decaying to 30% over 1.5 s. Awaken: +75 attack range, 30–40% (level) +10% per 100 bonus AD more Move Speed and 1.5 s of crowd-control immunity (`unstoppable` hook).
   - **R (Wingborne Storm)**: the empowered attacks deal 10–40 (level) +35% AP magic damage within 300 of the target; a blizzard follows Udyr for 4 s, 8 ticks of 10–50 +17.5% AP magic damage within 370 and a 15–30% slow for 2 s (minions take 50/60/70/80% by level 1/6/11/16). Awaken: the blizzard becomes a glacial storm that drifts (109.5–250 units/s by level) after the nearest enemy within 1200, else back to Udyr, adding 1–1.75% (+0.44% per 100 AP) of max Health per tick (capped 10–50 against monsters) and 5% more slow; the empowered attacks then burst over every enemy inside the storm.
   - Not from LoL: attack range 250 (125); stance-less Udyr animates as Mantle (the client binds Idle1/Attack1 to the spell2 clips too); "champions" are elite and epic monsters; the stance abilities rank 1/3/5/7/9/11 (six ranks each, no ultimate); mana costs lowered like the mages' (Q 15, W/E/R 28–18; LoL 20 and 40–23) and kills by stance effects (empowered attacks, lightning, the storm) restore 10–30 mana, once per second against minions; the Mantle idle post effect (chromatic aberration) is left out.
+- **Aurora** (the DataValues of her spell bins and the LoL wiki V26.19, whose E damage and R durations are newer than the installed client): 550 range, 1750 u/s bolts, model at League's size next to Ezreal (SkinScale 0.95 against 1.1, head at 158). Every gameplay particle system of the skin is used: the wand glows of idle, run and attack clips, the basic attack bolt and impact, Twofold Hex's bolt, impact, curses (champion and minion versions), return bolt, its hits and the catch, the W portal, jump and land dust and trail, the E wand cast, blast and impacts (champion and minion versions), the R wand, body and beam casts, expanding shockwave, rift, its close, impacts, the border's travel start, traveller and end, the passive ring, burst and the spirits (the AuroraSpirits character of her WAD, with its own idle overlay and the blue, purple and red spirit systems).
+  - **Passive (Spirit Abjuration)**: damaging basic attacks and abilities apply a stack for 4 s (up to 3); the third consumes them for 1% (+2.7% per 100 AP) max Health magic damage, capped at 100–270 (level) against monsters, and frees a Spirit that follows her for 4 s (up to 4, a new one refreshes all), each healing 3–20 (level) + 2% AP per second.
+  - **Q (Twofold Hex)**: a 1600 u/s bolt (900 range, 180 wide, piercing) deals 45–145 + 40% AP and curses for 3.5 s. Recast after 0.1 s, or automatically when the first curse ends: each curse flies back to Aurora (2000 u/s) dealing the same damage to everything it passes, +0–50% by missing Health, 40% against minions and 50% against monsters, 20% on bolts after an enemy's first.
+  - **W (Across the Veil)**: a 300-unit hop through a portal, then 4 s of Realm Hopper: ghosted (through units) and 20–40% Move Speed.
+  - **E (The Weirding)**: after 0.35 s, an 825 × 175 blast deals 80–240 + 70% AP and slows 80% decaying over 1 s; she recoils 250 at 150 + 200% Move Speed.
+  - **R (Between Worlds)**: a 250 leap over 0.4 s, then a shockwave expanding over 0.75 s to a 350-radius rift centred 425 ahead of where she cast: 175/275/375 + 70% AP and a 30% slow for 2 s. The rift lasts 2.25/2.75/3.25 s and grants Realm Hopper for 3.25/3.75/4.25 s; Aurora walking into its edge (from either side) dashes across it in 0.4 s, enemies crossing it are slowed 50% for 1.5–2 s; recast after 1 s closes it.
+  - Not from LoL: no invisibility: Across the Veil doubles Realm Hopper's Move Speed (40–80%) for what would be the invisibility (1–1.6 s); "champions" are elite and epic monsters (they free a Spirit on every proc, take full recast damage, reset W on kill), smaller enemies free one at most every 5 s; the border dash is not untargetable; the cast reticle (`Aurora_R_Indicator_Circle_Self`), the invisibility's screen tint (`Aurora_W_CameraBoundVFX`) and the spirits' fresnel material are left out; mana costs lowered like the mages' (Q 35, W/E 50, R 80) and kills by an ability or of a stacked/cursed enemy restore 10–30 mana.
 - **Two-step level-up**:
   1. One ability rank, by LoL's rule: basic abilities at levels 1/3/5/7/9, R at levels 6/11/16 (Aphelios: stat points, see above). The step is skipped when no rank is available.
   2. One item out of 3 rolled (or a potion, once the build is complete).
@@ -297,7 +311,7 @@ WASD is not used because it clashes with Q/W/E.
   - Every item has 5 levels. Stats grow from 40% (level 1) to 100% (level 5); the passive unlocks at level 3 at 60% strength, 80% at level 4, 100% at level 5. Manamune, Archangel's Staff and Winter's Approach gain their transformed passive (Muramana, Seraph's Embrace, Fimbulwinter) at level 5.
   - Pool: every Summoner's Rift legendary except items with an active (Zhonya's, Youmuu's, the Hydras...), support items, anti-heal items (Mortal Reminder, Chempunk, Morellonomicon; Thornmail keeps only its reflect) and passives that need vision or champion shields (Umbral Glaive, Serpent's Fang). AD champions get attack items, AP champions ability power items, both get tanks and hybrids.
   - Passives adapted to hordes: "champion" triggers become elite/epic monster kills; spell shields block the next damage taken.
-  - Recommended build per champion (OP.GG, patch 16.21): offered three times as often and tagged "Recommended". Ezreal: Trinity Force, Manamune, Spear of Shojin, Serylda's Grudge, Endless Hunger, Guardian Angel. Samira: The Collector, Infinity Edge, Lord Dominik's Regards, Immortal Shieldbow, Bloodthirster, Guardian Angel. Brand: Blackfire Torch, Rylai's, Liandry's, Shadowflame, Rabadon's, Void Staff. Aphelios: The Collector, Infinity Edge, Lord Dominik's Regards, Runaan's Hurricane, Guardian Angel, Bloodthirster. Aurelion Sol: Liandry's, Rylai's, Rabadon's, Void Staff, Shadowflame, Cosmic Drive. Teemo: Nashor's Tooth, Liandry's Torment, Riftmaker, Rabadon's Deathcap, Void Staff, Shadowflame. Lux: Luden's Echo, Shadowflame, Rabadon's, Horizon Focus, Void Staff, Malignance. Ziggs: Luden's Echo, Shadowflame, Rabadon's Deathcap, Void Staff, Banshee's Veil, Horizon Focus. Sivir: Essence Reaver, Navori Flickerblade, Infinity Edge, Lord Dominik's Regards, Bloodthirster, Guardian Angel. Twitch: Blade of the Ruined King, Guinsoo's Rageblade, Runaan's Hurricane, Infinity Edge, Lord Dominik's Regards, Guardian Angel. Orianna: Luden's Echo, Shadowflame, Rabadon's Deathcap, Void Staff, Cryptbloom, Banshee's Veil. Gangplank: Essence Reaver, The Collector, Infinity Edge, Lord Dominik's Regards, Immortal Shieldbow, Guardian Angel. Udyr: Trinity Force, Spear of Shojin, Sterak's Gage, Dead Man's Plate, Force of Nature, Spirit Visage.
+  - Recommended build per champion (OP.GG, patch 16.21): offered three times as often and tagged "Recommended". Ezreal: Trinity Force, Manamune, Spear of Shojin, Serylda's Grudge, Endless Hunger, Guardian Angel. Samira: The Collector, Infinity Edge, Lord Dominik's Regards, Immortal Shieldbow, Bloodthirster, Guardian Angel. Brand: Blackfire Torch, Rylai's, Liandry's, Shadowflame, Rabadon's, Void Staff. Aphelios: The Collector, Infinity Edge, Lord Dominik's Regards, Runaan's Hurricane, Guardian Angel, Bloodthirster. Aurelion Sol: Liandry's, Rylai's, Rabadon's, Void Staff, Shadowflame, Cosmic Drive. Teemo: Nashor's Tooth, Liandry's Torment, Riftmaker, Rabadon's Deathcap, Void Staff, Shadowflame. Lux: Luden's Echo, Shadowflame, Rabadon's, Horizon Focus, Void Staff, Malignance. Ziggs: Luden's Echo, Shadowflame, Rabadon's Deathcap, Void Staff, Banshee's Veil, Horizon Focus. Sivir: Essence Reaver, Navori Flickerblade, Infinity Edge, Lord Dominik's Regards, Bloodthirster, Guardian Angel. Twitch: Blade of the Ruined King, Guinsoo's Rageblade, Runaan's Hurricane, Infinity Edge, Lord Dominik's Regards, Guardian Angel. Orianna: Luden's Echo, Shadowflame, Rabadon's Deathcap, Void Staff, Cryptbloom, Banshee's Veil. Gangplank: Essence Reaver, The Collector, Infinity Edge, Lord Dominik's Regards, Immortal Shieldbow, Guardian Angel. Udyr: Trinity Force, Spear of Shojin, Sterak's Gage, Dead Man's Plate, Force of Nature, Spirit Visage. Aurora: Luden's Echo, Shadowflame, Rabadon's Deathcap, Void Staff, Stormsurge, Banshee's Veil.
   - Complete build (6 items at level 5): level-ups offer a Health or Mana Potion (5% of max), and each kill has a 1% chance to drop a blueprint (blue scroll, 1 per run) that makes a random item Legendary (+50% stats; its slot gets an animated gold ring and a "Legendary" ribbon).
   - Boots: a 7th slot outside the six. Boots (+25 Move Speed) at 5:00; killing the Rift Scuttler offers a pick of Berserker's Greaves, Boots of Swiftness, Sorcerer's Shoes, Plated Steelcaps (Plating: physical hits deal 10% less), Mercury's Treads or Ionian Boots of Lucidity; killing the dragon turns them into their tier 3 (Gunmetal Greaves, Swiftmarch, Spellslinger's Shoes, Armored Advance, Chainlaced Crushers, Crimson Lucidity: stats only).
   - Pace: the enemy side (movement, attacks, animations, boss attacks, enemy projectiles, spawn rate) speeds up from x1 at 0:00 to x1.5 at 5:00, then stays at x1.5. The clock, cooldowns, buffs and the champion keep real time.
@@ -362,6 +376,7 @@ Mages cast nonstop against hordes, so their LoL mana costs are lowered and their
 | Twitch | LoL's except E 40–60 (50–90): Q 40, W 70, R 100; he lives off basic attacks | none |
 | Gangplank | Q 30–18 (50–30), W 40–70 (60–100), E charges, R 80 (100) | 10–30 on kills by Parrrley or a keg |
 | Udyr | Q 15 (20), W/E/R 28–18 (40–23) | 10–30 on kills by empowered attacks, lightning or the storm |
+| Aurora | Q 35 (60), W/E 50 (80), R 80 (100) | 10–30 on kills by an ability or of an enemy with Spirit Abjuration stacks or a curse |
 
 ## Architecture (where to add content)
 
