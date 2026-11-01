@@ -2,6 +2,7 @@
 // legendary or one more level for an owned one, like the weapons of a survivors game. An item's stats and passive
 // start capped and grow with its level (STAT_SCALE, PASSIVE_POWER) up to MAX_LEVEL.
 import { t, type Key } from './i18n';
+import champData from './championItems.json';
 import data from './items.json';
 
 export interface ItemStats {
@@ -9,7 +10,6 @@ export interface ItemStats {
   lifesteal?: number; omnivamp?: number; ah?: number; armorPen?: number; lethality?: number; magicPen?: number; magicPenFlat?: number;
   critDamage?: number; tenacity?: number; ms?: number; // ms: flat Move Speed (boots)
 }
-export type ItemPool = 'ad' | 'ap';
 /** An item's lines: level-up offers follow the types of the items the player picked (rollOffers). */
 export type ItemType = 'ad' | 'ap' | 'tank';
 export const ITEM_TYPES: readonly ItemType[] = ['ad', 'ap', 'tank'];
@@ -17,7 +17,6 @@ export interface Item {
   id: string;
   name: string;
   stats: ItemStats;
-  pools: ItemPool[]; // champions it is offered to (ChampionDef.itemPool)
   types: ItemType[]; // in ITEM_TYPES order; hybrids have several
 }
 
@@ -27,19 +26,13 @@ const TANK_STATS: (keyof ItemStats)[] = ['hp', 'armor', 'mr'];
 const TYPE_STATS: Record<ItemType, (keyof ItemStats)[]> = { ad: AD_STATS, ap: AP_STATS, tank: TANK_STATS };
 /** AD: an attack stat; AP: an ability power stat; Tank: any defensive stat. */
 export const typesOf = (s: ItemStats): ItemType[] => ITEM_TYPES.filter((t) => TYPE_STATS[t].some((k) => s[k]));
-/** AD champions get items with an attack stat, AP ones items with AP; hybrids and items with neither (tanks) go to both. */
-function poolsOf(s: ItemStats): ItemPool[] {
-  const ad = AD_STATS.some((k) => s[k]), ap = AP_STATS.some((k) => s[k]);
-  return [...(ad || !ap ? ['ad' as const] : []), ...(ap || !ad ? ['ap' as const] : [])];
-}
-
 // names live in src/locales (`item.<id>`, written by tools/build_items.py)
 export const VAMP_MULT = 0.1; // item Life Steal / Omnivamp sustain too much against hordes: 10% in LoL gives 1% here
 const toItems = (src: Record<string, { stats: ItemStats }>): Record<string, Item> => Object.fromEntries(Object.entries(src).map(([id, it]) => {
   const stats: ItemStats = { ...it.stats };
   if (stats.lifesteal) stats.lifesteal *= VAMP_MULT;
   if (stats.omnivamp) stats.omnivamp *= VAMP_MULT;
-  return [id, { id, stats, pools: poolsOf(stats), types: typesOf(stats), name: t(`item.${id}` as Key) }];
+  return [id, { id, stats, types: typesOf(stats), name: t(`item.${id}` as Key) }];
 }));
 export const ITEMS = toItems(data.items);
 
@@ -71,26 +64,76 @@ export const buildComplete = (slots: Slot[]) => slots.length === MAX_ITEMS && sl
 /** A level-up offer: a new item, or the next level of owned slot `slot`. */
 export interface Offer { id: string; slot: number; kind: 'new' | 'level' }
 
+/** A champion's items (src/championItems.json): [id, popularity] by popularity, and the most popular core build. */
+export interface ChampItems { items: readonly (readonly [string, number])[]; core: readonly string[] }
+export const CHAMP_ITEMS = champData.champions as Record<string, ChampItems>;
+/** The player still follows the core: every owned item is in it. */
+export const onCore = (slots: Slot[], core: readonly string[]) => slots.every((s) => core.includes(s.id));
+
+type Weighted = { w: number };
+/** Removes and returns one entry drawn with probability proportional to `w`. */
+function draw<T extends Weighted>(cands: T[]): T {
+  let r = Math.random() * cands.reduce((a, c) => a + c.w, 0);
+  const i = Math.max(0, cands.findIndex((c) => (r -= c.w) < 0));
+  return cands.splice(i, 1)[0];
+}
+const strip = ({ w: _, ...o }: Offer & Weighted): Offer => o;
+
 /**
- * Up to `count` distinct offers drawn at random: levels for owned items below MAX_LEVEL and, while a slot is free,
- * new items of the champion's pool. Items of the recommended `build` are three times as likely, owned ones twice.
+ * Up to `count` distinct offers: levels for owned items below MAX_LEVEL and, while a slot is free, new items of the
+ * champion's list. The first offer has one AD, one AP and one Tank item (the first core item among them). Later new
+ * items follow the types the player owns, in proportion (a type never picked is not offered), weighted by popularity;
+ * when those types run out, any type. After a decline (`declined`) one card is of a type the player never picked.
+ * Core items are three times as likely while the player follows the core.
  */
-export function rollOffers(slots: Slot[], pool: ItemPool, build: readonly string[] = [], count = 3): Offer[] {
-  const cands: (Offer & { w: number })[] = slots.flatMap((s, slot) => (s.level < MAX_LEVEL ? [{ id: s.id, slot, kind: 'level' as const, w: 2 }] : []));
-  if (slots.length < MAX_ITEMS) {
-    for (const it of Object.values(ITEMS)) {
-      if (it.pools.includes(pool) && !slots.some((s) => s.id === it.id)) cands.push({ id: it.id, slot: slots.length, kind: 'new', w: 1 });
+export function rollOffers(slots: Slot[], champ: ChampItems, declined = false, count = 3): Offer[] {
+  const free = slots.length < MAX_ITEMS;
+  const pop = new Map(champ.items.map(([id, p]) => [id, Math.max(p, 0.001)]));
+  const cand = free ? champ.items.map(([id]) => id).filter((id) => ITEMS[id] && !slots.some((s) => s.id === id)) : [];
+  const fresh = (id: string, w: number) => ({ id, slot: slots.length, kind: 'new' as const, w });
+  if (!slots.length) {
+    const out: string[] = [];
+    const core0 = champ.core.find((id) => cand.includes(id));
+    for (const t of ITEM_TYPES) {
+      if (out.length >= count) break;
+      if (core0 && !out.includes(core0) && ITEMS[core0].types.includes(t)) { out.push(core0); continue; }
+      const left = cand.filter((id) => !out.includes(id));
+      const typed = left.filter((id) => ITEMS[id].types.includes(t));
+      if (typed.length) out.push(draw(typed.map((id) => fresh(id, pop.get(id)!))).id);
+      else if (left.length) out.push(left[0]); // champ.items is by popularity
+    }
+    return out.map((id) => strip(fresh(id, 0)));
+  }
+  const owned = Object.fromEntries(ITEM_TYPES.map((t) => [t, slots.filter((s) => ITEMS[s.id].types.includes(t)).length])) as Record<ItemType, number>;
+  const ofType = (t: ItemType) => cand.filter((id) => ITEMS[id].types.includes(t));
+  let types = ITEM_TYPES.filter((t) => owned[t] > 0 && ofType(t).length);
+  if (!types.length) types = ITEM_TYPES.filter((t) => ofType(t).length); // the picked lines ran out
+  const total = types.reduce((a, t) => a + owned[t], 0);
+  const share = (t: ItemType) => (total ? owned[t] / total : 1 / types.length);
+  const typePop = Object.fromEntries(types.map((t) => [t, ofType(t).reduce((a, id) => a + pop.get(id)!, 0)]));
+  const news = cand.filter((id) => ITEMS[id].types.some((t) => types.includes(t)));
+  const cands: (Offer & Weighted)[] = slots.flatMap((s, slot) => (s.level < MAX_LEVEL ? [{ id: s.id, slot, kind: 'level' as const, w: 2 }] : []));
+  // new-item weights sum to their count, keeping the level / new balance of one weight per item
+  for (const id of news) {
+    cands.push(fresh(id, news.length * ITEMS[id].types.filter((t) => types.includes(t)).reduce((a, t) => a + share(t) * pop.get(id)! / typePop[t], 0)));
+  }
+  if (onCore(slots, champ.core)) for (const c of cands) if (champ.core.includes(c.id)) c.w *= 3;
+  const out: (Offer & Weighted)[] = [];
+  while (out.length < count && cands.length) out.push(draw(cands));
+  if (declined) {
+    const zero = ITEM_TYPES.filter((t) => !owned[t]);
+    const left = cand.filter((id) => !out.some((o) => o.id === id) && ITEMS[id].types.some((t) => zero.includes(t)));
+    const pure = left.filter((id) => ITEMS[id].types.every((t) => zero.includes(t)));
+    const pick = (pure.length ? pure : left).map((id) => fresh(id, pop.get(id)!));
+    if (pick.length) {
+      const o = draw(pick);
+      const at = out.map((x) => x.kind).lastIndexOf('new');
+      if (at >= 0) out[at] = o;
+      else if (out.length >= count) out[out.length - 1] = o;
+      else out.push(o);
     }
   }
-  for (const c of cands) if (build.includes(c.id)) c.w *= 3;
-  const out: Offer[] = [];
-  while (out.length < count && cands.length) {
-    let r = Math.random() * cands.reduce((a, c) => a + c.w, 0);
-    const i = Math.max(0, cands.findIndex((c) => (r -= c.w) < 0));
-    const { w: _, ...o } = cands.splice(i, 1)[0];
-    out.push(o);
-  }
-  return out;
+  return out.map(strip);
 }
 
 /** Recommendation score (higher is better): items of the build first, levelling them before starting new ones. */
