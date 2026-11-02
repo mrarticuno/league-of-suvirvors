@@ -193,6 +193,16 @@
       #oh-shield { background: #e8e8e8; }
       #oh-ticks { right: 0; background: linear-gradient(90deg, transparent calc(100% - 1px), rgba(0, 0, 0, 0.7) 0) repeat-x; }
       #oh-mana { background: linear-gradient(#5aa7ff, #2563c9); }
+      .kit-bar { position: absolute; left: 0; top: 0; display: flex; align-items: center; gap: 3px; padding: 2px; background: #05080f; border: 1px solid #000; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.8); }
+      .kit-bar span { font: 700 9px var(--ui); color: #f2c94c; letter-spacing: -1px; }
+      .kit-bar span:empty { display: none; }
+      .kit-bar div { position: relative; width: 46px; height: 5px; background: #1b1b1b; overflow: hidden; }
+      .kit-bar i { position: absolute; top: 0; bottom: 0; left: 0; background: linear-gradient(#7fd8ff, #2b8ad6); }
+      .kit-bar.ready i { background: linear-gradient(#fff3a8, #f2b630); box-shadow: 0 0 6px #ffd65a; }
+      .kit-bar.ready { border-color: #f2b630; }
+      .kit-bar.dim { opacity: 0.45; }
+      .kit-bar.hover { border-color: #7fd8ff; box-shadow: 0 0 8px #7fd8ff; }
+      .kit-bar em { position: absolute; bottom: 100%; left: 50%; transform: translate(-50%, -3px); font: 700 11px var(--ui); font-style: normal; color: #fff; text-shadow: 0 1px 0 #000, 0 0 4px #000; white-space: nowrap; }
       .floater { position: absolute; left: 0; top: 0; font: 700 17px var(--ui); text-shadow: 0 2px 0 #000, 0 0 6px rgba(0, 0, 0, 0.8); white-space: nowrap; }
       .floater.physical { color: #fff; }
       .floater.magic { color: #7dbbff; }

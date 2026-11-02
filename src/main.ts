@@ -57,6 +57,7 @@ let moveTarget: THREE.Vector3 | null = null;
 let rightHeld = false;
 addEventListener('mousemove', (e) => {
   updateCursor(e);
+  if (!IS_TOUCH) game.cursor = cursor; // hover effects of the kit (e.g. a turret under the pointer)
   if (rightHeld) moveTarget?.copy(cursor);
 });
 renderer.domElement.addEventListener('mousedown', (e) => {
@@ -79,6 +80,7 @@ addEventListener('mouseup', (e) => {
 renderer.domElement.addEventListener('pointerdown', (e) => {
   if (e.pointerType !== 'touch') return;
   updateCursor(e);
+  if (!game.paused && game.tap(cursor)) return;
   const enemy = game.enemyAt(cursor);
   if (enemy) game.focus = enemy;
 });

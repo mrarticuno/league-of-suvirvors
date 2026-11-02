@@ -34,6 +34,14 @@ export interface AttackProp {
   struck(damage: number, crit: boolean): void; // at the end of the windup, with the attack's damage (crit included)
 }
 
+/** A small bar the HUD draws over something of the kit's (e.g. a turret's charge): `fill` 0..1, `ready` glows it. */
+export interface KitBar {
+  pos: THREE.Vector3; height: number; fill: number;
+  ready?: boolean; dim?: boolean; // dim: inactive (e.g. a turret shut down)
+  hover?: boolean; hint?: string; // under the pointer, with a short hint shown above the bar
+  pips?: readonly [have: number, max: number]; // levels or charges, as dots beside the bar
+}
+
 /** LoL base stats; `*PerLevel` values use the LoL growth formula. */
 export interface BaseStats {
   hp: number; hpPerLevel: number;
@@ -248,6 +256,10 @@ export interface ChampionKit {
     /** The skill whose rank, cooldown and cost the slot shows (a spell menu of another skill); null: free, no cooldown nor cost. */
     as?: SkillKey | null;
   } | undefined;
+  /** Bars drawn over the kit's objects in the world (e.g. turrets' charge). */
+  bars?(): readonly KitBar[];
+  /** A touch tap on the ground at `point` (touch screens have no hover): true when the kit took it (e.g. tapping a turret). */
+  tap?(point: THREE.Vector3): boolean;
   /** Small icons shown above the skills (e.g. a weapon queue). */
   tray?(): readonly { icon: string; title: string; label?: string }[];
 }

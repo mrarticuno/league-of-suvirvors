@@ -15,7 +15,7 @@ const AUTO: Hit = { type: 'physical', source: 'auto', onHit: true };
 function rig() {
   const enemies: Enemy[] = [];
   const g = {
-    time: 0, level: 1, ap: 0, mana: 0, maxMana: 500, hp: 500, abilityHaste: 0, pos: new THREE.Vector3(), facing: 0, scene: new THREE.Scene(),
+    time: 0, level: 1, choices: [] as { title: string; options: { name: string; run: () => void }[] }[], cursor: null as THREE.Vector3 | null, cast: vi.fn(), ap: 0, mana: 0, maxMana: 500, hp: 500, abilityHaste: 0, pos: new THREE.Vector3(), facing: 0, scene: new THREE.Scene(),
     ranks: { Q: 1, W: 1, E: 1, R: 1 }, cooldowns: { Q: 0, W: 0, E: 0, R: 0 },
     cooldownOf: () => 100,
     player: { bone: () => undefined, root: new THREE.Object3D(), showSubmesh: vi.fn() },
@@ -29,7 +29,8 @@ function rig() {
 }
 const enemy = (tier: Enemy['def']['tier'] = 'minion', at = new THREE.Vector3()) =>
   ({ def: { tier, radius: 48 }, hp: 100, maxHp: 100, deadFor: -1, pos: at }) as unknown as Enemy;
-const place = (kit: ReturnType<typeof rig>['kit'], at = new THREE.Vector3(100, 0, 0)) => { kit.castStart!('Q', at); kit.cast('Q', 0, at); };
+let spot = 0;
+const place = (kit: ReturnType<typeof rig>['kit'], at = new THREE.Vector3(100, 0, (spot++ % 5) * 200)) => { kit.castStart!('Q', at); kit.cast('Q', 0, at); };
 
 it('turrets use Turret Kits: 3 at most, one back every 20s', () => {
   const { kit, step } = rig();
@@ -102,4 +103,35 @@ it('turrets shoot the enemy Heimerdinger hit in the last 3s first', () => {
   step(1.6); // spawn, then the first shot's windup
   expect(g.spawnMissile).toHaveBeenCalled();
   expect(g.spawnMissile.mock.calls[0][3].target).toBe(hit);
+});
+
+it('Q on a turret levels it up (a pick of three upgrades) instead of building one, up to 3 levels', () => {
+  const { g, kit, step } = rig();
+  const at = new THREE.Vector3(100, 0, 0);
+  place(kit, at);
+  place(kit, at.clone().setX(130)); // within reach of the turret: a level, not a second turret
+  expect(kit.hud!()).toContain('1');
+  expect(g.choices).toHaveLength(1);
+  expect(g.choices[0].options).toHaveLength(3);
+  g.choices.shift()!.options[1].run(); // attack speed
+  step(0.05);
+  expect(kit.bars!()[0].pips).toEqual([1, 3]);
+  for (let i = 0; i < 2; i++) { step(20); place(kit, at); g.choices.shift()!.options[0].run(); step(0.05); }
+  expect(kit.bars!()[0].pips).toEqual([3, 3]);
+  step(20);
+  place(kit, at); // maxed: builds a new turret
+  expect(g.choices).toHaveLength(0);
+  expect(kit.bars!()).toHaveLength(2);
+});
+
+it('the turret under the pointer is highlighted with a hint; a tap on it casts Q on it', () => {
+  const { g, kit } = rig();
+  place(kit, new THREE.Vector3(100, 0, 0));
+  g.cursor = new THREE.Vector3(140, 0, 20);
+  expect(kit.bars!()[0].hover).toBe(true);
+  g.cursor = new THREE.Vector3(600, 0, 0);
+  expect(kit.bars!()[0].hover).toBe(false);
+  expect(kit.tap!(new THREE.Vector3(500, 0, 0))).toBe(false);
+  expect(kit.tap!(new THREE.Vector3(150, 0, 50))).toBe(true);
+  expect(g.cast).toHaveBeenCalledWith('Q', expect.objectContaining({ x: 100 }));
 });

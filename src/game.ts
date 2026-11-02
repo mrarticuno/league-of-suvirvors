@@ -195,6 +195,7 @@ export class Game {
   enemyCap = MAX_ENEMIES; // alive enemies at most; the frame governor (main.ts) lowers it on a device that drops frames
   private hordes = new Map<string, Horde>(); // instanced non-epic enemies, one per model
   manualTarget: Enemy | null = null; // left-click target when auto attack is off
+  cursor: THREE.Vector3 | null = null; // the mouse pointer on the ground (main.ts); null on touch screens (no hover)
   pendingLevelUps = 1; // LoL grants a skill point at level 1
   /** The player declined the last item list: the next one brings a type they never picked (src/items.ts rollOffers). */
   declinedItems = false;
@@ -602,6 +603,9 @@ export class Game {
 
   get hasFlash() { return [...this.page.primaryRunes, ...this.page.secondaryRunes].includes('hextech-flashtraption'); }
   /** Hextech Flashtraption: blink up to FLASH.range towards `point`. */
+  /** A touch tap on the ground: the kit's first (e.g. tapping a turret); false when it did not take it. */
+  tap(point: THREE.Vector3) { return !!this.kit.tap?.(point); }
+
   flash(point: THREE.Vector3) {
     if (!this.hasFlash || this.time < this.flashReady || !this.alive || this.stasis > 0 || this.stunned > 0) return;
     const step = this.tmp.copy(point).sub(this.pos).setY(0);

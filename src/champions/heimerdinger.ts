@@ -2,7 +2,7 @@
 // HeimerTBlue: DataValues, mSpellCalculations, cooldowns, costs, missile specs, cast frames) and the LoL Wiki for what
 // the bins leave to scripts (turret attack speed 1.75 / Apex 1.05, beam charge 1.1%/s / Apex 12.5%/s + 20% per attack,
 // the 8s deactivation timer, Hextech Affinity's 300 radius).
-// H-28G Evolution Turret: Turret Kits recharge every 20s (ability haste shortens it), 3 at most; up to 3 turrets, a 4th
+// H-28G Evolution Turret: Turret Kits recharge every 20s (ability haste shortens it), 3 at most; up to 10 turrets (League: 3, buffed for hordes), an 11th
 // destroys the oldest. A turret fires cannon shots at the enemy Heimerdinger last hit (a 3s mark), else the nearest one,
 // and fires its beam at full charge. Out of Heimerdinger's reach (900) for 8s, it shuts down and loses its charge.
 // Hextech Micro-Rockets / CH-2 grenade charge nearby turrets when they hit a champion: elite and epic monsters stand in
@@ -21,7 +21,7 @@
 import * as THREE from 'three';
 import { Actor, loadModel } from '../assets';
 import { audio } from '../audio';
-import type { ChampionDef, ChampionKit, Hit, SkillDef, SkillKey } from '../champion';
+import type { ChampionDef, ChampionKit, Hit, KitBar, SkillDef, SkillKey } from '../champion';
 import { boundSize } from '../data';
 import type { Enemy, Game } from '../game';
 import { t } from '../i18n';
@@ -52,8 +52,20 @@ const TURRET = {
     duration: 8, splash: 150, slow: 0.25, slowDuration: 2,
   },
   beam: { speed: 1650, accel: -1000, min: 1200, max: 1650 }, // HeimerdingerTurret(Big)EnergyBlast's AcceleratingMovement
-  max: 3, reach: 900, shutdown: 8, mark: 3, spawn: 1.067, scale: SCALE * 1.1 / 0.9, // SkinScale 1.1 against Heimerdinger's 0.9: League's turret-to-Heimerdinger size
+  max: 10, reach: 900, shutdown: 8, mark: 3, spawn: 1.067, scale: SCALE * 1.1 / 0.9, // SkinScale 1.1 against Heimerdinger's 0.9: League's turret-to-Heimerdinger size
 };
+
+/**
+ * Not from LoL: Q cast on one of his Evolution Turrets (or tapping it on a touch screen) spends the Kit and the Mana to
+ * level it up instead of building another, up to 3 levels; each level picks one of three upgrades.
+ */
+const UPGRADES = {
+  max: 3, pick: 120, tap: 140, // pointer / tap reach around a turret
+  ap: 40, // bonus ability power of that turret's shots and beam
+  attackSpeed: 0.3, // bonus attack speed of that turret
+  beam: 0.25, // shorter beam charge (time x0.75 each)
+};
+type Upgrade = 'ap' | 'attackSpeed' | 'beam';
 
 const SKILLS = {
   Q: {
@@ -142,6 +154,8 @@ interface Turret {
   shot: { at: number; target: Enemy; cas: number; beam: boolean } | null; // an attack in windup
   away: number; // seconds out of Heimerdinger's reach
   dormant: boolean; dying: number; fx: THREE.Object3D[]; // countdown timer, exclamation, dormant sparks
+  level: number; pending: number; ap: number; attackSpeed: number; chargeTime: number; // upgrades (chargeTime: multiplier)
+  ring: THREE.Object3D | null; // range ring while under the pointer
 }
 /** A straight missile the kit moves (accelerating rockets and beams). */
 interface Bolt {
@@ -215,10 +229,42 @@ function heimerdingerKit(g: Game): ChampionKit {
   };
 
   // ---- Q: turrets ----
-  const turretDamage = () => SKILLS.Q.damage[qRank()] + SKILLS.Q.apRatio * g.ap;
+  const turretDamage = (tu: Turret) => SKILLS.Q.damage[qRank()] + SKILLS.Q.apRatio * (g.ap + tu.ap);
   const beamDamage = (tu: Turret) => tu.kind === 'blue'
     ? SKILLS.R.qUltBeam[rRank()] + SKILLS.R.qUltBeamAp * g.ap
-    : SKILLS.Q.beam[qRank()] + SKILLS.Q.beamAp * g.ap;
+    : SKILLS.Q.beam[qRank()] + SKILLS.Q.beamAp * (g.ap + tu.ap);
+  const attackSpeedOf = (tu: Turret) => TURRET[tu.kind].attackSpeed * (1 + tu.attackSpeed);
+  /** The Evolution Turret within `reach` of `point` that can still level up, nearest first. */
+  const upgradable = (point: THREE.Vector3, reach: number) => {
+    let best: Turret | null = null, d = reach;
+    for (const tu of turrets) {
+      if (tu.kind !== 'yellow' || tu.dying >= 0 || tu.level + tu.pending >= UPGRADES.max) continue;
+      const dist = Math.hypot(tu.pos.x - point.x, tu.pos.z - point.z);
+      if (dist <= d) { d = dist; best = tu; }
+    }
+    return best;
+  };
+  const UPGRADE_ICON: Record<Upgrade, string> = { ap: `${ICON}/item/1058.png`, attackSpeed: `${ICON}/item/1043.png`, beam: `${ICON}/item/3108.png` };
+  const levelUp = (tu: Turret) => {
+    tu.pending++;
+    g.vfx.playAt('Heimerdinger_Q_Turret_Spawn', tu.pos, tu.actor?.root.rotation.y ?? 0);
+    audio.playAt('heimerdinger_turret_spawn', tu.pos, g.pos);
+    const values: Record<Upgrade, number> = { ap: UPGRADES.ap, attackSpeed: UPGRADES.attackSpeed * 100, beam: UPGRADES.beam * 100 };
+    const apply: Record<Upgrade, () => void> = {
+      ap: () => { tu.ap += UPGRADES.ap; },
+      attackSpeed: () => { tu.attackSpeed += UPGRADES.attackSpeed; },
+      beam: () => { tu.chargeTime *= 1 - UPGRADES.beam; },
+    };
+    g.choices.push({
+      title: t('champion.heimerdinger.upgrade', { level: tu.level + tu.pending }),
+      options: (['ap', 'attackSpeed', 'beam'] as const).map((u) => ({
+        name: t(`champion.heimerdinger.upgrade.${u}`), text: t(`champion.heimerdinger.upgrade.${u}.desc`, { n: values[u] }), icon: UPGRADE_ICON[u],
+        run: () => { apply[u](); tu.level++; },
+      })),
+    });
+    // the popup shows on the next frame; a declined one leaves the level free again
+    after(0, () => { tu.pending = Math.max(0, tu.pending - 1); });
+  };
   const turretFx = (tu: Turret, key: string, at = tu.pos) => {
     const o = g.vfx.attach(key);
     o.position.copy(at);
@@ -244,6 +290,7 @@ function heimerdingerKit(g: Game): ChampionKit {
     const tu: Turret = {
       kind, actor, pos, born: g.time, until: kind === 'blue' ? g.time + TURRET.blue.duration : Infinity, charge: 0,
       next: g.time + TURRET.spawn, shot: null, away: 0, dormant: false, dying: -1, fx: [],
+      level: 0, pending: 0, ap: 0, attackSpeed: 0, chargeTime: 1, ring: null,
     };
     turrets.push(tu);
     if (kind === 'yellow') {
@@ -257,6 +304,8 @@ function heimerdingerKit(g: Game): ChampionKit {
   function destroy(tu: Turret) {
     if (tu.dying >= 0) return;
     clearFx(tu);
+    tu.ring?.removeFromParent();
+    tu.ring = null;
     tu.shot = null;
     if (tu.kind === 'yellow') {
       tu.dying = 1;
@@ -287,7 +336,7 @@ function heimerdingerKit(g: Game): ChampionKit {
   const face = (tu: Turret, e: Enemy) => { if (tu.actor) tu.actor.root.rotation.y = Math.atan2(e.pos.x - tu.pos.x, e.pos.z - tu.pos.z); };
   const startAttack = (tu: Turret, e: Enemy, beam: boolean) => {
     const T = TURRET[tu.kind];
-    const speed = T.attackSpeed / T.ratio; // the clip plays at the attack speed ratio, as the champion's do
+    const speed = attackSpeedOf(tu) / T.ratio; // the clip plays at the attack speed ratio, as the champion's do
     face(tu, e);
     if (beam) {
       tu.shot = { at: g.time + T.beamWindup, target: e, cas: Infinity, beam: true };
@@ -304,7 +353,7 @@ function heimerdingerKit(g: Game): ChampionKit {
     const cast = tu.kind === 'yellow' ? TURRET.yellow.castFrame : TURRET.blue.castFrame;
     const cas = tu.kind === 'yellow' ? TURRET.yellow.casFrame : TURRET.blue.smokeFrame;
     tu.shot = { at: g.time + cast / FPS / speed, target: e, cas: g.time + cas / FPS / speed, beam: false };
-    tu.next = g.time + 1 / T.attackSpeed;
+    tu.next = g.time + 1 / attackSpeedOf(tu);
     audio.playAt(tu.kind === 'yellow' ? 'heimerdinger_turret_auto' : 'heimerdinger_apex_auto', tu.pos, g.pos);
   };
   const fireShot = (tu: Turret, e: Enemy, beam: boolean) => {
@@ -331,7 +380,7 @@ function heimerdingerKit(g: Game): ChampionKit {
     audio.playAt(tu.kind === 'yellow' ? 'heimerdinger_turret_launch' : 'heimerdinger_apex_launch', tu.pos, g.pos);
     if (tu.kind === 'yellow') {
       g.spawnMissile('Heimerdinger_Q_Turret_Mis', from, e.pos, {
-        speed: T.speed, range: 3000, radius: 10, damage: turretDamage(), target: e, hit: HITS.Q, height: from.y,
+        speed: T.speed, range: 3000, radius: 10, damage: turretDamage(tu), target: e, hit: HITS.Q, height: from.y,
         hitFx: 'Heimerdinger_Q_Turret_Tar', hitSound: 'heimerdinger_turret_hit',
       });
       return;
@@ -364,7 +413,7 @@ function heimerdingerKit(g: Game): ChampionKit {
     const T = TURRET[tu.kind];
     // spawn clip over: idle
     if (tu.actor && g.time - tu.born >= TURRET.spawn && !tu.dormant && !tu.shot && tu.actor.currentName !== (tu.kind === 'yellow' ? 'heimerturret_idle1' : 'heimerturret_mega_idle1')
-      && g.time >= tu.next - 1 / T.attackSpeed + 0.6) tu.actor.play(tu.kind === 'yellow' ? 'heimerturret_idle1' : 'heimerturret_mega_idle1');
+      && g.time >= tu.next - 1 / attackSpeedOf(tu) + 0.6) tu.actor.play(tu.kind === 'yellow' ? 'heimerturret_idle1' : 'heimerturret_mega_idle1');
     // deactivation: out of Heimerdinger's reach for 8s
     if (tu.kind === 'yellow') {
       const far = tu.pos.distanceTo(flat.copy(g.pos).setY(0)) > TURRET.reach;
@@ -396,7 +445,7 @@ function heimerdingerKit(g: Game): ChampionKit {
       if (tu.dormant) return true;
     }
     if (g.time - tu.born < TURRET.spawn) return true;
-    tu.charge = Math.min(1, tu.charge + T.charge * (1 + g.abilityHaste / 100) * dt);
+    tu.charge = Math.min(1, tu.charge + (T.charge / tu.chargeTime) * (1 + g.abilityHaste / 100) * dt);
     if (tu.shot) {
       const s = tu.shot;
       if (g.time >= s.cas) {
@@ -407,7 +456,7 @@ function heimerdingerKit(g: Game): ChampionKit {
       if (g.time < s.at) return true;
       tu.shot = null;
       if (alive(s.target)) fireShot(tu, s.target, s.beam);
-      if (s.beam) tu.next = Math.max(tu.next, g.time + 1 / T.attackSpeed);
+      if (s.beam) tu.next = Math.max(tu.next, g.time + 1 / attackSpeedOf(tu));
       return true;
     }
     if (tu.charge >= 1) {
@@ -575,7 +624,11 @@ function heimerdingerKit(g: Game): ChampionKit {
       }
       const up = !!ult[key];
       ult[key] = false;
-      if (key === 'Q') deploy(up ? 'blue' : 'yellow', within(point, up ? SKILLS.Q.ultRange : SKILLS.Q.range));
+      if (key === 'Q') {
+        const target = up ? null : upgradable(point, UPGRADES.pick);
+        if (target) levelUp(target);
+        else deploy(up ? 'blue' : 'yellow', within(point, up ? SKILLS.Q.ultRange : SKILLS.Q.range));
+      }
       else if (key === 'W') {
         const perEnemy = new Map<Enemy, number>();
         const at = point.clone();
@@ -583,6 +636,27 @@ function heimerdingerKit(g: Game): ChampionKit {
         else for (let w = 0; w < SKILLS.R.waves; w++) after(w * SKILLS.R.waveGap, () => rockets(at, r, true, w, perEnemy));
       } else if (up) lightningGrenade(point, r);
       else grenade(point, r);
+    },
+
+    bars() {
+      const out: KitBar[] = [];
+      const hover = g.cursor && !upgraded ? upgradable(g.cursor, UPGRADES.pick) : null;
+      for (const tu of turrets) {
+        if (tu.dying >= 0) continue;
+        const h = tu === hover;
+        out.push({
+          pos: tu.pos, height: (tu.kind === 'yellow' ? 95 : 190) * TURRET.scale, fill: tu.charge, ready: tu.charge >= 1, dim: tu.dormant,
+          hover: h, hint: h ? t('champion.heimerdinger.upgradeHint') : undefined,
+          pips: tu.kind === 'yellow' ? [tu.level, UPGRADES.max] : undefined,
+        });
+      }
+      return out;
+    },
+    tap(point) {
+      const tu = upgradable(point, UPGRADES.tap);
+      if (!tu) return false;
+      g.cast('Q', tu.pos.clone());
+      return true;
     },
 
     attackStart() {
@@ -625,6 +699,15 @@ function heimerdingerKit(g: Game): ChampionKit {
         run();
       }
       for (let i = turrets.length - 1; i >= 0; i--) if (!updateTurret(turrets[i], dt)) turrets.splice(i, 1);
+      // the turret under the pointer shows its range ring (League's, on hover), the way to level it up with Q
+      const hover = g.cursor && !upgraded ? upgradable(g.cursor, UPGRADES.pick) : null;
+      for (const tu of turrets) {
+        if ((tu === hover) === !!tu.ring) continue;
+        if (tu.ring) { tu.ring.removeFromParent(); tu.ring = null; continue; }
+        tu.ring = g.vfx.attach('heimerdinger_turret_ring_BV2');
+        tu.ring.position.copy(tu.pos);
+        g.scene.add(tu.ring);
+      }
 
       for (let i = bolts.length - 1; i >= 0; i--) {
         const b = bolts[i];
@@ -664,7 +747,7 @@ function heimerdingerKit(g: Game): ChampionKit {
     },
 
     dispose() {
-      for (const tu of turrets) { clearFx(tu); tu.actor?.dispose(); tu.actor?.root.removeFromParent(); }
+      for (const tu of turrets) { clearFx(tu); tu.ring?.removeFromParent(); tu.actor?.dispose(); tu.actor?.root.removeFromParent(); }
       for (const b of bolts) b.fx.root.removeFromParent();
       for (const b of lobs) b.fx.root.removeFromParent();
       for (const s of antennaFx) s?.stop();
