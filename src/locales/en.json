@@ -762,5 +762,22 @@
  "champion.veigar.Q.desc": "Blasts a dark bolt that deals magic damage to the first two enemies hit. A kill grants 1 stack of Phenomenal Evil (3 against large minions and monsters).",
  "champion.veigar.W.desc": "Dark matter falls on the target area 1.2s after the cast starts, dealing magic damage to enemies within 240 units. Every 50 stacks of Phenomenal Evil cut its 8s cooldown by 10%.",
  "champion.veigar.E.desc": "After 0.5s, erects a cage at the target area for 3s. Enemies touching its edges are stunned for 1.5-2.5s (once per cast, at most every 4.5s per enemy).",
- "champion.veigar.R.desc": "Sends a primordial burst at the target enemy that deals magic damage, increased by 1.5% per 1% of its missing Health, up to double damage."
+ "champion.veigar.R.desc": "Sends a primordial burst at the target enemy that deals magic damage, increased by 1.5% per 1% of its missing Health, up to double damage.",
+ "champion.heimerdinger.name": "Heimerdinger",
+ "champion.heimerdinger.title": "the Revered Inventor",
+ "champion.heimerdinger.passive": "Hextech Affinity",
+ "champion.heimerdinger.Q": "H-28 G Evolution Turret",
+ "champion.heimerdinger.W": "Hextech Micro-Rockets",
+ "champion.heimerdinger.E": "CH-2 Electron Storm Grenade",
+ "champion.heimerdinger.R": "UPGRADE!!!",
+ "champion.heimerdinger.Q2": "H-28Q Apex Turret",
+ "champion.heimerdinger.W2": "Hextech Rocket Swarm",
+ "champion.heimerdinger.E2": "CH-3X Lightning Grenade",
+ "champion.heimerdinger.beam": "Beam",
+ "champion.heimerdinger.extraRocket": "Extra rocket",
+ "champion.heimerdinger.hud": "Turrets: {n}/{max}",
+ "champion.heimerdinger.Q.desc": "Builds a turret (up to 3) that shoots the enemies Heimerdinger hits, else the nearest, dealing magic damage. Turrets slowly charge a beam that deals magic damage to every enemy in a line. Uses a Turret Kit (3, one every 20s); turrets shut down after 8s too far from him. Hextech Affinity: 20% Move Speed near his turrets.",
+ "champion.heimerdinger.W.desc": "Fires 5 rockets that converge on the target area, each dealing magic damage to the first enemy hit; later rockets on the same enemy deal 10-30 (+12% AP), tripled against minions. Each rocket hitting an elite or epic monster charges nearby turrets by 20%.",
+ "champion.heimerdinger.E.desc": "Hurls a grenade that deals magic damage within 250 units and Slows by 35% for 2s; enemies in the center are Stunned for 1.5s. Hitting an elite or epic monster fully charges nearby turrets.",
+ "champion.heimerdinger.R.desc": "Upgrades the next basic ability, free of Mana: Apex Turret (8s, shots that hit an area and Slow by 25%, a fast-charging beam), Rocket Swarm (4 waves of 5 rockets) or Lightning Grenade (bounces 3 times, larger areas). Recast after 3s to cancel."
 }

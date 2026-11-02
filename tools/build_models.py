@@ -54,6 +54,10 @@ MODELS = {
     # the sword blade's colour ramp (its Kayle_Sword material's Gradient_Texture; ChampionDef.remap)
     "kayle_gradient": ("kayle", "../kayle/kayle_base_wing_transform_gradient.png", []),
     "veigar": ("veigar", "veigar_turnaround_b.png", []),
+    "heimerdinger": ("heimerdinger", "heimerdinger_base_tx_cm.png", []),
+    # H-28G Evolution Turret and its upgraded Apex Turret: the HeimerTYellow / HeimerTBlue characters of Heimerdinger's WAD
+    "heimertyellow": ("heimertyellow", "heimerturret_base_tx_cm.png", []),
+    "heimertblue": ("heimertblue", "heimerdinger_base_megaturret_tx_cm.png", []),
     "aphelios_guns": ("aphelios", "../aphelios/aphelios_base_guns_tx_cm.png", []),
     # Crescendum's sentry: own mesh and clips, wearing Aphelios' gun texture (OWN_MESH)
     "apheliosturret": ("apheliosturret", "../aphelios/aphelios_base_guns_tx_cm.png", []),
@@ -103,6 +107,7 @@ SKIP_CLIPS = {
     "udyr": re.compile(r"channel|dance|joke|laugh|taunt|recall|recal_|respawn|homeguard"),
     "kayle": re.compile(r"channel|dance|joke|laugh|taunt|recall|respawn|homeguard|turn_"),
     "veigar": re.compile(r"channel|dance|taunt"),
+    "heimerdinger": re.compile(r"channel|dance|joke|laugh|taunt|recall|respawn"),
     "hwei": re.compile(r"_to|channel|dance|joke|laugh|taunt|recall|respawn|varsitting|idlevar|idle1_|idlein|knockup|stun|additive|activationerunslow"),
 }
 

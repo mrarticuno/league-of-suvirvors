@@ -51,6 +51,7 @@
 | 彗 | 法师 · 辅助 | 三种主题，各含三个技能（灾、靖、悚），被第二个技能引爆的标记，以及不断扩大的绝望光环 |
 | 凯尔 | 射手 · 法师 | 在 1/6/11/16 级登神：由近战变为远程，热忱叠满后升华并发射火焰波；天界之剑、治疗、强化一击与剑雨 |
 | 维迦 | 法师 | 超凡邪力：黑暗祭祀每次击杀都让他永久变强；天降黑暗物质、眩晕牢笼与斩杀爆裂 |
+| 黑默丁格 | 法师 · 辅助 | 建造最多三座会充能光束的炮台、汇聚的微型导弹、眩晕手雷，以及升级！！！带来的尖端炮台、导弹集群或弹跳手雷 |
 
 ## 截图
 
@@ -102,6 +103,10 @@
 |---|
 | ![维迦：黑暗祭祀、黑暗物质、扭曲空间与能量爆裂对抗怪潮](docs/media/veigar.gif) |
 
+| 黑默丁格 |
+|---|
+| ![黑默丁格：进化炮台、海克斯科技微型导弹、CH-2手雷与升级！！！的三个技能对抗怪潮](docs/media/heimerdinger.gif) |
+
 | 纳什男爵（20:00） | 暂停菜单：属性、装备与鞋子 |
 |---|---|
 | ![男爵竞技场与预警攻击](docs/media/baron.gif) | ![暂停菜单：英雄的全部属性以及每件装备的属性与被动](docs/media/stats-menu.jpg) |
@@ -133,7 +138,7 @@ pnpm dev        # http://localhost:5173（在第一个界面选择英雄）
 2. 哈希列表（游戏的 `.bin` 通过 xxh64 哈希引用纹理和动画）：
    ```bash
    curl -s https://raw.communitydragon.org/data/hashes/lol/hashes.game.txt \
-     | grep -E "assets/characters/(ezreal|samira|brand|aphelios|aurelionsol|lux|teemo|ziggs|sivir|twitch|orianna|gangplank|gangplankbarrel|udyr|aurora|auroraspirits|hwei|kayle|veigar|sru_|turret|inhibitor|nexus)" > assets-raw/hashes.filtered.txt
+     | grep -E "assets/characters/(ezreal|samira|brand|aphelios|aurelionsol|lux|teemo|ziggs|sivir|twitch|orianna|gangplank|gangplankbarrel|udyr|aurora|auroraspirits|hwei|kayle|veigar|heimerdinger|heimertyellow|heimertblue|sru_|turret|inhibitor|nexus)" > assets-raw/hashes.filtered.txt
    ```
 3. 从 WAD 中提取（`tools/extract_lol.py`）并转换为 `.glb`（`tools/build_models.py`）：
    ```bash
@@ -153,6 +158,7 @@ pnpm dev        # http://localhost:5173（在第一个界面选择英雄）
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt hwei assets-raw/hwei "$G/Champions/Hwei.wad.client"
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt kayle assets-raw/kayle "$G/Champions/Kayle.wad.client"
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt veigar assets-raw/veigar "$G/Champions/Veigar.wad.client"
+   for c in heimerdinger heimertyellow heimertblue; do .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt $c assets-raw/$c "$G/Champions/Heimerdinger.wad.client"; done
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt teemomushroom assets-raw/teemomushroom "$G/Champions/Teemo.wad.client"
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt lux assets-raw/lux "$G/Champions/Lux.wad.client"
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt ziggs assets-raw/ziggs "$G/Champions/Ziggs.wad.client"
@@ -181,6 +187,7 @@ pnpm dev        # http://localhost:5173（在第一个界面选择英雄）
    ```bash
    for c in ezreal samira brand aphelios aurelionsol lux teemo ziggs sivir twitch orianna gangplank udyr hwei kayle veigar; do (cd tools && ../.venv-tools/bin/python build_vfx.py ../assets-raw/hashes $c ../public/assets/vfx/$c "$G"); done
    (cd tools && ../.venv-tools/bin/python build_vfx.py ../assets-raw/hashes aurora ../public/assets/vfx/aurora "$G" auroraspirits)  # + her spirits' own systems
+   (cd tools && ../.venv-tools/bin/python build_vfx.py ../assets-raw/hashes heimerdinger ../public/assets/vfx/heimerdinger "$G" heimertyellow heimertblue)  # + the turrets' own systems
    ```
    生成 `systems.json`（按 `ResourceResolver` 键索引的特效，例如 `Ezreal_Q_mis`）、`spells.json`（飞弹速度/宽度/射程）以及资源的 PNG/JSON。`tools/read_bin.py` 可以单独把任意 `.bin` 转为 JSON。发射器运行时位于 `src/particles.ts`；`src/vfx.ts` 只负责选择播放哪个系统以及在哪里播放。
 
@@ -346,6 +353,13 @@ pnpm dev        # http://localhost:5173（在第一个界面选择英雄）
   - **E（扭曲空间）**：0.5秒后在 725 内竖起持续 3秒的牢笼；触碰边缘（距中心 290–411）的敌人被眩晕 1.5–2.5秒，每次施放一次，每个敌人至多每 4.5秒一次。
   - **R（能量爆裂）**：从 500 加速到 4000 速度的弹道，飞向 650 内的敌人：175/250/325 +65–75%法强，目标每损失 1% 生命值伤害 +1.5%（损失 66.7% 时双倍）。
   - 非原版内容：能量爆裂可以指向任何敌人（原版：英雄）；牢笼的击倒为普通眩晕；法力值消耗按法师下调，技能击杀回复法力值（见平衡）。
+- **黑默丁格**（角色与皮肤 bin，以及炮台的 HeimerTYellow 与 HeimerTBlue bin：DataValues、技能计算、弹道参数、施法帧、法力与冷却；炮台攻速、光束充能与 8 秒停机参考 wiki）：模型与伊泽瑞尔等高（约 186），炮台与他保持英雄联盟中的比例（SkinScale 1.1 对 0.9）。皮肤的每个玩法特效都在原版播放的位置播放：扳手普攻（左右手各一）与暴击、环绕他的炮台组件螺母（1–3 个）及每建一座炮台消耗的螺母、施法特效（普通与升级）、炮台的出现、炮口闪光、炮弹与命中、光束的瞄准线、蓄能、光束与命中、停机的倒计时、警示与火花、带火焰与烟雾的微型导弹（蓝色导弹集群）、手雷及其电击爆炸、升级！！！就绪时的天线光芒，以及尖端炮台的出现、烟雾、射击、光束与损毁。炮台的动画（出现、待机、攻击、停机、死亡）与原版一致。
+  - **被动（海克斯科技亲和）**：在自己炮台 300 码内获得 20% 移动速度。
+  - **Q（H-28G进化炮台）**：在 350 码内放置一座炮台（最多 3 座，第 4 座替换最早的），消耗一个炮台组件（3 个，每 20 秒一个，受技能急速影响）。每秒攻击 1.75 次，射程 550（附近没有其他目标时对小兵 600），造成 7–23 +35% 法强，优先攻击黑默丁格 3 秒内命中的敌人；光束每秒充能 1.1%，满能时射向 900 码内的敌人（优先精英与史诗），对 1000 码直线上所有敌人造成 40–120 +55% 法强。离开他 900 码超过 8 秒会停机并失去充能。
+  - **W（海克斯科技微型导弹）**：5 枚导弹从 750 加速到 3000 码/秒，汇聚于目标点（超过 1000 时瞄准 1100）后散开至 1350；对每个敌人的首次命中造成 50–150 +55% 法强，后续 10–30 +12% 法强（对小兵三倍）。每枚命中精英或史诗怪物的导弹为 1000 码内炮台充能 20%。
+  - **E（CH-2电子风暴手雷）**：以 1200 码/秒投向 925 码内：250 码内 60–220 +60% 法强，减速 35% 持续 2 秒，中心 100 码内眩晕 1.5 秒。命中精英或史诗怪物会为 1000 码内炮台充满能量。
+  - **R（升级！！！）**：下一个基础技能被升级且免费；施放升级技能时 R 进入 100/85/70 秒冷却，或 3 秒后可取消。**H-28Q尖端炮台**（8 秒，不计入上限）：每秒攻击 1.05 次，射程 650，对目标周围敌人造成 80–120 +35% 法强并减速 25% 持续 2 秒，光束每秒充能 12.5%、每次攻击 20%，造成 100–180 +70% 法强。**海克斯科技导弹集群**：4 波各 5 枚导弹，首次命中 135–225 +45% 法强，第 2–5 次 32–58 +12% 法强，之后减半（小兵每次都受首次命中伤害）。**CH-3X闪电手雷**：弹跳 3 次，每次爆炸 300 码内 100–300 +60% 法强（150 码内眩晕）；精英与史诗怪物每次施放只受一次伤害。
+  - 非英雄联盟原版：精英与史诗怪物代替英雄（光束充能与优先级）；敌人不攻击召唤物，因此炮台没有生命值（直到被替换）；根据 Riot 视频估计（bin 与 wiki 均无）：导弹发射间距（65）、导弹集群每波间隔 0.25 秒、闪电手雷弹跳距离 300 与尖端炮台 150 的溅射半径；Heimerdinger_R_Beam（相机分段光束）不受支持；与其他法师一样降低法力消耗，技能击杀回复法力（见平衡）。
 - **装备**：Data Dragon 的真实数据（属性、名称、图标），由 `tools/build_items.py` 生成到 `src/items.json`；被动在 `src/itemPassives/`。
   - 没有合成：升级时提供一件传说成装，或为已有装备提升一级，就像幸存者类游戏的武器。背包最多 6 件装备；不能丢弃。
   - 每件装备有 5 级。属性从 40%（1 级）成长到 100%（5 级）；被动在 3 级解锁，强度 60%，4 级 80%，5 级 100%。魔宗、大天使之杖和凛冬之临在 5 级获得转化后的被动（魔切、炽天使之拥、末日寒冬）。
@@ -420,6 +434,7 @@ pnpm dev        # http://localhost:5173（在第一个界面选择英雄）
 | 彗 | 主题 Q 30（80–120）、W 45（90–110）、E 25（50–70）、R 80（100） | 无；宿墨每次强化命中回复 45–65 |
 | 凯尔 | Q 30–50（60–100）、W 35–55（70–90）、E 0、R 50/25/0（100/50/0） | 无：依靠普攻 |
 | 维迦 | Q 25（30–50）、W 45–65（60–80）、E 55–75（70–90）、R 80（100） | 技能击杀回复 20–40 |
+| 黑默丁格 | Q 15（20）、W 30–50（50–90）、E 55（85）、R 80（100） | 技能或炮台击杀回复 10–30 |
 
 较新法师的怪潮调整（括号内为英雄联盟数值）：阿萝拉 Q 冷却 6–5秒（9–7），E 10–8秒（15–11），R 90/80/70秒（140/120/100），飞去来咒对小兵 75%（40%），被动灵物治疗 10–20（3–20）。彗的主题冷却缩短 30%：Q 7–4.2秒（10–6），W 12.6–11.2秒（18–16），E 8.4–7秒（12–10）；攒聚雷半径 300（225），对小兵和野怪 75%（50%），连皴山对小兵 90%（60%），熔岩 6–24（5–20），渲浓回复其护盾 30% 的生命值。
 

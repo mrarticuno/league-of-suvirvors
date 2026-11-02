@@ -51,6 +51,7 @@ Doze campeões jogáveis, cada um com o kit completo do LoL adaptado (detalhes e
 | Hwei | Mago · Suporte | Três temas de três feitiços cada (Desastre, Serenidade, Tormento), uma marca que um segundo feitiço detona e uma aura de desespero que cresce |
 | Kayle | Atiradora · Maga | Ascende nos níveis 1/6/11/16: de corpo a corpo a distância, acúmulos de Fervor até Exaltada, ondas de fogo; uma espada celestial, uma cura, um golpe fortalecido e uma chuva de espadas |
 | Veigar | Mago | Mal Fenomenal: cada abate do Golpe Maligno o deixa mais forte para sempre; matéria escura do céu, uma jaula que atordoa e uma explosão que executa |
+| Heimerdinger | Mago · Suporte | Constrói até três torres que carregam um raio, micro-mísseis que convergem, uma granada que atordoa e MELHORIA!!! para uma Torre Apex, um enxame de mísseis ou uma granada que quica |
 
 ## Galeria
 
@@ -102,6 +103,10 @@ Doze campeões jogáveis, cada um com o kit completo do LoL adaptado (detalhes e
 |---|
 | ![Veigar: Golpe Maligno, Matéria Escura, Horizonte de Eventos e Explosão Primordial contra uma horda](docs/media/veigar.gif) |
 
+| Heimerdinger |
+|---|
+| ![Heimerdinger: Torres Evolutivas, Micro-Mísseis Hextec, granada CH-2 e os três feitiços da MELHORIA!!! contra uma horda](docs/media/heimerdinger.gif) |
+
 | Barão Na'Shor (20:00) | Menu de pausa: atributos, itens e botas |
 |---|---|
 | ![Arena do Barão com ataques telegrafados](docs/media/baron.gif) | ![Menu de pausa com todos os atributos do campeão e os atributos e a passiva de cada item](docs/media/stats-menu.jpg) |
@@ -133,7 +138,7 @@ Os modelos **não estão no repositório** (são assets da Riot). Gere-os localm
 2. Lista de hashes (os `.bin` do jogo referenciam texturas/animações por hash xxh64):
    ```bash
    curl -s https://raw.communitydragon.org/data/hashes/lol/hashes.game.txt \
-     | grep -E "assets/characters/(ezreal|samira|brand|aphelios|aurelionsol|lux|teemo|ziggs|sivir|twitch|orianna|gangplank|gangplankbarrel|udyr|aurora|auroraspirits|hwei|kayle|veigar|sru_|turret|inhibitor|nexus)" > assets-raw/hashes.filtered.txt
+     | grep -E "assets/characters/(ezreal|samira|brand|aphelios|aurelionsol|lux|teemo|ziggs|sivir|twitch|orianna|gangplank|gangplankbarrel|udyr|aurora|auroraspirits|hwei|kayle|veigar|heimerdinger|heimertyellow|heimertblue|sru_|turret|inhibitor|nexus)" > assets-raw/hashes.filtered.txt
    ```
 3. Extrair dos WADs (`tools/extract_lol.py`) e converter para `.glb` (`tools/build_models.py`):
    ```bash
@@ -153,6 +158,7 @@ Os modelos **não estão no repositório** (são assets da Riot). Gere-os localm
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt hwei assets-raw/hwei "$G/Champions/Hwei.wad.client"
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt kayle assets-raw/kayle "$G/Champions/Kayle.wad.client"
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt veigar assets-raw/veigar "$G/Champions/Veigar.wad.client"
+   for c in heimerdinger heimertyellow heimertblue; do .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt $c assets-raw/$c "$G/Champions/Heimerdinger.wad.client"; done
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt teemomushroom assets-raw/teemomushroom "$G/Champions/Teemo.wad.client"
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt lux assets-raw/lux "$G/Champions/Lux.wad.client"
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt ziggs assets-raw/ziggs "$G/Champions/Ziggs.wad.client"
@@ -181,6 +187,7 @@ Os modelos **não estão no repositório** (são assets da Riot). Gere-os localm
    ```bash
    for c in ezreal samira brand aphelios aurelionsol lux teemo ziggs sivir twitch orianna gangplank udyr hwei kayle veigar; do (cd tools && ../.venv-tools/bin/python build_vfx.py ../assets-raw/hashes $c ../public/assets/vfx/$c "$G"); done
    (cd tools && ../.venv-tools/bin/python build_vfx.py ../assets-raw/hashes aurora ../public/assets/vfx/aurora "$G" auroraspirits)  # + her spirits' own systems
+   (cd tools && ../.venv-tools/bin/python build_vfx.py ../assets-raw/hashes heimerdinger ../public/assets/vfx/heimerdinger "$G" heimertyellow heimertblue)  # + the turrets' own systems
    ```
    Gera `systems.json` (efeitos indexados pelas chaves do `ResourceResolver`, ex. `Ezreal_Q_mis`), `spells.json` (velocidade/largura/alcance dos mísseis) e os PNG/JSON dos assets. `tools/read_bin.py` sozinho converte qualquer `.bin` em JSON. O runtime dos emissores fica em `src/particles.ts`; `src/vfx.ts` só escolhe qual sistema tocar e onde.
 
@@ -346,6 +353,13 @@ WASD não é usado porque colide com Q/W/E.
   - **E (Horizonte de Eventos)**: após 0,5 s uma jaula a até 725 fica de pé por 3 s; inimigos que tocam a borda (290–411 do centro) ficam atordoados por 1,5–2,5 s, uma vez por conjuração e no máximo a cada 4,5 s.
   - **R (Explosão Primordial)**: míssil que acelera de 500 a 4000 u/s até um inimigo a até 650: 175/250/325 +65–75% PdH, +1,5% por 1% de Vida perdida do alvo (dobro com 66,7% perdida).
   - Fora do LoL: a Explosão Primordial mira qualquer inimigo (LoL: campeões); a derrubada da jaula é um atordoamento simples; custos de mana reduzidos como os dos outros magos e abates por habilidade restauram mana (ver Balanceamento).
+- **Heimerdinger** (bins de personagem e de skin, mais os de HeimerTYellow e HeimerTBlue para as torres: DataValues, cálculos de feitiço, mísseis, quadros de conjuração, mana e recargas; a wiki para a velocidade de ataque das torres, a carga do raio e o desligamento de 8 s): modelo na altura do Ezreal (~186), as torres no tamanho do LoL ao lado dele (SkinScale 1,1 contra 0,9). Todo sistema de gameplay da skin toca onde o LoL toca: os ataques de chave inglesa (uma por mão) e o crítico, as porcas dos Kits de Torre girando em volta dele (1–3) e a gasta por torre, os efeitos de conjuração (normal e melhorado), o surgimento, o clarão do cano, o tiro e o impacto das torres, a mira, a carga, o raio e o impacto do raio, o cronômetro, o alerta e as faíscas do desligamento, os micro-mísseis com chamas e fumaça (Enxame azul), as granadas e suas explosões elétricas, o brilho das antenas com a MELHORIA!!! pronta e o surgimento, a fumaça, o tiro, o raio e a destruição da Torre Apex. Os clipes das torres (surgir, parada, ataque, desligar, morte) tocam como no LoL.
+  - **Passiva (Afinidade Hextec)**: 20% de Velocidade de Movimento a até 300 das torres dele.
+  - **Q (Torre Evolutiva H-28G)**: uma torre a até 350 (3 no máximo, a 4ª substitui a mais antiga), usando um Kit de Torre (3, um a cada 20 s, a aceleração de habilidade encurta). Ataca 1,75 vez por segundo a até 550 (600 contra tropas quando não há mais nada) causando 7–23 +35% do PdH, primeiro no inimigo que Heimerdinger acertou nos últimos 3 s; o raio carrega 1,1% por segundo e dispara carregado num inimigo a até 900 (elite e épico primeiro), 40–120 +55% do PdH a todos numa linha de 1000. Fora do alcance dele (900) por 8 s, desliga e perde a carga.
+  - **W (Micro-Mísseis Hextec)**: 5 mísseis acelerando de 750 a 3000 u/s convergem no alvo (além de 1000 miram em 1100) e se abrem até 1350; o primeiro acerto num inimigo causa 50–150 +55% do PdH, os seguintes 10–30 +12% do PdH (×3 contra tropas). Cada míssil num monstro elite ou épico carrega as torres a até 1000 em 20%.
+  - **E (Granada de Tempestade de Elétrons CH-2)**: arremessada a até 925 a 1200 u/s: 60–220 +60% do PdH num raio de 250, Lentidão de 35% por 2 s, Atordoamento de 1,5 s a até 100 do centro. Acertar um monstro elite ou épico carrega totalmente as torres a até 1000.
+  - **R (MELHORIA!!!)**: a próxima habilidade básica fica melhorada e grátis; o R entra na recarga de 100/85/70 s quando ela é conjurada, ou pode ser cancelado após 3 s. **Torre Apex H-28Q** (8 s, fora do limite): 1,05 ataque por segundo a até 650 causando 80–120 +35% do PdH aos inimigos em volta do alvo com Lentidão de 25% por 2 s, raio que carrega 12,5% por segundo e 20% por ataque, 100–180 +70% do PdH. **Enxame de Mísseis Hextec**: 4 ondas de 5 mísseis, 135–225 +45% do PdH no primeiro acerto, 32–58 +12% do PdH nos acertos 2–5 e metade depois (tropas recebem sempre o dano do primeiro acerto). **Granada de Relâmpagos CH-3X**: quica 3 vezes, cada explosão 100–300 +60% do PdH num raio de 300 (Atordoamento a até 150); monstros elite e épicos recebem o dano uma vez por conjuração.
+  - Fora do LoL: monstros elite e épicos fazem o papel dos campeões (carga e prioridade do raio); as torres não têm vida porque os inimigos não atacam pets (duram até serem substituídas); estimados pelos vídeos da Riot (fora dos bins e da wiki): o espaçamento dos mísseis (65), os 0,25 s entre ondas do Enxame, o quique de 300 da Granada de Relâmpagos e o raio de 150 dos tiros da Torre Apex; Heimerdinger_R_Beam (feixe de segmentos de câmera) não é suportado; custos de mana menores como os outros magos e abates por habilidade restauram mana (ver Balanceamento).
 - **Itens**: dados reais do Data Dragon (atributos, nomes, ícones), gerados por `tools/build_items.py` em `src/items.json`; passivas em `src/itemPassives/`.
   - Sem receitas: o level-up oferece um item lendário pronto ou mais um nível para um item seu, como as armas de um survivors. Inventário de no máximo 6 itens; não é possível descartar.
   - Cada item tem 5 níveis. Os atributos crescem de 40% (nível 1) a 100% (nível 5); a passiva é liberada no nível 3 com 60% da força, 80% no nível 4 e 100% no nível 5. Manamune, Cajado do Arcanjo e Aproximação do Inverno ganham a passiva transformada (Muramana, Abraço do Serafim, Fimbulwinter) no nível 5.
@@ -420,6 +434,7 @@ Magos conjuram sem parar contra hordas, então os custos de mana do LoL foram re
 | Hwei | temas Q 30 (80–120), W 45 (90–110), E 25 (50–70), R 80 (100) | nenhuma; Luzes Vivas restaura 45–65 por acerto fortalecido |
 | Kayle | Q 30–50 (60–100), W 35–55 (70–90), E 0, R 50/25/0 (100/50/0) | nenhuma: vive de ataques básicos |
 | Veigar | Q 25 (30–50), W 45–65 (60–80), E 55–75 (70–90), R 80 (100) | 20–40 em abates por habilidade |
+| Heimerdinger | Q 15 (20), W 30–50 (50–90), E 55 (85), R 80 (100) | 10–30 em abates por habilidade ou torre |
 
 Ajustes de horda dos magos mais novos (valores do LoL entre parênteses): Aurora Q com recarga de 6–5s (9–7), E 10–8s (15–11), R 90/80/70s (140/120/100), Feitiço Dúplice 75% em tropas (40%), os Espíritos da passiva curam 10–20 (3–20). As recargas dos temas do Hwei são 30% menores: Q 7–4,2s (10–6), W 12,6–11,2s (18–16), E 8,4–7s (12–10); Raio Cortante com raio 300 (225) e 75% em tropas e monstros (50%), Fissura Derretida 90% em tropas (60%) com lava de 6–24 (5–20), Lagoa da Reflexão cura 30% do seu Escudo.
 

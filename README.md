@@ -51,6 +51,7 @@ Twelve playable champions, each with a full kit ported from LoL (details in [Imp
 | Hwei | Mage · Support | Three moods of three spells each (Disaster, Serenity, Torment), a mark that a second spell detonates and a growing aura of despair |
 | Kayle | Marksman · Mage | Ascends at levels 1/6/11/16: melee to ranged, Zeal stacks to Exalted, fire waves; a celestial sword, a heal, an empowered strike and a rain of swords |
 | Veigar | Mage | Phenomenal Evil: every Baleful Strike kill makes him stronger for good; dark matter from the sky, a stunning cage and an execute burst |
+| Heimerdinger | Mage · Support | Builds up to three turrets that charge a beam, converging micro-rockets, a stunning grenade and UPGRADE!!! for an Apex Turret, a rocket swarm or a bouncing grenade |
 
 ## Gallery
 
@@ -102,6 +103,10 @@ Twelve playable champions, each with a full kit ported from LoL (details in [Imp
 |---|
 | ![Veigar: Baleful Strike, Dark Matter, Event Horizon and Primordial Burst against a horde](docs/media/veigar.gif) |
 
+| Heimerdinger |
+|---|
+| ![Heimerdinger: Evolution Turrets, Hextech Micro-Rockets, CH-2 grenade and the three UPGRADE!!! spells against a horde](docs/media/heimerdinger.gif) |
+
 | Baron Nashor (20:00) | Pause menu: stats, items and boots |
 |---|---|
 | ![Baron arena with telegraphed attacks](docs/media/baron.gif) | ![Pause menu with every champion stat and each item's stats and passive](docs/media/stats-menu.jpg) |
@@ -133,7 +138,7 @@ The models are **not in the repository** (they are Riot assets). Generate them l
 2. Hash list (the game's `.bin` files reference textures/animations by xxh64 hash):
    ```bash
    curl -s https://raw.communitydragon.org/data/hashes/lol/hashes.game.txt \
-     | grep -E "assets/characters/(ezreal|samira|brand|aphelios|aurelionsol|lux|teemo|ziggs|sivir|twitch|orianna|gangplank|gangplankbarrel|udyr|aurora|auroraspirits|hwei|kayle|veigar|sru_|turret|inhibitor|nexus)" > assets-raw/hashes.filtered.txt
+     | grep -E "assets/characters/(ezreal|samira|brand|aphelios|aurelionsol|lux|teemo|ziggs|sivir|twitch|orianna|gangplank|gangplankbarrel|udyr|aurora|auroraspirits|hwei|kayle|veigar|heimerdinger|heimertyellow|heimertblue|sru_|turret|inhibitor|nexus)" > assets-raw/hashes.filtered.txt
    ```
 3. Extract from the WADs (`tools/extract_lol.py`) and convert to `.glb` (`tools/build_models.py`):
    ```bash
@@ -153,6 +158,7 @@ The models are **not in the repository** (they are Riot assets). Generate them l
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt hwei assets-raw/hwei "$G/Champions/Hwei.wad.client"
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt kayle assets-raw/kayle "$G/Champions/Kayle.wad.client"
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt veigar assets-raw/veigar "$G/Champions/Veigar.wad.client"
+   for c in heimerdinger heimertyellow heimertblue; do .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt $c assets-raw/$c "$G/Champions/Heimerdinger.wad.client"; done
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt teemomushroom assets-raw/teemomushroom "$G/Champions/Teemo.wad.client"
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt lux assets-raw/lux "$G/Champions/Lux.wad.client"
    .venv-tools/bin/python tools/extract_lol.py assets-raw/hashes.filtered.txt ziggs assets-raw/ziggs "$G/Champions/Ziggs.wad.client"
@@ -181,6 +187,7 @@ The models are **not in the repository** (they are Riot assets). Generate them l
    ```bash
    for c in ezreal samira brand aphelios aurelionsol lux teemo ziggs sivir twitch orianna gangplank udyr hwei kayle veigar; do (cd tools && ../.venv-tools/bin/python build_vfx.py ../assets-raw/hashes $c ../public/assets/vfx/$c "$G"); done
    (cd tools && ../.venv-tools/bin/python build_vfx.py ../assets-raw/hashes aurora ../public/assets/vfx/aurora "$G" auroraspirits)  # + her spirits' own systems
+   (cd tools && ../.venv-tools/bin/python build_vfx.py ../assets-raw/hashes heimerdinger ../public/assets/vfx/heimerdinger "$G" heimertyellow heimertblue)  # + the turrets' own systems
    ```
    Generates `systems.json` (effects indexed by `ResourceResolver` keys, e.g. `Ezreal_Q_mis`), `spells.json` (missile speed/width/range) and the asset PNG/JSON files. `tools/read_bin.py` alone converts any `.bin` into JSON. The emitter runtime lives in `src/particles.ts`; `src/vfx.ts` only picks which system to play and where.
 
@@ -346,6 +353,13 @@ WASD is not used because it clashes with Q/W/E.
   - **E (Event Horizon)**: after 0.5 s a cage within 725 stands for 3 s; enemies touching its edge (290–411 from the centre) are stunned 1.5–2.5 s, once per cast and at most every 4.5 s.
   - **R (Primordial Burst)**: a missile accelerating from 500 to 4000 u/s at an enemy within 650: 175/250/325 +65–75% AP, +1.5% per 1% of the target's missing Health (double at 66.7% missing).
   - Not from LoL: any enemy can be targeted by Primordial Burst (League: champions); the knockdown of the cage is a plain stun; mana costs lowered like the other mages' and ability kills restore mana (see Balance).
+- **Heimerdinger** (his character and skin bins, plus HeimerTYellow's and HeimerTBlue's for the turrets: DataValues, spell calculations, missile specs, cast frames, mana and cooldowns; the wiki for turret attack speed, beam charge and the 8 s shutdown): model at Ezreal's height (~186), the turrets at League's size next to him (SkinScale 1.1 against 0.9). Every gameplay system of the skin plays where League plays it: the wrench attacks (one per hand) and crit, the Turret Kit nuts orbiting him (1–3) and the one spent per turret, the cast bursts (normal and upgraded), the turrets' spawn, muzzle flash, cannon shot and hit, the beam's tracer, charge-up, beam and hit, the shutdown timer, warning and sparks, the micro-rockets with their flames and smoke (blue Rocket Swarm), the grenades and their electric explosions, the antenna glow while UPGRADE!!! is ready, and the Apex Turret's spawn, smoke, shot, beam and wreck. The turrets' clips (spawn, idle, attack, shutdown, death) play like League's.
+  - **Passive (Hextech Affinity)**: 20% Move Speed within 300 of his turrets.
+  - **Q (H-28G Evolution Turret)**: a turret within 350 (3 at most, a 4th replaces the oldest), using a Turret Kit (3, one every 20 s, ability haste shortens it). It attacks 1.75 times per second within 550 (600 against minions when nothing else is in range) for 7–23 +35% AP, the enemy Heimerdinger hit in the last 3 s first; its beam charges 1.1% per second and fires at full charge at an enemy within 900 (elite and epic first), 40–120 +55% AP to every enemy in a 1000 line. Out of his reach (900) for 8 s it shuts down and loses its charge.
+  - **W (Hextech Micro-Rockets)**: 5 rockets accelerating from 750 to 3000 u/s converge on the target (beyond 1000 they aim at 1100) and fan out to 1350; the first hit on an enemy deals 50–150 +55% AP, the next ones 10–30 +12% AP (×3 against minions). Each rocket on an elite or epic monster charges turrets within 1000 by 20%.
+  - **E (CH-2 Electron Storm Grenade)**: lobbed within 925 at 1200 u/s: 60–220 +60% AP within 250, 35% Slow for 2 s, 1.5 s Stun within 100 of the centre. Hitting an elite or epic monster fully charges turrets within 1000.
+  - **R (UPGRADE!!!)**: the next basic ability is upgraded and free; R goes on its 100/85/70 s cooldown when it is cast, or can be cancelled after 3 s. **H-28Q Apex Turret** (8 s, not counted in the limit): 1.05 attacks per second within 650 for 80–120 +35% AP to enemies around the target with a 25% Slow for 2 s, a beam charging 12.5% per second and 20% per attack for 100–180 +70% AP. **Hextech Rocket Swarm**: 4 waves of 5 rockets, 135–225 +45% AP for the first hit, 32–58 +12% AP for hits 2–5 and half that afterwards (minions take the first-hit damage every time). **CH-3X Lightning Grenade**: bounces 3 times, each blast 100–300 +60% AP within 300 (Stun within 150); elite and epic monsters take its damage once per cast.
+  - Not from LoL: elite and epic monsters stand in for champions (beam charge, beam priority); turrets have no health since enemies do not attack pets (they last until replaced); estimated from Riot's videos (not in the bins nor the wiki): the rockets' launch spread (65 apart), the Rocket Swarm's 0.25 s between waves, the Lightning Grenade's 300 bounce and the Apex Turret's 150 splash radius; Heimerdinger_R_Beam (a camera-segment beam) is not supported; mana costs lowered like the other mages' and ability kills restore mana (see Balance).
 - **Items**: real Data Dragon data (stats, names, icons), generated by `tools/build_items.py` into `src/items.json`; passives in `src/itemPassives/`.
   - No recipes: a level-up offers a finished legendary item or one more level for an item you own, like the weapons of a survivors game. Inventory of at most 6 items; items cannot be discarded.
   - Every item has 5 levels. Stats grow from 40% (level 1) to 100% (level 5); the passive unlocks at level 3 at 60% strength, 80% at level 4, 100% at level 5. Manamune, Archangel's Staff and Winter's Approach gain their transformed passive (Muramana, Seraph's Embrace, Fimbulwinter) at level 5.
@@ -420,6 +434,7 @@ Mages cast nonstop against hordes, so their LoL mana costs are lowered and their
 | Hwei | moods Q 30 (80–120), W 45 (90–110), E 25 (50–70), R 80 (100) | none; Stirring Lights restores 45–65 per empowered hit |
 | Kayle | Q 30–50 (60–100), W 35–55 (70–90), E 0, R 50/25/0 (100/50/0) | none: she lives off basic attacks |
 | Veigar | Q 25 (30–50), W 45–65 (60–80), E 55–75 (70–90), R 80 (100) | 20–40 on ability kills |
+| Heimerdinger | Q 15 (20), W 30–50 (50–90), E 55 (85), R 80 (100) | 10–30 on kills by an ability or a turret |
 
 Horde tuning of the newer mages (LoL values in brackets): Aurora Q cooldown 6–5 s (9–7), E 10–8 s (15–11), R 90/80/70 s (140/120/100), Twofold Hex 75% to minions (40%), the passive's Spirits heal 10–20 (3–20). Hwei's mood cooldowns are 30% shorter: Q 7–4.2 s (10–6), W 12.6–11.2 s (18–16), E 8.4–7 s (12–10); Severing Bolt 300 radius (225) and 75% to minions and monsters (50%), Molten Fissure 90% to minions (60%) with lava 6–24 (5–20), Pool of Reflection heals 30% of its shield.
 

@@ -366,6 +366,9 @@ class Emitter {
         : p === 'VfxPrimitiveRay' ? 'ray' : p === 'VfxPrimitiveAttachedMesh' ? 'attached' : p === 'VfxPrimitiveBeam' ? 'beam' : 'billboard';
     if (this.kind === 'mesh' || this.kind === 'beam') this.meshData = meshes.get(meshName(e)!);
     this.bound = sys.bind || (val(e.bindWeight, 0) ?? 0) >= 0.5;
+    // an emitter without a lifetime emits its first particle at birth, as in League: a rate-1 missile mesh (a rocket, a
+    // grenade, a thrown wrench) would otherwise show up only after 1s, past the end of most flights
+    if (!(e.lifetime > 0)) this.acc = 1;
     this.buf.reserve(4, 6); // allocate attributes up front so an empty emitter still has a valid geometry
     this.mesh = new THREE.Mesh(this.buf.geo, material(e));
     this.mesh.frustumCulled = false;

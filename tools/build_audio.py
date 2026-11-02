@@ -42,6 +42,9 @@ AU = "Play_sfx_Aurora_Aurora"
 HW = "Play_sfx_Hwei_Hwei"
 KA = "Play_sfx_Kayle_Kayle"
 VE = "Play_sfx_Veigar_Veigar"
+HE = "Play_sfx_Heimerdinger_Heimerdinger"
+HY = "Play_sfx_HeimerTYellow_"
+HB = "Play_sfx_HeimerTBlue_"
 
 # bank path (without _events/_audio) -> {sound key: event name candidates (first match wins) or an event id}
 BANKS: dict[str, dict[str, list[str] | int]] = {
@@ -408,6 +411,51 @@ BANKS: dict[str, dict[str, list[str] | int]] = {
         "veigar_R_launch": [VE + "R_OnMissileLaunch"],
         "veigar_R_hit": [VE + "R_OnHit"],
     },
+    SFX + "characters/heimerdinger/skins/base/heimerdinger_base_sfx": {
+        "heimerdinger_auto": [HE + "BasicAttack_OnCast"],
+        "heimerdinger_auto2": [HE + "BasicAttack2_OnCast"],
+        "heimerdinger_crit": [HE + "CritAttack_OnCast"],
+        "heimerdinger_auto_launch": [HE + "BasicAttack_OnMissileLaunch"],
+        "heimerdinger_auto2_launch": [HE + "BasicAttack2_OnMissileLaunch"],
+        "heimerdinger_crit_launch": [HE + "CritAttack_OnMissileLaunch"],
+        "heimerdinger_auto_hit": [HE + "BasicAttack_OnHit", HE + "BasicAttack2_OnHit"],
+        "heimerdinger_crit_hit": [HE + "CritAttack_OnHit"],
+        "heimerdinger_Q": [HE + "Q_OnCast"],
+        "heimerdinger_W": [HE + "W_OnCast"],
+        "heimerdinger_W_rocket": [HE + "WAttack2_OnMissileCast"],
+        "heimerdinger_W_launch": [HE + "WAttack2_OnMissileLaunch"],
+        "heimerdinger_W_hit": [HE + "WAttack2_hit"],
+        "heimerdinger_W_ult_launch": [HE + "WAttack2Ult_OnMissileLaunch"],
+        "heimerdinger_W_ult_hit": [HE + "WAttack2Ult_hit"],
+        "heimerdinger_E": [HE + "E_OnCast"],
+        "heimerdinger_E_ult": [HE + "EUlt_OnCast"],
+        "heimerdinger_E_launch": [HE + "ESpell_OnMissileLaunch"],
+        "heimerdinger_E_hit": [HE + "ESpell_hit"],
+        "heimerdinger_E_ult_launch": [HE + "ESpell_Ult_OnMissileLaunch"],
+        "heimerdinger_E_ult_hit": [HE + "ESpell_Ult_hit"],
+        "heimerdinger_R": [HE + "R_OnBuffActivate"],
+        "heimerdinger_R_end": [HE + "R_OnBuffDeactivate"],
+        "heimerdinger_apex_spawn": [HE + "SuperTurret_OnBuffActivate"],
+        "heimerdinger_apex_end": [HE + "SuperTurret_OnBuffDeactivate"],
+        "heimerdinger_death": ["Play_sfx_Heimerdinger_Death3D_cast"],
+        "heimerdinger_turret_spawn": [HY + "HeimerdingerQSpawnDestroyAudio_OnBuffActivate"],
+        "heimerdinger_turret_destroy": [HY + "HeimerdingerQSpawnDestroyAudio_OnBuffDeactivate"],
+        "heimerdinger_turret_talk": [HY + "HeimerdingerEngineAudio_turrettalk_buffactivate"],
+        "heimerdinger_turret_shutdown": [HY + "HeimerTurretShutdown_OnBuffActivate"],
+        "heimerdinger_turret_wake": [HY + "HeimerTurretShutdown_OnBuffDeactivate"],
+        "heimerdinger_turret_auto": [HY + "HeimerTYellowBasicAttack_OnCast", HY + "HeimerTYellowBasicAttack2_OnCast"],
+        "heimerdinger_turret_launch": [HY + "HeimerTYellowBasicAttack_OnMissileLaunch", HY + "HeimerTYellowBasicAttack2_OnMissileLaunch"],
+        "heimerdinger_turret_hit": [HY + "HeimerTYellowBasicAttack_OnHit", HY + "HeimerTYellowBasicAttack2_OnHit"],
+        "heimerdinger_turret_beam": [HY + "HeimerdingerTurretEnergyBlast_OnCast"],
+        "heimerdinger_turret_beam_launch": [HY + "HeimerdingerTurretEnergyBlast_OnMissileLaunch"],
+        "heimerdinger_turret_beam_hit": [HY + "HeimerdingerTurretEnergyBlast_OnHit"],
+        "heimerdinger_apex_auto": [HB + "HeimerTBlueBasicAttack_OnCast"],
+        "heimerdinger_apex_launch": [HB + "HeimerTBlueBasicAttack_OnMissileLaunch"],
+        "heimerdinger_apex_hit": [HB + "HeimerTBlueBasicAttack_OnHit"],
+        "heimerdinger_apex_beam": [HB + "HeimerdingerTurretBigEnergyBlast_OnCast"],
+        "heimerdinger_apex_beam_launch": [HB + "HeimerdingerTurretBigEnergyBlast_OnMissileLaunch"],
+        "heimerdinger_apex_beam_hit": [HB + "HeimerdingerTurretBigEnergyBlast_OnHit"],
+    },
     SFX + "characters/hwei/skins/base/hwei_base_sfx": {
         "hwei_auto": [HW + "BasicAttack_OnCast"],
         "hwei_auto2": [HW + "BasicAttack2_OnCast"],
@@ -648,7 +696,7 @@ def render(txtp_path, mp3, music):
 
 def main(wwiser, out_dir, final_dir):
     final = Path(final_dir)
-    wads = [Wad(final / w) for w in ("Champions/Ezreal.wad.client", "Champions/Samira.wad.client", "Champions/Brand.wad.client", "Champions/Aphelios.wad.client", "Champions/AurelionSol.wad.client", "Champions/Lux.wad.client", "Champions/Teemo.wad.client", "Champions/Ziggs.wad.client", "Champions/Sivir.wad.client", "Champions/Twitch.wad.client", "Champions/Orianna.wad.client", "Champions/Gangplank.wad.client", "Champions/Udyr.wad.client", "Champions/Aurora.wad.client", "Champions/Hwei.wad.client", "Champions/Kayle.wad.client", "Champions/Veigar.wad.client", "Maps/Shipping/Map11.wad.client", "Maps/Shipping/Common.wad.client")]
+    wads = [Wad(final / w) for w in ("Champions/Ezreal.wad.client", "Champions/Samira.wad.client", "Champions/Brand.wad.client", "Champions/Aphelios.wad.client", "Champions/AurelionSol.wad.client", "Champions/Lux.wad.client", "Champions/Teemo.wad.client", "Champions/Ziggs.wad.client", "Champions/Sivir.wad.client", "Champions/Twitch.wad.client", "Champions/Orianna.wad.client", "Champions/Gangplank.wad.client", "Champions/Udyr.wad.client", "Champions/Aurora.wad.client", "Champions/Hwei.wad.client", "Champions/Kayle.wad.client", "Champions/Veigar.wad.client", "Champions/Heimerdinger.wad.client", "Maps/Shipping/Map11.wad.client", "Maps/Shipping/Common.wad.client")]
     read = lambda p: next((d for d in (w.read(p) for w in wads) if d is not None), None)
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)

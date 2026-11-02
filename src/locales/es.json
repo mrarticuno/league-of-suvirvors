@@ -762,5 +762,22 @@
  "champion.veigar.Q.desc": "Lanza un rayo oscuro que inflige daño mágico a los dos primeros enemigos alcanzados. Un asesinato otorga 1 acumulación de Mal Fenomenal (3 contra súbditos grandes y monstruos).",
  "champion.veigar.W.desc": "La materia oscura cae en la zona objetivo 1,2 s después de iniciar el lanzamiento e inflige daño mágico a los enemigos a menos de 240 unidades. Cada 50 acumulaciones de Mal Fenomenal reducen un 10% su enfriamiento de 8 s.",
  "champion.veigar.E.desc": "Tras 0,5 s, levanta una jaula en la zona objetivo durante 3 s. Los enemigos que tocan sus bordes quedan aturdidos durante 1,5-2,5 s (una vez por lanzamiento, como máximo cada 4,5 s por enemigo).",
- "champion.veigar.R.desc": "Lanza un estallido primordial al enemigo objetivo que inflige daño mágico, aumentado un 1,5% por cada 1% de Vida faltante del objetivo, hasta el doble de daño."
+ "champion.veigar.R.desc": "Lanza un estallido primordial al enemigo objetivo que inflige daño mágico, aumentado un 1,5% por cada 1% de Vida faltante del objetivo, hasta el doble de daño.",
+ "champion.heimerdinger.name": "Heimerdinger",
+ "champion.heimerdinger.title": "el Venerable Inventor",
+ "champion.heimerdinger.passive": "Afinidad Hextech",
+ "champion.heimerdinger.Q": "Torreta Evolutiva H-28 G",
+ "champion.heimerdinger.W": "Microcohetes Hextech",
+ "champion.heimerdinger.E": "Granada de Tormenta de Electrones CH-2",
+ "champion.heimerdinger.R": "¡ACTUALIZACIÓN!",
+ "champion.heimerdinger.Q2": "Torreta de Élite H-28Q",
+ "champion.heimerdinger.W2": "Enjambre de Cohetes Hextech",
+ "champion.heimerdinger.E2": "Granada de Relámpagos CH-3X",
+ "champion.heimerdinger.beam": "Rayo",
+ "champion.heimerdinger.extraRocket": "Cohete extra",
+ "champion.heimerdinger.hud": "Torretas: {n}/{max}",
+ "champion.heimerdinger.Q.desc": "Construye una torreta (hasta 3) que dispara a los enemigos que Heimerdinger golpea, o al más cercano, e inflige daño mágico. Las torretas cargan poco a poco un rayo que inflige daño mágico a todos los enemigos en línea. Usa un Kit de Torreta (3, uno cada 20 s); las torretas se apagan tras 8 s lejos de él. Afinidad Hextech: 20% de Velocidad de Movimiento cerca de sus torretas.",
+ "champion.heimerdinger.W.desc": "Dispara 5 cohetes que convergen en el área objetivo; cada uno inflige daño mágico al primer enemigo alcanzado; los cohetes siguientes sobre el mismo enemigo infligen 10-30 (+12% del PH), el triple contra súbditos. Cada cohete que alcanza a un monstruo élite o épico carga las torretas cercanas un 20%.",
+ "champion.heimerdinger.E.desc": "Lanza una granada que inflige daño mágico en 250 unidades y aplica una Ralentización del 35% durante 2 s; los enemigos del centro quedan Aturdidos 1,5 s. Alcanzar a un monstruo élite o épico carga por completo las torretas cercanas.",
+ "champion.heimerdinger.R.desc": "Mejora la siguiente habilidad básica, sin coste de Maná: Torreta de Élite (8 s, disparos que golpean un área y Ralentizan un 25%, un rayo que carga rápido), Enjambre de Cohetes (4 oleadas de 5 cohetes) o Granada de Relámpagos (rebota 3 veces, áreas mayores). Reactívala tras 3 s para cancelar."
 }
