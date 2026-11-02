@@ -1,6 +1,8 @@
 // Between runs: champion select (search and role filters), then the rune page (buy nodes with rune points, equip a
 // LoL-style page). Every purchase or pick is saved at once; see src/progress.ts for the rules.
 import { ROLES, SKILL_KEYS, type ChampionDef, type Role } from './champion';
+import { passiveTip, skillTip } from './tips';
+import { registerTip, tipText } from './tooltip';
 import { CHAMPIONS } from './champions';
 import { t, type Key } from './i18n';
 import {
@@ -32,6 +34,23 @@ const SOON_CARDS = 4; // placeholder cards while the roster is small
 
 let picked: ChampionDef = Object.values(CHAMPIONS)[0];
 
+// Hover cards of this screen: the picked champion's skills at rank 1 (before any run, no items), shards, locked shard rows
+registerTip('sel', (key) => {
+  const c = picked;
+  if (key === 'P') return passiveTip(c.id, c.passive);
+  const k = key as (typeof SKILL_KEYS)[number];
+  return skillTip(c.skills[k], { key: k, rank: 1, stats: { ad: c.base.ad, bonusAd: 0, ap: 0, haste: 0 } });
+});
+registerTip('shard', (arg) => {
+  const [row, j] = arg.split(':').map(Number);
+  const s = SHARDS[row]?.[j];
+  return s ? { icon: s.icon, title: s.name, kind: t('tip.shard', { row: row + 1 }), body: t(`shard.${s.stat}.desc` as Key) } : null;
+});
+registerTip('row', (arg) => {
+  const row = Number(arg);
+  return { title: t('tip.rowTitle', { row: row + 1 }), body: t('tip.rowBody'), foot: t('tip.rowCost', { cost: SHARD_ROW_COST[row] }) };
+});
+
 export function showChampionSelect(onPick: (champ: ChampionDef) => void) {
   const all = Object.values(CHAMPIONS);
   let query = '', role: Role | 'all' = 'all';
@@ -50,7 +69,7 @@ export function showChampionSelect(onPick: (champ: ChampionDef) => void) {
     const bars = Math.ceil((c.difficulty * 3) / 10);
     $('sel-meta').innerHTML = `${t('select.difficulty')} ${[1, 2, 3].map((i) => `<i class="${i <= bars ? 'on' : ''}"></i>`).join('')}`;
     $('sel-skills').innerHTML = [{ key: 'P', ...c.passive }, ...SKILL_KEYS.map((k) => ({ key: k, ...c.skills[k] }))]
-      .map((s) => `<div class="sel-skill" title="${s.key}"><img src="${s.icon}" alt="">${s.name}</div>`).join('');
+      .map((s) => `<div class="sel-skill" tabindex="0" data-tip="sel:${s.key}"><img src="${s.icon}" alt="">${s.name}</div>`).join('');
     for (const id of ['sel-splash', 'sel-hero']) {
       $(id).classList.remove('swap');
       if (swap) { void $(id).offsetWidth; $(id).classList.add('swap'); }
@@ -146,7 +165,7 @@ export function showRunePage(champ: ChampionDef, onPlay: (page: Page) => void, o
       ${burst ? rings : ''}${burst === 'unseal' ? shards(r.row === 0 ? 8 : 6) : ''}</button>`;
   };
   const tabs = (current: TreeId, kind: string, skip?: TreeId) => TREE_IDS.filter((x) => x !== skip).map((x) =>
-    `<button class="tab ${x === current ? 'on' : ''}" data-${kind}="${x}" style="--c:${TREE_COLOR[x]}" aria-pressed="${x === current}" aria-label="${TREES[x].name}" title="${TREES[x].name}">
+    `<button class="tab ${x === current ? 'on' : ''}" data-${kind}="${x}" style="--c:${TREE_COLOR[x]}" aria-pressed="${x === current}" aria-label="${TREES[x].name}" ${tipText(TREES[x].name)}>
       <img src="${TREES[x].icon}" alt=""></button>`).join('');
   const minorRows = (tree: TreeId) => [1, 2, 3].map((row) => `<div class="rrow">${runesOf(tree, row).map(node).join('')}</div>`).join('');
 
@@ -182,7 +201,7 @@ export function showRunePage(champ: ChampionDef, onPlay: (page: Page) => void, o
     const keys = runesOf(primary, 0);
     const sCount = page.secondary === secondaryView ? page.secondaryRunes.length : 0;
     const summary = [page.keystone, ...page.primaryRunes, ...page.secondaryRunes].filter((x): x is string => !!x).map((id) =>
-      `<img class="${RUNES[id].row === 0 ? 'k' : ''}" src="${RUNES[id].icon}" alt="${RUNES[id].name}" title="${RUNES[id].name}" style="--c:${TREE_COLOR[RUNES[id].tree]}">`).join('');
+      `<img class="${RUNES[id].row === 0 ? 'k' : ''}" src="${RUNES[id].icon}" alt="${RUNES[id].name}" ${tipText(RUNES[id].name)} style="--c:${TREE_COLOR[RUNES[id].tree]}">`).join('');
     root.innerHTML = `<div class="rp-bg">${WHEEL}${MOTES}</div>
       <header class="rp-head">
         <button class="cta ghost" data-back aria-label="${t('runes.back')}">${CHEVRON('M15 5l-7 7 7 7')}<span>${t('runes.back')}</span></button>
@@ -209,8 +228,8 @@ export function showRunePage(champ: ChampionDef, onPlay: (page: Page) => void, o
         </section>
         <section class="col col-f" aria-label="${t('runes.shards')}"><div class="tree-name"><small>${t('runes.shards')}</small></div><div class="shards">
           ${SHARDS.map((row, i) => `<div class="shard-row">${progress.shardRows.includes(i)
-            ? row.map((s, j) => `<button class="hex ${page.shards[i] === j ? 'on' : ''}" data-shard="${i}:${j}" title="${s.name}" aria-label="${s.name}" aria-pressed="${page.shards[i] === j}"><span><img src="${s.icon}" alt=""></span></button>`).join('')
-            : `<button class="cta ${progress.points >= SHARD_ROW_COST[i] ? 'ghost' : 'off'}" data-row="${i}">${t('runes.unlockRow', { row: i + 1, cost: SHARD_ROW_COST[i] })}</button>`}</div>`).join('')}
+            ? row.map((s, j) => `<button class="hex ${page.shards[i] === j ? 'on' : ''}" data-shard="${i}:${j}" data-tip="shard:${i}:${j}" aria-label="${s.name}" aria-pressed="${page.shards[i] === j}"><span><img src="${s.icon}" alt=""></span></button>`).join('')
+            : `<button class="cta ${progress.points >= SHARD_ROW_COST[i] ? 'ghost' : 'off'}" data-row="${i}" data-tip="row:${i}">${t('runes.unlockRow', { row: i + 1, cost: SHARD_ROW_COST[i] })}</button>`}</div>`).join('')}
         </div></section>
         <section class="detail frame" id="rp-detail" aria-live="polite">${detail(focus)}</section>
       </div>

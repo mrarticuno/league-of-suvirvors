@@ -35,6 +35,30 @@
       #app canvas { display: block; transition: filter 1.4s ease; }
       #loading { position: fixed; inset: 0; display: grid; place-items: center; font: 700 20px var(--display); color: var(--gold); }
 
+      /* ---------- hover cards (src/tooltip.ts): one floating box, filled from data-tip / data-tip-text ---------- */
+      #tt { position: fixed; left: 0; top: 0; z-index: 70; width: max-content; max-width: min(340px, calc(100vw - 16px)); pointer-events: none;
+        opacity: 0; transition: opacity 0.12s; filter: drop-shadow(0 14px 24px rgba(0, 0, 0, 0.65)); }
+      #tt.on { opacity: 1; }
+      #tt .frame { --c: 12px; background: linear-gradient(160deg, var(--tf), color-mix(in srgb, var(--tf) 35%, #05080f)); }
+      .tt-in { --c: 11px; --ta: var(--gold); display: flex; flex-direction: column; gap: 9px; padding: 12px 14px; background: linear-gradient(180deg, #0f182b, #080d19);
+        clip-path: polygon(var(--c) 0, 100% 0, 100% calc(100% - var(--c)), calc(100% - var(--c)) 100%, 0 100%, 0 var(--c)); }
+      .tt-head { display: flex; align-items: center; gap: 10px; }
+      .tt-head > div { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+      .tt-icon { flex: none; width: 40px; height: 40px; border: 2px solid var(--ta); overflow: hidden; background: #05080f; }
+      .tt-icon img { display: block; width: 100%; height: 100%; }
+      .tt-title { font: 700 16px/1.15 var(--display); color: var(--gold-hi); }
+      .tt-in small { font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+      .tt-key { flex: none; align-self: flex-start; min-width: 22px; padding: 1px 6px; text-align: center; font: 700 11px var(--ui); color: #0a1120; background: var(--ta); }
+      .tt-meta { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--muted); }
+      .tt-meta b { color: var(--text); }
+      .tt-body, .tt-foot { margin: 0; font: 500 12.5px/1.45 var(--ui); color: #d6cfbf; }
+      .tt-foot { font-size: 11px; color: var(--muted); }
+      .tt-rows { display: flex; flex-direction: column; gap: 3px; padding-top: 8px; border-top: 1px solid var(--line); font-size: 12px; }
+      .tt-rows div { display: flex; justify-content: space-between; gap: 14px; }
+      .tt-rows span { color: var(--muted); }
+      .tt-rows b { color: #ede6d6; text-align: right; font-variant-numeric: tabular-nums; }
+      body.touch #tt { display: none; }
+
       /* ---------- shared pieces: chamfered gold frame, bars, buttons ---------- */
       .frame { --c: 10px; padding: 1px; background: linear-gradient(180deg, var(--gold-hi), var(--gold-dim) 45%, var(--gold));
         clip-path: polygon(var(--c) 0, calc(100% - var(--c)) 0, 100% var(--c), 100% calc(100% - var(--c)), calc(100% - var(--c)) 100%, var(--c) 100%, 0 calc(100% - var(--c)), 0 var(--c)); }
