@@ -465,7 +465,7 @@ export class Game {
     const unlock = this.champ.skills[key].unlockLevel;
     return unlock === undefined ? this.ranks[key] > 0 : this.level >= unlock;
   }
-  costOf(key: SkillKey) { return this.champ.skills[key].cost[Math.max(0, this.ranks[key] - 1)]; }
+  costOf(key: SkillKey) { return this.kit?.cost?.(key) ?? this.champ.skills[key].cost[Math.max(0, this.ranks[key] - 1)]; }
 
   // ---- level up ----
   /** Skill point rules: the level each rank unlocks (ChampionDef.rankLevels, LoL default basic 1/3/5/7/9, R 6/11/16). */

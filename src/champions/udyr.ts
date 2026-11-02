@@ -6,8 +6,8 @@
 // refund 5% of Awakened Spirit. The LoL model has no stance-less clips: Udyr animates as Mantle (spell2_*) until his
 // first stance, like the client's Idle1/Attack1 bindings.
 // Adapted for hordes: attack range 250 (League: 125, like every melee champion here); "champions" are elite and epic
-// monsters; mana costs lowered like the mages' (Q 15, W/E/R 28–18; LoL 20 and 40–23) and kills by stance effects
-// (empowered attacks, lightning, the storm) restore 10–30 mana, once per second against minions.
+// monsters; kills by stance effects (empowered attacks, lightning, the storm) restore 10–30 mana, once per
+// second against minions.
 import * as THREE from 'three';
 import { audio } from '../audio';
 import type { ChampionDef, ChampionKit, Hit, SkillDef, SkillKey } from '../champion';
@@ -114,22 +114,22 @@ const R = {
 const SKILLS = {
   Q: {
     name: t('champion.udyr.Q'), desc: t('champion.udyr.Q.desc'), damageType: 'physical', maxRank: 6, anim: CLIPS.Q.cast, icon: `${ICON}/spell/UdyrQ.png`,
-    cooldown: [6, 6, 6, 6, 6, 6], cost: [15, 15, 15, 15, 15, 15], damage: Q.onHit, bonusAdRatio: Q.onHitBonusAd,
+    cooldown: [6, 6, 6, 6, 6, 6], cost: [20, 20, 20, 20, 20, 20], damage: Q.onHit, bonusAdRatio: Q.onHitBonusAd,
     extra: { label: t('skillsel.bonusAs'), values: Q.as, percent: true }, castTime: 0.05, aim: 'none',
   },
   W: {
     name: t('champion.udyr.W'), desc: t('champion.udyr.W.desc'), damageType: 'magic', maxRank: 6, anim: CLIPS.W.cast, icon: `${ICON}/spell/UdyrW.png`,
-    cooldown: [6, 6, 6, 6, 6, 6], cost: [28, 26, 24, 22, 20, 18], damage: [0, 0, 0, 0, 0, 0],
+    cooldown: [6, 6, 6, 6, 6, 6], cost: [40, 38, 36, 33, 31, 29], damage: [0, 0, 0, 0, 0, 0],
     extra: { label: t('champion.udyr.shield'), values: W.shield }, castTime: 0.05, aim: 'none',
   },
   E: {
     name: t('champion.udyr.E'), desc: t('champion.udyr.E.desc'), damageType: 'physical', maxRank: 6, anim: CLIPS.E.cast, icon: `${ICON}/spell/UdyrE.png`,
-    cooldown: [6, 6, 6, 6, 6, 6], cost: [28, 26, 24, 22, 20, 18], damage: [0, 0, 0, 0, 0, 0],
+    cooldown: [6, 6, 6, 6, 6, 6], cost: [40, 38, 36, 33, 31, 29], damage: [0, 0, 0, 0, 0, 0],
     extra: { label: t('stat.ms'), values: E.ms, percent: true }, castTime: 0.05, aim: 'none',
   },
   R: {
     name: t('champion.udyr.R'), desc: t('champion.udyr.R.desc'), damageType: 'magic', maxRank: 6, anim: CLIPS.R.cast, icon: `${ICON}/spell/UdyrR.png`,
-    cooldown: [6, 6, 6, 6, 6, 6], cost: [28, 26, 24, 22, 20, 18], damage: R.damage.map((d) => d / 2), apRatio: R.ap / 2, hits: 8,
+    cooldown: [6, 6, 6, 6, 6, 6], cost: [40, 38, 36, 33, 31, 29], damage: R.damage.map((d) => d / 2), apRatio: R.ap / 2, hits: 8,
     extra: { label: t('champion.udyr.slow'), values: R.slow, percent: true }, castTime: 0.1, aim: 'none',
   },
 } as const satisfies Record<SkillKey, SkillDef & Record<string, unknown>>; // extra fields are the kit's own numbers
@@ -182,6 +182,7 @@ export const UDYR: ChampionDef = {
 };
 
 const lerpLevel = (level: number, [a, b]: readonly number[]) => a + ((b - a) * (Math.min(level, 18) - 1)) / 17;
+const STANCE_COST = [40, 21];
 const byLevel = (level: number, values: readonly number[], levels: readonly number[]) => {
   let i = 0;
   while (i + 1 < levels.length && level >= levels[i + 1]) i++;
@@ -364,6 +365,8 @@ function udyrKit(g: Game): ChampionKit {
   };
 
   return {
+    // W/E/R cost 40–21 by champion level, like League; the per-rank arrays are that cost at each rank's unlock level (1/3/5/.../11)
+    cost: (key) => (key === 'Q' ? undefined : Math.round(lerpLevel(g.level, STANCE_COST))),
     stat: (k) => (k === 'range' ? (stance === 'Q' && empowered > 0 ? Q.range : 0) + (stance === 'E' && stampedeAwakened && g.time < stampedeUntil ? E.awaken.range : 0) : 0),
     attackSpeedBonus() {
       let as = monk > 0 && g.time < monkUntil ? PASSIVE.monkAs : 0;

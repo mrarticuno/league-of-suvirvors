@@ -194,6 +194,8 @@ export interface ChampionKit {
   recast?(key: SkillKey, point: THREE.Vector3): void;
   /** Extra cast condition checked before mana and cooldown are spent (e.g. an ultimate that needs stacks). */
   canCast?(key: SkillKey): boolean;
+  /** Mana cost from the champion's own mechanics, in place of the per-rank cost (e.g. one that falls with champion level). */
+  cost?(key: SkillKey): number | undefined;
   /** True while the champion flies over scenery and units: no wall nor unit collision (e.g. Comet of Legend). */
   ghost?(): boolean;
   /** True while the champion walks through units but not scenery (League's ghosting, e.g. Aurora's Realm Hopper). */
