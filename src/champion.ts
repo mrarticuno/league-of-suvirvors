@@ -39,7 +39,7 @@ export interface KitBar {
   pos: THREE.Vector3; height: number; fill: number;
   ready?: boolean; dim?: boolean; // dim: inactive (e.g. a turret shut down)
   hover?: boolean; hint?: string; // under the pointer, with a short hint shown above the bar
-  pips?: readonly [have: number, max: number]; // levels or charges, as dots beside the bar
+  level?: number; // a level badge beside the bar (e.g. a turret's)
 }
 
 /** LoL base stats; `*PerLevel` values use the LoL growth formula. */

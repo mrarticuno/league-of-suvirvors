@@ -254,7 +254,7 @@ function checkPrompts() {
     credited = true; // once per run, however often this runs before Continuar
     clearRun(browserStorage); // the run is over: nothing left to continue
     const first = game.over === 'won' ? baronSlain(loadProgress(browserStorage), game.champ.id) : { progress: loadProgress(browserStorage), bonus: 0 };
-    const r = credit(first.progress, game.kills, game.bonusRunePoints + first.bonus);
+    const r = credit(first.progress, game.kills, game.bonusRunePoints + game.skipRunePoints + first.bonus);
     saveProgress(r.progress, browserStorage);
     hud.closePrompts();
     if (hud.menuOpen) hud.toggleMenu();

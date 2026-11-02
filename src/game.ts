@@ -128,6 +128,7 @@ export interface RunSnapshot {
   ranks: Record<SkillKey, number>; cooldowns: Record<SkillKey, number>;
   slots: Slot[]; legendary: number; boots: string | null; dragonSlain: boolean; blueprintDropped: boolean;
   buffs: Record<BuffKey, number>; buffSpawnAt: Record<BuffKey, number>; bonusRunePoints: number; flashReady: number;
+  skipRunePoints?: number; // absent in saves older than skipped potion steps
   nextEvent: number; nextHordeAt: number; dragon: string; pendingLevelUps: number; autoAttack: boolean;
   declinedItems?: boolean; // absent in saves older than item lines
   fx: { items: Record<string, unknown>; runes: unknown[] }; // ItemEffect.saved of the owned items (by id) and runes (page order)
@@ -185,6 +186,7 @@ export class Game {
   private shieldUntil = 0;
   choices: Choice[] = []; // rune popups waiting to be shown
   bonusRunePoints = 0; // extra rune points earned this run (Treasure Hunter)
+  skipRunePoints = 0; // 1 per potion step skipped at full Health and Mana (not under Treasure Hunter's cap)
   flashReady = 0; // Hextech Flashtraption cooldown end (run time)
   private fxCache = new Map<string, ItemEffect>(); // effect state outlives changes to the other slots
   private blueprintDropped = false; // at most one blueprint per run
@@ -324,7 +326,7 @@ export class Game {
       enemies: [], aliveCount: 0, epics: [], nextId: 0, missiles: [], floaters: [], nextEvent: 0, spawnBudget: 0,
       nextHordeAt: HORDE.every, legendary: -1, boots: null, dragonSlain: false, blueprintDropped: false, declinedItems: false,
       stasis: 0, stasisEnd: null, stunned: 0, stunLength: 0, airborne: true, arena: null,
-      page, shield: 0, shieldUntil: 0, choices: [], bonusRunePoints: 0, flashReady: 0,
+      page, shield: 0, shieldUntil: 0, choices: [], bonusRunePoints: 0, skipRunePoints: 0, flashReady: 0,
       buffs: { blue: 0, red: 0 }, buffDrops: [], crowd: 0, lastHurtAt: -Infinity, stillFor: 0,
       buffSpawnAt: { blue: BUFF.firstSpawn, red: BUFF.firstSpawn },
       dragon: DRAGONS[Math.floor(Math.random() * DRAGONS.length)].model,
@@ -382,7 +384,7 @@ export class Game {
       slots: this.slots, legendary: this.legendary, boots: this.boots, dragonSlain: this.dragonSlain,
       blueprintDropped: this.blueprintDropped && !this.blueprint, // a scroll still on the ground drops again
       buffs: { ...this.buffs }, buffSpawnAt: { blue: respawn(this.buffSpawnAt.blue), red: respawn(this.buffSpawnAt.red) },
-      bonusRunePoints: this.bonusRunePoints, flashReady: this.flashReady,
+      bonusRunePoints: this.bonusRunePoints, skipRunePoints: this.skipRunePoints, flashReady: this.flashReady,
       nextEvent: live < 0 ? this.nextEvent : live, nextHordeAt: this.nextHordeAt, dragon: this.dragon,
       pendingLevelUps: this.pendingLevelUps, autoAttack: this.autoAttack, declinedItems: this.declinedItems,
       fx: {

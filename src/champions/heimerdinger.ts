@@ -57,23 +57,23 @@ const TURRET = {
 
 /**
  * Not from LoL: Q cast on one of his Evolution Turrets (or tapping it on a touch screen) spends the Kit and the Mana to
- * level it up instead of building another, up to 3 levels; each level picks one of three upgrades.
+ * level it up instead of building another, from level 1 up to 10; each level picks one of three upgrades.
  */
 const UPGRADES = {
-  max: 3, pick: 120, tap: 140, // pointer / tap reach around a turret
+  max: 10, pick: 120, tap: 140, // pointer / tap reach around a turret
   ap: 40, // bonus ability power of that turret's shots and beam
   attackSpeed: 0.3, // bonus attack speed of that turret
-  beam: 0.25, // shorter beam charge (time x0.75 each)
-  grow: 0.15, // the turret's size per level (+15%), grown over `growTime` seconds
+  cleave: 0.4, radius: 350, // Tiamat's Cleave: share of a shot's damage dealt to the other enemies around its target
+  grow: 0.08, // the turret's size per level (+8%: 1.72x at level 10), grown over `growTime` seconds
   growTime: 0.4,
 };
-type Upgrade = 'ap' | 'attackSpeed' | 'beam';
+type Upgrade = 'ap' | 'attackSpeed' | 'cleave';
 
 const SKILLS = {
   Q: {
     name: t('champion.heimerdinger.Q'), desc: t('champion.heimerdinger.Q.desc'), damageType: 'magic', maxRank: 5, anim: 'heimerdinger_base_spell1', icon: `${ICON}/spell/HeimerdingerQ.png`,
     cooldown: [1, 1, 1, 1, 1], cost: [15, 15, 15, 15, 15],
-    damage: [7, 11, 15, 19, 23], apRatio: 0.35,
+    damage: [7, 11, 15, 19, 23], apRatio: 0.35, apPerLevel: 0.01, // buffed for hordes: +1% AP per champion level (League: 35%)
     extra: { label: t('champion.heimerdinger.beam'), values: [40, 60, 80, 100, 120] },
     beam: [40, 60, 80, 100, 120], beamAp: 0.55,
     range: 350, ultRange: 450, aim: 350, castTime: 0.25, kits: 3, kitRecharge: 20,
@@ -110,6 +110,7 @@ const HITS = {
   Q: { type: 'magic', source: 'ability', skill: 'Q' }, // turret shots and beams are Heimerdinger's spell damage
   W: { type: 'magic', source: 'ability', skill: 'W' },
   E: { type: 'magic', source: 'ability', skill: 'E' },
+  cleave: { type: 'magic', source: 'item' }, // a turret's Cleave splash: an area proc, like an item's
 } as const satisfies Record<string, Hit>;
 
 export const HEIMERDINGER: ChampionDef = {
@@ -156,7 +157,7 @@ interface Turret {
   shot: { at: number; target: Enemy; cas: number; beam: boolean } | null; // an attack in windup
   away: number; // seconds out of Heimerdinger's reach
   dormant: boolean; dying: number; fx: THREE.Object3D[]; // countdown timer, exclamation, dormant sparks
-  level: number; pending: number; ap: number; attackSpeed: number; chargeTime: number; // upgrades (chargeTime: multiplier)
+  level: number; pending: number; ap: number; attackSpeed: number; cleave: number; // upgrades
   ring: THREE.Object3D | null; // range ring while under the pointer
 }
 /** A straight missile the kit moves (accelerating rockets and beams). */
@@ -231,7 +232,7 @@ function heimerdingerKit(g: Game): ChampionKit {
   };
 
   // ---- Q: turrets ----
-  const turretDamage = (tu: Turret) => SKILLS.Q.damage[qRank()] + SKILLS.Q.apRatio * (g.ap + tu.ap);
+  const turretDamage = (tu: Turret) => SKILLS.Q.damage[qRank()] + (SKILLS.Q.apRatio + SKILLS.Q.apPerLevel * g.level) * (g.ap + tu.ap);
   const beamDamage = (tu: Turret) => tu.kind === 'blue'
     ? SKILLS.R.qUltBeam[rRank()] + SKILLS.R.qUltBeamAp * g.ap
     : SKILLS.Q.beam[qRank()] + SKILLS.Q.beamAp * (g.ap + tu.ap);
@@ -246,20 +247,20 @@ function heimerdingerKit(g: Game): ChampionKit {
     }
     return best;
   };
-  const UPGRADE_ICON: Record<Upgrade, string> = { ap: `${ICON}/item/1058.png`, attackSpeed: `${ICON}/item/1043.png`, beam: `${ICON}/item/3108.png` };
+  const UPGRADE_ICON: Record<Upgrade, string> = { ap: `${ICON}/item/1058.png`, attackSpeed: `${ICON}/item/1043.png`, cleave: `${ICON}/item/3077.png` };
   const levelUp = (tu: Turret) => {
     tu.pending++;
     g.vfx.playAt('Heimerdinger_Q_Turret_Spawn', tu.pos, tu.actor?.root.rotation.y ?? 0);
     audio.playAt('heimerdinger_turret_spawn', tu.pos, g.pos);
-    const values: Record<Upgrade, number> = { ap: UPGRADES.ap, attackSpeed: UPGRADES.attackSpeed * 100, beam: UPGRADES.beam * 100 };
+    const values: Record<Upgrade, number> = { ap: UPGRADES.ap, attackSpeed: UPGRADES.attackSpeed * 100, cleave: UPGRADES.cleave * 100 };
     const apply: Record<Upgrade, () => void> = {
       ap: () => { tu.ap += UPGRADES.ap; },
       attackSpeed: () => { tu.attackSpeed += UPGRADES.attackSpeed; },
-      beam: () => { tu.chargeTime *= 1 - UPGRADES.beam; },
+      cleave: () => { tu.cleave += UPGRADES.cleave; },
     };
     g.choices.push({
       title: t('champion.heimerdinger.upgrade', { level: tu.level + tu.pending }),
-      options: (['ap', 'attackSpeed', 'beam'] as const).map((u) => ({
+      options: (['ap', 'attackSpeed', 'cleave'] as const).map((u) => ({
         name: t(`champion.heimerdinger.upgrade.${u}`), text: t(`champion.heimerdinger.upgrade.${u}.desc`, { n: values[u] }), icon: UPGRADE_ICON[u],
         run: () => { apply[u](); tu.level++; },
       })),
@@ -292,7 +293,7 @@ function heimerdingerKit(g: Game): ChampionKit {
     const tu: Turret = {
       kind, actor, pos, born: g.time, until: kind === 'blue' ? g.time + TURRET.blue.duration : Infinity, charge: 0,
       next: g.time + TURRET.spawn, shot: null, away: 0, dormant: false, dying: -1, fx: [],
-      level: 0, pending: 0, ap: 0, attackSpeed: 0, chargeTime: 1, ring: null,
+      level: 1, pending: 0, ap: 0, attackSpeed: 0, cleave: 0, ring: null,
     };
     turrets.push(tu);
     if (kind === 'yellow') {
@@ -384,6 +385,16 @@ function heimerdingerKit(g: Game): ChampionKit {
       g.spawnMissile('Heimerdinger_Q_Turret_Mis', from, e.pos, {
         speed: T.speed, range: 3000, radius: 10, damage: turretDamage(tu), target: e, hit: HITS.Q, height: from.y,
         hitFx: 'Heimerdinger_Q_Turret_Tar', hitSound: 'heimerdinger_turret_hit',
+        onHit: (x, m) => {
+          g.impact(x, m);
+          if (tu.cleave <= 0) return;
+          // Cleave (Tiamat's, with its blast): the other enemies around the target take a share of the shot
+          g.vfx.playAt('3077_AoE', x.pos.clone().setY(0));
+          for (const y of g.enemiesNear(x.pos, UPGRADES.radius + 100, near)) {
+            if (y === x || !alive(y) || edge(y, x.pos) > UPGRADES.radius) continue;
+            g.hurtEnemy(y, m.damage * tu.cleave, HITS.cleave);
+          }
+        },
       });
       return;
     }
@@ -403,7 +414,7 @@ function heimerdingerKit(g: Game): ChampionKit {
       },
     });
   };
-  const sizeOf = (tu: Turret) => 1 + UPGRADES.grow * tu.level;
+  const sizeOf = (tu: Turret) => 1 + UPGRADES.grow * (tu.level - 1);
   const updateTurret = (tu: Turret, dt: number) => {
     tu.actor?.update(dt);
     if (tu.actor) { // each level makes the turret bigger: it grows to its new size
@@ -452,7 +463,7 @@ function heimerdingerKit(g: Game): ChampionKit {
       if (tu.dormant) return true;
     }
     if (g.time - tu.born < TURRET.spawn) return true;
-    tu.charge = Math.min(1, tu.charge + (T.charge / tu.chargeTime) * (1 + g.abilityHaste / 100) * dt);
+    tu.charge = Math.min(1, tu.charge + T.charge * (1 + g.abilityHaste / 100) * dt);
     if (tu.shot) {
       const s = tu.shot;
       if (g.time >= s.cas) {
@@ -654,7 +665,7 @@ function heimerdingerKit(g: Game): ChampionKit {
         out.push({
           pos: tu.pos, height: (tu.kind === 'yellow' ? 95 : 190) * TURRET.scale * sizeOf(tu), fill: tu.charge, ready: tu.charge >= 1, dim: tu.dormant,
           hover: h, hint: h ? t('champion.heimerdinger.upgradeHint') : undefined,
-          pips: tu.kind === 'yellow' ? [tu.level, UPGRADES.max] : undefined,
+          level: tu.kind === 'yellow' ? tu.level : undefined,
         });
       }
       return out;

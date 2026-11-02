@@ -268,15 +268,15 @@ export class Hud {
   }
 
   /** The kit's world bars (ChampionKit.bars, e.g. turrets' charge): pooled, projected above each object. */
-  private barPool: { el: HTMLDivElement; fill: HTMLElement; pips: HTMLElement; hint: HTMLElement; key: string }[] = [];
+  private barPool: { el: HTMLDivElement; fill: HTMLElement; level: HTMLElement; hint: HTMLElement; key: string }[] = [];
   private kitBars(g: Game, camera: THREE.Camera) {
     const bars = g.kit.bars?.() ?? [];
     while (this.barPool.length < bars.length) {
       const el = document.createElement('div');
       el.className = 'kit-bar';
-      el.innerHTML = '<em></em><span></span><div><i></i></div>';
+      el.innerHTML = '<em></em><b></b><div><i></i></div>';
       $('floaters').appendChild(el);
-      this.barPool.push({ el, hint: el.children[0] as HTMLElement, pips: el.children[1] as HTMLElement, fill: el.querySelector('i')!, key: '' });
+      this.barPool.push({ el, hint: el.children[0] as HTMLElement, level: el.children[1] as HTMLElement, fill: el.querySelector('i')!, key: '' });
     }
     this.barPool.forEach((b, i) => {
       const k = bars[i];
@@ -284,15 +284,14 @@ export class Hud {
       this.projected.copy(k.pos).setY(k.height).project(camera);
       const x = Math.round((this.projected.x * 0.5 + 0.5) * innerWidth);
       const y = Math.round((-this.projected.y * 0.5 + 0.5) * innerHeight);
-      const pips = k.pips ? '\u25c6'.repeat(k.pips[0]) + '\u25c7'.repeat(k.pips[1] - k.pips[0]) : '';
-      const key = `${x},${y}|${k.fill.toFixed(3)}|${k.ready}|${k.dim}|${k.hover}|${k.hint}|${pips}`;
+      const key = `${x},${y}|${k.fill.toFixed(3)}|${k.ready}|${k.dim}|${k.hover}|${k.hint}|${k.level ?? ''}`;
       if (key === b.key) return;
       b.key = key;
       b.el.style.display = 'flex';
       b.el.style.transform = `translate(${x}px, ${y}px) translate(-50%, -100%)`;
       b.el.className = `kit-bar${k.ready ? ' ready' : ''}${k.dim ? ' dim' : ''}${k.hover ? ' hover' : ''}`;
       b.fill.style.width = pct(k.fill);
-      b.pips.textContent = pips;
+      b.level.textContent = k.level === undefined ? '' : String(k.level);
       b.hint.textContent = k.hover ? k.hint ?? '' : '';
     });
   }
@@ -486,6 +485,11 @@ export class Hud {
 
   /** Build complete: level ups offer potions instead of items. */
   private potionStep(g: Game, done: () => void) {
+    if (g.hp >= g.maxHp && g.mana >= g.maxMana) { // nothing to restore: no potion step, a rune point instead
+      g.skipRunePoints++;
+      g.float(g.pos, t('levelup.skipPoint'), 'xp');
+      return done();
+    }
     $('levelup-title').textContent = t('levelup.potion', { level: g.level });
     $('continue').textContent = t('levelup.decline');
     const potions = [

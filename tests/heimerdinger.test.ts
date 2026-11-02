@@ -20,7 +20,7 @@ function rig() {
     cooldownOf: () => 100,
     player: { bone: () => undefined, root: new THREE.Object3D(), showSubmesh: vi.fn() },
     vfx: { attach: () => new THREE.Group(), playAt: vi.fn(), play: vi.fn(), hit: vi.fn(), playOn: vi.fn(), missile: () => ({ root: new THREE.Object3D(), update: () => {} }) },
-    hurtEnemy: vi.fn(), stunEnemy: vi.fn(), slow: vi.fn(), spawnMissile: vi.fn(), enemiesNear: () => enemies, enemyAt: () => null,
+    impact: vi.fn(), hurtEnemy: vi.fn(), stunEnemy: vi.fn(), slow: vi.fn(), spawnMissile: vi.fn(), enemiesNear: () => enemies, enemyAt: () => null,
     nearestEnemy: (_p: THREE.Vector3, _r: number, f?: (e: Enemy) => boolean) => enemies.find((e) => !f || f(e)) ?? null,
   };
   const kit = HEIMERDINGER.kit(g as unknown as Game);
@@ -105,25 +105,41 @@ it('turrets shoot the enemy Heimerdinger hit in the last 3s first', () => {
   expect(g.spawnMissile.mock.calls[0][3].target).toBe(hit);
 });
 
-it('Q on a turret levels it up (a pick of three upgrades) instead of building one, up to 3 levels', () => {
+it('Q on a turret levels it up (a pick of three upgrades) instead of building one, from level 1 to 10', () => {
   const { g, kit, step } = rig();
   const at = new THREE.Vector3(100, 0, 0);
   place(kit, at);
+  expect(kit.bars!()[0].level).toBe(1);
+  const h0 = kit.bars!()[0].height;
   place(kit, at.clone().setX(130)); // within reach of the turret: a level, not a second turret
-  expect(kit.hud!()).toContain('1');
   expect(g.choices).toHaveLength(1);
   expect(g.choices[0].options).toHaveLength(3);
-  const h0 = kit.bars!()[0].height;
   g.choices.shift()!.options[1].run(); // attack speed
   step(0.05);
-  expect(kit.bars!()[0].height).toBeCloseTo(h0 * 1.15); // each level makes the turret 15% bigger
-  expect(kit.bars!()[0].pips).toEqual([1, 3]);
-  for (let i = 0; i < 2; i++) { step(20); place(kit, at); g.choices.shift()!.options[0].run(); step(0.05); }
-  expect(kit.bars!()[0].pips).toEqual([3, 3]);
+  expect(kit.bars!()[0].level).toBe(2);
+  expect(kit.bars!()[0].height).toBeCloseTo(h0 * 1.08); // each level makes the turret 8% bigger
+  for (let i = 0; i < 8; i++) { step(20); place(kit, at); g.choices.shift()!.options[0].run(); step(0.05); }
+  expect(kit.bars!()[0].level).toBe(10);
   step(20);
   place(kit, at); // maxed: builds a new turret
   expect(g.choices).toHaveLength(0);
   expect(kit.bars!()).toHaveLength(2);
+});
+
+it('Cleave: turret shots hurt the other enemies within 350 of the target for 40% per pick', () => {
+  const { g, kit, enemies, step } = rig();
+  const target = enemy('minion', new THREE.Vector3(300, 0, 0));
+  const nearby = enemy('minion', new THREE.Vector3(500, 0, 0));
+  enemies.push(target, nearby);
+  const at = new THREE.Vector3(100, 0, 0);
+  place(kit, at);
+  place(kit, at);
+  g.choices.shift()!.options[2].run(); // Cleave
+  step(1.6);
+  const shot = g.spawnMissile.mock.calls[0][3];
+  shot.onHit(target, { damage: 100, pos: target.pos, dir: new THREE.Vector3(1, 0, 0) });
+  expect(g.hurtEnemy).toHaveBeenCalledWith(nearby, 40, expect.objectContaining({ source: 'item' }));
+  expect(g.hurtEnemy).not.toHaveBeenCalledWith(target, 40, expect.anything());
 });
 
 it('the turret under the pointer is highlighted with a hint; a tap on it casts Q on it', () => {
