@@ -1,4 +1,4 @@
-// Aurelion Sol (src/champions/aurelionsol.ts): orbiting stars, Celestial Expansion's mana drain, Starsurge's growth
+// Aurelion Sol (src/champions/aurelionsol.ts): orbiting stars (rehit and minion execute), Celestial Expansion's mana drain, Starsurge's growth
 // and detonation, Voice of Light's line, slow and knock-back.
 import * as THREE from 'three';
 import { expect, it, vi } from 'vitest';
@@ -29,14 +29,23 @@ const hitsOn = (g: ReturnType<typeof rig>['g'], e: Enemy, source: string) =>
 
 it('stars sweep the orbit and hit an enemy on it once per pass', () => {
   const { g, enemies, step } = rig();
-  const e = enemy(0, 250);
+  const e = enemy(0, 325);
   enemies.push(e);
-  step(5); // stars pass over it 2s apart (the first one starts on it, back at 6s)
+  step(4.5); // stars pass over it 1.75s apart (the first one starts on it, back at 5.25s)
   expect(hitsOn(g, e, 'item')).toBe(3);
   const far = enemy(0, 650); // only the expanded orbit reaches it
   enemies.push(far);
   step(3);
   expect(hitsOn(g, far, 'item')).toBe(0);
+});
+
+it('stars execute minions left at 25 Health or less', () => {
+  const { g, enemies, step } = rig();
+  const e = enemy(0, 325);
+  e.hp = 20;
+  enemies.push(e);
+  step(0.05);
+  expect(g.hurtEnemy).toHaveBeenCalledWith(e, 20, expect.objectContaining({ type: 'true' }));
 });
 
 it('Celestial Expansion widens the orbit, drains mana every second and switches off when it runs dry', () => {
@@ -52,17 +61,34 @@ it('Celestial Expansion widens the orbit, drains mana every second and switches 
   expect(kit.hud!()).not.toContain('−');
 });
 
-it('Starsurge grows while Aurelion stays close and detonates once he leaves, stunning what it covers', () => {
+it('Starsurge flies out and detonates past the Outer Limit, stunning longer the longer it travelled', () => {
   const { g, kit, enemies, step } = rig();
   kit.cast('Q', 0, new THREE.Vector3(0, 0, 1000));
-  g.pos.z = 0;
-  const e = enemy(0, 900);
+  expect(kit.moveSpeedBonus!()).toBeCloseTo(0.2); // while the star is out
+  const e = enemy(0, 690);
   enemies.push(e);
-  step(1); // star at z=600, still within 650: grows, no blast
+  step(0.5); // 850 slowing to 600: still within 650
   expect(hitsOn(g, e, 'ability')).toBe(0);
-  step(0.5); // z=900: too far from Aurelion, detonates on the enemy
+  step(0.5); // past 650: detonates on the enemy
   expect(hitsOn(g, e, 'ability')).toBe(1);
-  expect(g.stunEnemy).toHaveBeenCalledWith(e, expect.any(Number));
+  const stun = g.stunEnemy.mock.calls.find(([x]) => x === e)![1];
+  expect(stun).toBeGreaterThan(0.55);
+  expect(stun).toBeLessThan(2.2);
+  expect(kit.moveSpeedBonus!()).toBe(0);
+});
+
+it('Starsurge can be recast to detonate early, after 0.25s', () => {
+  const { g, kit, enemies, step } = rig();
+  kit.cast('Q', 0, new THREE.Vector3(0, 0, 1000));
+  const e = enemy(0, 200);
+  enemies.push(e);
+  step(0.1);
+  kit.recast!('Q', new THREE.Vector3());
+  expect(hitsOn(g, e, 'ability')).toBe(0); // too soon
+  step(0.15);
+  kit.recast!('Q', new THREE.Vector3());
+  expect(hitsOn(g, e, 'ability')).toBe(1);
+  expect(g.stunEnemy).toHaveBeenCalledWith(e, expect.closeTo(0.55 * (1 + 3 * 0.25 / 3), 2));
 });
 
 it('Voice of Light hits and slows the line, knocking near enemies back to the Outer Limit', () => {

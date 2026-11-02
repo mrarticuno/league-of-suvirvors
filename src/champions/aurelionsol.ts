@@ -1,19 +1,21 @@
 // Aurelion Sol: today's model, VFX and sounds with the kit he had before his 2023 rework (Data Dragon 13.1.1),
 // ultimate included (Voice of Light: a line of starfire that slows, knocking nearby enemies back to the Outer Limit).
 // Stats are the 13.1.1 ones. The comets and Voice of Light's blast are drawn by aurelionsolFx.ts (gone from today's client).
-// Adapted for hordes: each star hits an enemy once per pass over it; star kills restore a bit of
-// mana (0.5s cooldown against minions and small monsters, always from elite and epic ones) because Celestial
-// Expansion drains mana per second (6-10/s, no activation cost) and the old kit had no other mana source.
-// Comet of Legend is a 3s flight high above the ground along the cast direction, ended by a move order (at Starsurge's speed, through walls and units, no attacks) on a 20-12s
-// cooldown instead of a long locked line on 80-60s. Starsurge grows while Aurelion stays within 650 units and
-// detonates past that or after 5s (full size only stops its growth); the bigger it got, the more it deals (+50%) and stuns (0.55-1.1s).
-// It wears today's Singularity vortex, scaled to its radius.
+// Numbers are the final pre-rework ones (V13.2, unchanged since V11.15; wiki History page): stars at 325 one turn per
+// 5.25s, a star hits the same enemy again only after a third of a turn, minions left at 25 Health or less are executed;
+// Starsurge grows from 75 radius by 36.67/s for as long as it stays within the Outer Limit (650), flies at 850 slowing to 600,
+// gives +20% Move Speed while it is out, can be recast to detonate after 0.25s and stuns 0.55-0.75s up to four times that by
+// travel time. Adapted: star kills restore a bit of mana (0.5s cooldown against minions and small monsters, always from elite
+// and epic ones) because Celestial Expansion is a toggle draining mana per second (6-10/s, no activation cost) instead of a
+// 3s timed cast; mana costs are the game's own. Comet of Legend is a 3s flight high above the ground along the cast direction,
+// ended by a move order (at Starsurge's final speed, through walls and units, no attacks) on a 20-12s cooldown instead of a
+// long locked line on 80-60s. Starsurge wears today's Singularity vortex, scaled to its radius.
 import * as THREE from 'three';
 import { audio } from '../audio';
 import type { ChampionDef, ChampionKit, Hit, SkillDef, SkillKey } from '../champion';
 import type { Enemy, Game } from '../game';
 import { t } from '../i18n';
-import { Blast, Comet } from './aurelionsolFx';
+import { Blast, Comet, OrbitRing, Zap, type Fx } from './aurelionsolFx';
 
 const ICON = 'https://ddragon.leagueoflegends.com/cdn/16.21.1/img';
 const OLD_ICON = 'https://ddragon.leagueoflegends.com/cdn/13.1.1/img'; // the pre-rework kit's icons
@@ -22,13 +24,14 @@ const HANDS = ['Star1', 'Star2']; // the bones of the stars he holds
 const VORTEX_RADIUS = 450;
 
 const STARS = {
-  count: 3, radius: 250, expandedRadius: 650,
-  hitRadius: 150, // matches the comet's glow (its head flare is 150 across the radius)
-  head: 62, tail: 560, tailWidth: 52, // comet head glow radius, tail length and half width at its root
-  period: 6, expandedPeriod: 2, // seconds per revolution
+  count: 3, radius: 325, expandedRadius: 650,
+  hitRadius: 150,
+  head: 40, tailTurn: Math.PI / 2.5, tailWidth: 60, // comet head glow radius, tail length (radians of orbit) and half width at its widest
+  period: 5.25, expandedPeriod: 2, // seconds per revolution (expanded: the wiki only says fast)
   reach: 1400, // units per second the orbit widens and shrinks
-  damage: [20, 120], apRatio: 0.25, expandedMult: 1.4, // base damage by level, Celestial Expansion multiplier
-  passGap: 0.25, // seconds out of a star's contact that end its pass over an enemy (one hit per pass)
+  damage: [12, 120], apRatio: 0.25, expandedMult: 1.4, // base damage by level, Celestial Expansion multiplier
+  rehit: (Math.PI * 2) / 3, // orbit a star travels before it can hit the same enemy again
+  execute: 25, // minions left at or below this Health die
   manaRestore: [4, 12], manaCooldown: 0.5,
 };
 
@@ -36,8 +39,11 @@ const SKILLS = {
   Q: {
     name: t('champion.aurelionsol.Q'), desc: t('champion.aurelionsol.Q.desc'), damageType: 'magic', maxRank: 5, anim: 'aurelionsol_spell3_new', icon: `${OLD_ICON}/spell/AurelionSolQ.png`,
     cooldown: [12, 11, 10, 9, 8], cost: [50, 55, 60, 65, 70],
-    damage: [70, 110, 150, 190, 230], apRatio: 0.65, sizeBonus: 0.5, stun: [0.55, 1.1],
-    speed: 600, leash: 650, life: 5, radius: [150, 450], grow: 120, // radius per second while near
+    damage: [70, 110, 150, 190, 230], apRatio: 0.65,
+    stun: [0.55, 0.6, 0.65, 0.7, 0.75], stunGrowth: 3, stunTime: 3, // stun +0-300% by travel time (full at stunTime: an estimate)
+    speed: [850, 600], slowdown: 1, // flies at 850 slowing to 600 over `slowdown` seconds (the decay time is an estimate)
+    leash: 650, radius: 75, grow: 36.67, // radius per second, without limit, while within the Outer Limit
+    moveSpeed: 0.2, recastAfter: 0.25,
     aim: 1075, castTime: 0.25,
   },
   W: {
@@ -69,6 +75,7 @@ const SKILLS = {
 
 const HITS = {
   Q: { type: 'magic', source: 'ability', skill: 'Q' },
+  execute: { type: 'true', source: 'item' }, // a star finishing a minion left at 25 Health
   R: { type: 'magic', source: 'ability', skill: 'R' },
   star: { type: 'magic', source: 'item' }, // continuous contact damage: triggers no ability items
 } as const satisfies Record<string, Hit>;
@@ -128,15 +135,21 @@ const lerpLevel = (level: number, [a, b]: readonly number[]) => a + ((b - a) * (
 /** A Starsurge in flight: grows while Aurelion stays near, then detonates. */
 interface Surge { pos: THREE.Vector3; dir: THREE.Vector3; rank: number; radius: number; age: number; vortex: THREE.Object3D; center: THREE.Object3D }
 
+const W_RETRACT = { bonus: 0.4, decay: 1.5 }; // Move Speed when the stars come back in, decaying
+
 function aurelionSolKit(g: Game): ChampionKit {
   const near: Enemy[] = []; // own query array: hurtEnemy may run item effects that query too
   const flat = new THREE.Vector3();
   // the old kit's comets (today's client has only the hand stars, whose particle trail does not look like them)
-  const stars = Array.from({ length: STARS.count }, () => new Comet(STARS.tail, STARS.tailWidth, STARS.head));
+  const stars = Array.from({ length: STARS.count }, () => new Comet(STARS.radius * STARS.tailTurn, STARS.tailWidth, STARS.head));
+  const ring = new OrbitRing();
+  g.scene.add(ring.mesh);
   for (const s of stars) g.scene.add(s.root);
   const starPos = stars.map(() => new THREE.Vector3());
-  const blasts: Blast[] = [];
-  const touching = stars.map(() => new Map<Enemy, number>()); // per star: enemy -> last run time in contact
+  const fx: Fx[] = []; // Voice of Light's blasts and knock-back lightning
+  const touching = stars.map(() => new Map<Enemy, number>()); // per star: enemy -> orbit angle of its last hit
+  const lastPos = new THREE.Vector3(); // his position last frame, to keep Starsurge ahead of him
+  let retractAt = -Infinity;
   const surges: Surge[] = [];
   let angle = 0, orbit: number = STARS.radius;
   let expanded = false;
@@ -171,7 +184,7 @@ function aurelionSolKit(g: Game): ChampionKit {
     expanded = on;
     expandFx?.removeFromParent();
     expandFx = on ? follow('AurelionSol_W_Buff') : null;
-    if (!on) audio.play('aurelionsol_W_off');
+    if (!on) { audio.play('aurelionsol_W_off'); retractAt = g.time; }
   };
 
   /** Moves and sizes a Starsurge's visuals to its position and radius. */
@@ -181,9 +194,8 @@ function aurelionSolKit(g: Game): ChampionKit {
 
   const detonate = (s: Surge) => {
     const q = SKILLS.Q;
-    const size = (s.radius - q.radius[0]) / (q.radius[1] - q.radius[0]); // 0..1
-    const damage = (q.damage[s.rank] + q.apRatio * g.ap) * (1 + q.sizeBonus * size);
-    const stun = q.stun[0] + (q.stun[1] - q.stun[0]) * size;
+    const damage = q.damage[s.rank] + q.apRatio * g.ap;
+    const stun = q.stun[s.rank] * (1 + q.stunGrowth * Math.min(1, s.age / q.stunTime));
     // today's kit has no growing star: Falling Star's impact (not the Calamity one R uses) stands in
     g.vfx.playAt('AurelionSol_R_Tar_Shockwave', s.pos);
     g.vfx.playAt('AurelionSol_R_Impact', s.pos);
@@ -202,9 +214,9 @@ function aurelionSolKit(g: Game): ChampionKit {
     const R = SKILLS.R;
     const jaw = g.player.bone('Jaw');
     const from = jaw ? jaw.getWorldPosition(new THREE.Vector3()) : g.pos.clone().setY(150);
-    const blast = new Blast(from, dir, R.range, R.width * 2, R.range / R.speed);
+    const blast = new Blast(from, dir, R.range, R.width * 1.3, R.range / R.speed);
     g.scene.add(blast.root);
-    blasts.push(blast);
+    fx.push(blast);
     audio.play('aurelionsol_R_hit');
     const damage = R.damage[rank] + R.apRatio * g.ap;
     const mid = g.pos.clone().addScaledVector(dir, R.range / 2).setY(0);
@@ -222,6 +234,7 @@ function aurelionSolKit(g: Game): ChampionKit {
       // pushed straight away from him (along the blast if right on top of him) out to the Outer Limit
       const away = dist > 1 ? new THREE.Vector3(dx / dist, 0, dz / dist) : dir.clone();
       g.knockBack(e, away.multiplyScalar(R.outer - dist), R.push);
+      if (fx.length < 24) { const z = new Zap(e.pos, e.pos); g.scene.add(z.root); fx.push(z); } // gold lightning along the push
     }
   };
 
@@ -245,12 +258,23 @@ function aurelionSolKit(g: Game): ChampionKit {
     steer: () => (flying() ? flightDir : undefined),
     onMoveOrder() { if (flying()) flightUntil = g.time; }, // walking ends the flight
     moveSpeedBonus() {
+      if (speedProbe) return 0;
+      if (!flying()) {
+        const retract = W_RETRACT.bonus * Math.max(0, 1 - (g.time - retractAt) / W_RETRACT.decay);
+        return (surges.length ? SKILLS.Q.moveSpeed : 0) + retract;
+      }
       // the comet keeps pace with Starsurge: whatever his speed, it becomes the star's
-      if (!flying() || speedProbe) return 0;
       speedProbe = true;
       const own = g.moveSpeed;
       speedProbe = false;
-      return SKILLS.Q.speed / own - 1;
+      return SKILLS.Q.speed[1] / own - 1;
+    },
+    recast(key) {
+      // Starsurge: detonate the star early
+      const s = surges[0];
+      if (key !== 'Q' || !s || s.age < SKILLS.Q.recastAfter) return;
+      detonate(s);
+      surges.shift();
     },
     moveAnims: () => (flying() ? { idle: 'aurelionsol_dashing02', run: 'aurelionsol_dashing02' } : undefined),
     castTime: (key) => (key === 'R' && flying() ? 0.01 : undefined), // Voice of Light mid-flight does not stop the comet
@@ -267,13 +291,14 @@ function aurelionSolKit(g: Game): ChampionKit {
         const vortex = g.vfx.attach('AurelionSol_E_AoE_ChildParticle', { bind: true });
         const center = g.vfx.attach('AurelionSol_E_ExecuteZone_ChildParticle', { bind: true }); // the golden star at its heart
         g.scene.add(vortex, center);
-        const surge = { pos, dir: toward(point).clone(), rank: r, radius: q.radius[0], age: 0, vortex, center };
+        const surge = { pos, dir: toward(point).clone(), rank: r, radius: q.radius, age: 0, vortex, center };
         place(surge);
         surges.push(surge);
         audio.play('aurelionsol_Q_launch');
       } else if (key === 'W') {
         setExpanded(!expanded);
       } else if (key === 'E') {
+        setExpanded(false); // the comet pulls the stars back in
         flightUntil = g.time + SKILLS.E.duration;
         flightDir.copy(toward(point));
         flightFx?.removeFromParent();
@@ -310,21 +335,24 @@ function aurelionSolKit(g: Game): ChampionKit {
       orbit += Math.sign(target - orbit) * Math.min(Math.abs(target - orbit), STARS.reach * dt);
       angle += ((Math.PI * 2) / (expanded ? STARS.expandedPeriod : STARS.period)) * dt;
       const alive = g.hp > 0;
+      ring.mesh.visible = alive;
+      ring.place(g.pos, orbit, 110);
       const damage = starDamage();
       for (let i = 0; i < stars.length; i++) {
         const a = angle + (i * Math.PI * 2) / stars.length;
         const s = starPos[i].set(g.pos.x + Math.sin(a) * orbit, 110, g.pos.z + Math.cos(a) * orbit);
         stars[i].visible = alive;
         if (!alive) continue;
+        stars[i].length = orbit * STARS.tailTurn;
         stars[i].update(s);
         const touch = touching[i];
+        for (const [e, last] of touch) if (e.deadFor >= 0 || angle - last >= STARS.rehit) touch.delete(e);
         for (const e of g.enemiesNear(s, STARS.hitRadius, near)) {
-          if (!inReach(e, s, STARS.hitRadius)) continue;
-          const last = touch.get(e);
-          touch.set(e, g.time);
-          if (last === undefined) g.hurtEnemy(e, damage, HITS.star);
+          if (!inReach(e, s, STARS.hitRadius) || touch.has(e)) continue;
+          touch.set(e, angle);
+          g.hurtEnemy(e, damage, HITS.star);
+          if (e.deadFor < 0 && e.def.tier === 'minion' && e.hp <= STARS.execute) g.hurtEnemy(e, e.hp, HITS.execute);
         }
-        for (const [e, last] of touch) if (e.deadFor >= 0 || g.time - last > STARS.passGap) touch.delete(e);
       }
 
       // Starsurge
@@ -332,22 +360,27 @@ function aurelionSolKit(g: Game): ChampionKit {
       for (let i = surges.length - 1; i >= 0; i--) {
         const s = surges[i];
         s.age += dt;
-        s.pos.addScaledVector(s.dir, q.speed * dt);
+        const k = Math.min(1, s.age / q.slowdown);
+        // never slower than he moves along its course: he cannot overtake it
+        const his = dt > 0 ? ((g.pos.x - lastPos.x) * s.dir.x + (g.pos.z - lastPos.z) * s.dir.z) / dt : 0;
+        s.pos.addScaledVector(s.dir, Math.max(q.speed[0] + (q.speed[1] - q.speed[0]) * k, his) * dt);
         const close = Math.hypot(s.pos.x - g.pos.x, s.pos.z - g.pos.z) <= q.leash;
-        if (close) s.radius = Math.min(q.radius[1], s.radius + q.grow * dt);
+        if (close) s.radius += q.grow * dt;
         place(s);
-        if (close && s.age < q.life && alive) continue;
+        if (close && alive) continue;
         detonate(s);
         surges.splice(i, 1);
       }
+      lastPos.copy(g.pos);
 
-      for (let i = blasts.length - 1; i >= 0; i--) if (!blasts[i].update(dt)) { blasts[i].dispose(); blasts.splice(i, 1); }
+      for (let i = fx.length - 1; i >= 0; i--) if (!fx[i].update(dt)) { fx[i].dispose(); fx.splice(i, 1); }
     },
 
     dispose() {
       for (const s of stars) s.dispose();
-      for (const b of blasts) b.dispose();
-      blasts.length = 0;
+      for (const f of fx) f.dispose();
+      fx.length = 0;
+      ring.dispose();
       for (const s of surges) { s.vortex.removeFromParent(); s.center.removeFromParent(); }
       expandFx?.removeFromParent();
       flightFx?.removeFromParent();
