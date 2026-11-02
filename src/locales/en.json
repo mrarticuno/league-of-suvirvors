@@ -597,7 +597,7 @@
  "champion.aurelionsol.slow": "Slow",
  "champion.aurelionsol.Q.desc": "Launches a star that flies at 850 speed, slowing to 600, and grows (from 75 radius) for as long as it stays within his Outer Limit (650 units); he gains 20% Move Speed while it is out. Past the Outer Limit, or when recast after 0.25s, it detonates: magic damage and a Stun of 0.55–0.75s, up to four times longer the longer it travelled.",
  "champion.aurelionsol.W.desc": "Passive: each star hit deals 5–25 more damage. Toggle: the stars fly out to 650 units, orbit much faster and deal 40% more damage while it drains mana every second. When they come back in (also on Comet of Legend) he gains 40% Move Speed, decaying over 1.5s.",
- "champion.aurelionsol.E.desc": "Takes off for 3s toward the cast direction, flying high over walls and units at Starsurge's speed (600). Moving (click or arrow keys) ends the flight. He cannot attack while flying.",
+ "champion.aurelionsol.E.desc": "Takes off toward the cast direction and flies 5500–7500 units at a fixed 600–800 Move Speed, high over walls and units. Moving (click or arrow keys) ends the flight early. He cannot attack while flying.",
  "champion.aurelionsol.R.desc": "Breathes a blast of starfire 1500 units long, dealing magic damage and slowing enemies hit by 40/50/60% for 2s. Enemies hit within 650 units are knocked back out to that distance (his Outer Limit).",
  "champion.aurelionsol.passive.desc": "Three stars orbit him at 325 units, one turn every 5.25s, and hit every enemy they pass over for 12–120 (by level) + the W rank bonus + 25% AP magic damage. A star hits the same enemy again only after a third of a turn. Minions left at 25 Health or less are executed. Star kills restore 4–12 mana.",
  "champion.teemo.name": "Teemo",

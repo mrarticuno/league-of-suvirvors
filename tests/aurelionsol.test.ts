@@ -107,21 +107,31 @@ it('Voice of Light hits and slows the line, knocking near enemies back to the Ou
   expect(offset.x).toBeCloseTo(350); // 300 out to 650
 });
 
-it('Comet of Legend flies high through walls and units, at Starsurge speed and unable to attack, for 3s', () => {
+it('Comet of Legend flies high through walls and units at a fixed speed, unable to attack, over its range', () => {
   const { g, kit, step } = rig();
-  kit.cast('E', 0, new THREE.Vector3());
+  kit.cast('E', 1, new THREE.Vector3(0, 0, 1000)); // rank 2: 6000 units at 650
   expect(kit.ghost!()).toBe(true);
   expect(kit.disarmed!()).toBe(true);
-  expect(kit.moveSpeedBonus!()).toBeCloseTo(1); // 300 -> Starsurge's 600
-  step(0.5);
+  expect(kit.moveSpeedBonus!()).toBeCloseTo(650 / 300 - 1);
+  const fly = (seconds: number) => { for (let i = 0; i < Math.round(seconds / 0.05); i++) { g.pos.z += 650 * 0.05; step(0.05); } };
+  fly(0.5);
   expect(g.player.root.position.y).toBe(150); // up in the sky
-  step(2.6);
+  fly(8.5); // 5850 units flown
+  expect(kit.ghost!()).toBe(true);
+  fly(0.3); // past 6000
   expect(kit.ghost!()).toBe(false);
   expect(kit.moveSpeedBonus!()).toBe(0);
   step(0.5);
   g.player.root.position.y = 0; // the Game puts the root back on the ground each frame
   step(0.05);
   expect(g.player.root.position.y).toBe(0); // landed: the kit no longer lifts it
+});
+
+it('Comet of Legend ends when an arena wall holds him still', () => {
+  const { kit, step } = rig();
+  kit.cast('E', 0, new THREE.Vector3(0, 0, 1000));
+  step(5500 / 600 + 1.1); // never moved: the time cap lands him
+  expect(kit.ghost!()).toBe(false);
 });
 
 it('Comet of Legend keeps flying toward the cast point until a move order ends it', () => {

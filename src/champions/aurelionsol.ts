@@ -7,9 +7,9 @@
 // gives +20% Move Speed while it is out, can be recast to detonate after 0.25s and stuns 0.55-0.75s up to four times that by
 // travel time. Adapted: star kills restore a bit of mana (0.5s cooldown against minions and small monsters, always from elite
 // and epic ones) because Celestial Expansion is a toggle draining mana per second (6-10/s, no activation cost) instead of a
-// 3s timed cast; mana costs are the game's own. Comet of Legend is a 3s flight high above the ground along the cast direction,
-// ended by a move order (at Starsurge's final speed, through walls and units, no attacks) on a 20-12s cooldown instead of a
-// long locked line on 80-60s. Starsurge wears today's Singularity vortex, scaled to its radius.
+// 3s timed cast; mana costs are the game's own. Comet of Legend flies the old 5500-7500 units at 600-800 Move Speed high
+// above the ground (through walls and units, no attacks), ended early by a move order instead of damage, on a 20-12s
+// cooldown instead of 80-60s. Starsurge wears today's Singularity vortex, scaled to its radius.
 import * as THREE from 'three';
 import { audio } from '../audio';
 import type { ChampionDef, ChampionKit, Hit, SkillDef, SkillKey } from '../champion';
@@ -57,8 +57,10 @@ const SKILLS = {
   E: {
     name: t('champion.aurelionsol.E'), desc: t('champion.aurelionsol.E.desc'), damageType: 'magic', maxRank: 5, anim: 'aurelionsol_spell2_takeoff', icon: `${OLD_ICON}/spell/AurelionSolE.png`,
     cooldown: [20, 18, 16, 14, 12], cost: [60, 60, 60, 60, 60],
-    damage: [0, 0, 0, 0, 0], duration: 3,
-    height: 150, rise: 600, // flight altitude and how fast he climbs to it or lands (units per second); he flies at Starsurge's speed
+    damage: [0, 0, 0, 0, 0],
+    range: [5500, 6000, 6500, 7000, 7500], speed: [600, 650, 700, 750, 800], // the old flight: distance and fixed Move Speed
+    extra: { label: t('stat.ms'), values: [600, 650, 700, 750, 800] },
+    height: 150, rise: 600, // flight altitude and how fast he climbs to it or lands (units per second)
     aim: 'move', castTime: 0.05,
   },
   R: {
@@ -154,7 +156,8 @@ function aurelionSolKit(g: Game): ChampionKit {
   let angle = 0, orbit: number = STARS.radius;
   let expanded = false;
   let expandFx: THREE.Object3D | null = null;
-  let flightUntil = -1;
+  let flightLeft = 0, flightUntil = -1, flightSpeed = 0; // distance to go, a time cap (a wall of the arena stops him), Move Speed
+  const flightFrom = new THREE.Vector3();
   const flightDir = new THREE.Vector3(); // Comet of Legend keeps this course until a move order
   let flightFx: THREE.Object3D | null = null;
   let manaReady = 0;
@@ -167,7 +170,7 @@ function aurelionSolKit(g: Game): ChampionKit {
     return dir.normalize();
   };
   const inReach = (e: Enemy, from: THREE.Vector3, r: number) => e.deadFor < 0 && e.pos.distanceTo(from) - e.def.radius <= r;
-  const flying = () => g.time < flightUntil;
+  const flying = () => flightLeft > 0 && g.time < flightUntil;
   const follow = (key: string) => {
     const o = g.vfx.attach(key, { owner: g.player.root }); // W_Buff redraws his body glowing
     o.position.copy(g.pos);
@@ -256,18 +259,18 @@ function aurelionSolKit(g: Game): ChampionKit {
     ghost: flying,
     disarmed: flying,
     steer: () => (flying() ? flightDir : undefined),
-    onMoveOrder() { if (flying()) flightUntil = g.time; }, // walking ends the flight
+    onMoveOrder() { flightLeft = 0; }, // walking ends the flight
     moveSpeedBonus() {
       if (speedProbe) return 0;
       if (!flying()) {
         const retract = W_RETRACT.bonus * Math.max(0, 1 - (g.time - retractAt) / W_RETRACT.decay);
         return (surges.length ? SKILLS.Q.moveSpeed : 0) + retract;
       }
-      // the comet keeps pace with Starsurge: whatever his speed, it becomes the star's
+      // Comet of Legend flies at a fixed Move Speed, whatever his own
       speedProbe = true;
       const own = g.moveSpeed;
       speedProbe = false;
-      return SKILLS.Q.speed[1] / own - 1;
+      return flightSpeed / own - 1;
     },
     recast(key) {
       // Starsurge: detonate the star early
@@ -299,7 +302,11 @@ function aurelionSolKit(g: Game): ChampionKit {
         setExpanded(!expanded);
       } else if (key === 'E') {
         setExpanded(false); // the comet pulls the stars back in
-        flightUntil = g.time + SKILLS.E.duration;
+        const E = SKILLS.E;
+        flightLeft = E.range[r];
+        flightSpeed = E.speed[r];
+        flightUntil = g.time + E.range[r] / E.speed[r] + 1;
+        flightFrom.copy(g.pos);
         flightDir.copy(toward(point));
         flightFx?.removeFromParent();
         flightFx = follow('AurelionSol_W_FlightTarget');
@@ -319,6 +326,7 @@ function aurelionSolKit(g: Game): ChampionKit {
         if (g.mana < drain) setExpanded(false);
         else g.mana -= drain;
       }
+      if (flightLeft > 0) { flightLeft -= Math.hypot(g.pos.x - flightFrom.x, g.pos.z - flightFrom.z); flightFrom.copy(g.pos); }
       if (flightFx) {
         if (flying()) flightFx.position.copy(g.pos);
         else { flightFx.removeFromParent(); flightFx = null; audio.play('aurelionsol_E_end'); }
