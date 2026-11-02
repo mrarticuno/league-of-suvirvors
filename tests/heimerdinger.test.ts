@@ -113,8 +113,10 @@ it('Q on a turret levels it up (a pick of three upgrades) instead of building on
   expect(kit.hud!()).toContain('1');
   expect(g.choices).toHaveLength(1);
   expect(g.choices[0].options).toHaveLength(3);
+  const h0 = kit.bars!()[0].height;
   g.choices.shift()!.options[1].run(); // attack speed
   step(0.05);
+  expect(kit.bars!()[0].height).toBeCloseTo(h0 * 1.15); // each level makes the turret 15% bigger
   expect(kit.bars!()[0].pips).toEqual([1, 3]);
   for (let i = 0; i < 2; i++) { step(20); place(kit, at); g.choices.shift()!.options[0].run(); step(0.05); }
   expect(kit.bars!()[0].pips).toEqual([3, 3]);

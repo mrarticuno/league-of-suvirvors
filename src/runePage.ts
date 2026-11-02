@@ -11,6 +11,7 @@ import { RUNES, runesOf, SHARDS, TREE_IDS, TREES, type RuneDef, type TreeId } fr
 
 const $ = (id: string) => document.getElementById(id)!;
 
+const DOUBLE_CLICK_MS = 400;
 const GEM = '<svg class="gem" viewBox="0 0 48 48" aria-hidden="true"><path d="M24 4L40 18L24 44L8 18Z" fill="#8fc7ff" opacity=".3"/><path d="M24 4L40 18L24 44L8 18Z M8 18h32" fill="none" stroke="#ddeeff" stroke-width="3" stroke-linejoin="round"/></svg>';
 const LOCK = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#a2abbd" stroke-width="2.2" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="1"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>';
 const CHEVRON = (d: string) => `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d}"/></svg>`;
@@ -236,6 +237,7 @@ export function showRunePage(champ: ChampionDef, onPlay: (page: Page) => void, o
     if (RUNES[id].tree !== page.primary) secondaryView = RUNES[id].tree;
     render();
   };
+  let lastClick = { id: '', at: 0 };
   const buy = (id: string) => {
     const bought = unlockRune(progress, id);
     if (!bought) return;
@@ -266,7 +268,13 @@ export function showRunePage(champ: ChampionDef, onPlay: (page: Page) => void, o
       const id = el.dataset.rune!;
       el.addEventListener('mouseenter', () => showDetail(id));
       el.addEventListener('mouseleave', () => showDetail(focus));
-      el.addEventListener('click', () => pick(id));
+      el.addEventListener('click', () => {
+        // double click (or double tap) on a rune not bought yet buys it; the first click re-renders the node, so no dblclick
+        const again = lastClick.id === id && performance.now() - lastClick.at < DOUBLE_CLICK_MS;
+        lastClick = { id, at: performance.now() };
+        if (again && !progress.unlocked.includes(id)) buy(id);
+        else pick(id);
+      });
     });
     all('[data-primary]').forEach((el) => el.addEventListener('click', () => {
       const tree = el.dataset.primary as TreeId;

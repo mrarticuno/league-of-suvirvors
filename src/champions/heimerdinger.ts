@@ -64,6 +64,8 @@ const UPGRADES = {
   ap: 40, // bonus ability power of that turret's shots and beam
   attackSpeed: 0.3, // bonus attack speed of that turret
   beam: 0.25, // shorter beam charge (time x0.75 each)
+  grow: 0.15, // the turret's size per level (+15%), grown over `growTime` seconds
+  growTime: 0.4,
 };
 type Upgrade = 'ap' | 'attackSpeed' | 'beam';
 
@@ -401,8 +403,13 @@ function heimerdingerKit(g: Game): ChampionKit {
       },
     });
   };
+  const sizeOf = (tu: Turret) => 1 + UPGRADES.grow * tu.level;
   const updateTurret = (tu: Turret, dt: number) => {
     tu.actor?.update(dt);
+    if (tu.actor) { // each level makes the turret bigger: it grows to its new size
+      const sc = tu.actor.root.scale, to = sizeOf(tu);
+      if (sc.x !== to) sc.setScalar(sc.x < to ? Math.min(to, sc.x + (UPGRADES.grow / UPGRADES.growTime) * dt) : to);
+    }
     if (tu.dying >= 0) {
       if ((tu.dying -= dt) > 0) return true;
       tu.actor?.dispose();
@@ -645,7 +652,7 @@ function heimerdingerKit(g: Game): ChampionKit {
         if (tu.dying >= 0) continue;
         const h = tu === hover;
         out.push({
-          pos: tu.pos, height: (tu.kind === 'yellow' ? 95 : 190) * TURRET.scale, fill: tu.charge, ready: tu.charge >= 1, dim: tu.dormant,
+          pos: tu.pos, height: (tu.kind === 'yellow' ? 95 : 190) * TURRET.scale * sizeOf(tu), fill: tu.charge, ready: tu.charge >= 1, dim: tu.dormant,
           hover: h, hint: h ? t('champion.heimerdinger.upgradeHint') : undefined,
           pips: tu.kind === 'yellow' ? [tu.level, UPGRADES.max] : undefined,
         });
