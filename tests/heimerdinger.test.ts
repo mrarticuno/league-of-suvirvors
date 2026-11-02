@@ -15,7 +15,7 @@ const AUTO: Hit = { type: 'physical', source: 'auto', onHit: true };
 function rig() {
   const enemies: Enemy[] = [];
   const g = {
-    time: 0, level: 1, choices: [] as { title: string; options: { name: string; run: () => void }[] }[], cursor: null as THREE.Vector3 | null, cast: vi.fn(), ap: 0, mana: 0, maxMana: 500, hp: 500, abilityHaste: 0, pos: new THREE.Vector3(), facing: 0, scene: new THREE.Scene(),
+    time: 0, level: 1, float: vi.fn(), choices: [] as { title: string; options: { name: string; run: () => void }[] }[], cursor: null as THREE.Vector3 | null, cast: vi.fn(), ap: 0, mana: 0, maxMana: 500, hp: 500, abilityHaste: 0, pos: new THREE.Vector3(), facing: 0, scene: new THREE.Scene(),
     ranks: { Q: 1, W: 1, E: 1, R: 1 }, cooldowns: { Q: 0, W: 0, E: 0, R: 0 },
     cooldownOf: () => 100,
     player: { bone: () => undefined, root: new THREE.Object3D(), showSubmesh: vi.fn() },
@@ -30,7 +30,13 @@ function rig() {
 const enemy = (tier: Enemy['def']['tier'] = 'minion', at = new THREE.Vector3()) =>
   ({ def: { tier, radius: 48 }, hp: 100, maxHp: 100, deadFor: -1, pos: at }) as unknown as Enemy;
 let spot = 0;
-const place = (kit: ReturnType<typeof rig>['kit'], at = new THREE.Vector3(100, 0, (spot++ % 5) * 200)) => { kit.castStart!('Q', at); kit.cast('Q', 0, at); };
+/** Q at `at` as Game.cast runs it: press, then the cast condition, then cast start and resolve. */
+const place = (kit: ReturnType<typeof rig>['kit'], at = new THREE.Vector3(100, 0, (spot++ % 5) * 200)) => {
+  if (kit.press!('Q', at) === null || kit.canCast!('Q') === false) return false;
+  kit.castStart!('Q', at);
+  kit.cast('Q', 0, at);
+  return true;
+};
 
 it('turrets use Turret Kits: 3 at most, one back every 20s', () => {
   const { kit, step } = rig();
@@ -105,15 +111,15 @@ it('turrets shoot the enemy Heimerdinger hit in the last 3s first', () => {
   expect(g.spawnMissile.mock.calls[0][3].target).toBe(hit);
 });
 
-it('Q on a turret levels it up (a pick of three upgrades) instead of building one, from level 1 to 10', () => {
+it('Q on a turret opens its popup: level it up from 1 to 10 (one of three upgrades), move or remove it', () => {
   const { g, kit, step } = rig();
   const at = new THREE.Vector3(100, 0, 0);
   place(kit, at);
   expect(kit.bars!()[0].level).toBe(1);
   const h0 = kit.bars!()[0].height;
-  place(kit, at.clone().setX(130)); // within reach of the turret: a level, not a second turret
-  expect(g.choices).toHaveLength(1);
-  expect(g.choices[0].options).toHaveLength(3);
+  place(kit, at.clone().setX(130)); // within reach of the turret: its popup, not a second turret
+  expect(kit.bars!()).toHaveLength(1);
+  expect(g.choices[0].options.map((o) => o.name)).toHaveLength(5); // 3 upgrades, move, remove
   g.choices.shift()!.options[1].run(); // attack speed
   step(0.05);
   expect(kit.bars!()[0].level).toBe(2);
@@ -121,9 +127,47 @@ it('Q on a turret levels it up (a pick of three upgrades) instead of building on
   for (let i = 0; i < 8; i++) { step(20); place(kit, at); g.choices.shift()!.options[0].run(); step(0.05); }
   expect(kit.bars!()[0].level).toBe(10);
   step(20);
-  place(kit, at); // maxed: builds a new turret
-  expect(g.choices).toHaveLength(0);
-  expect(kit.bars!()).toHaveLength(2);
+  place(kit, at); // maxed: only move and remove
+  expect(g.choices.shift()!.options).toHaveLength(2);
+});
+
+it('declining the popup spends no Turret Kit; picking an option spends one', () => {
+  const { g, kit, step } = rig();
+  const at = new THREE.Vector3(100, 0, 0);
+  place(kit, at); // 2 kits left
+  kit.press!('Q', at);
+  expect(kit.cost!('Q')).toBe(0); // Q on a turret costs no Mana
+  place(kit, at);
+  g.choices.shift(); // declined
+  step(0.05);
+  expect(kit.gauge!().label).toBe('2');
+  place(kit, at);
+  g.choices.shift()!.options[0].run();
+  expect(kit.gauge!().label).toBe('1');
+});
+
+it('at 10 turrets Q builds no more; move (next Q, free) and remove spend a kit each', () => {
+  const { g, kit, step } = rig();
+  for (let i = 0; i < 10; i++) { place(kit, new THREE.Vector3(i * 300, 0, 0)); step(20); }
+  expect(kit.bars!()).toHaveLength(10);
+  expect(place(kit, new THREE.Vector3(0, 0, 900))).toBe(false); // refused
+  expect(g.float).toHaveBeenCalled();
+  expect(kit.bars!()).toHaveLength(10);
+  // move the first one
+  place(kit, new THREE.Vector3(0, 0, 0));
+  const opts = g.choices.shift()!.options;
+  opts[3].run(); // move
+  const kitsAfter = kit.gauge!().label;
+  expect(place(kit, new THREE.Vector3(0, 0, 200))).toBe(true); // the free placing Q
+  expect(kit.gauge!().label).toBe(kitsAfter);
+  expect(kit.bars!().some((b) => b.pos.z === 200)).toBe(true);
+  expect(kit.bars!()).toHaveLength(10);
+  // remove one: a slot frees up
+  step(20);
+  place(kit, new THREE.Vector3(300, 0, 0));
+  g.choices.shift()!.options[4].run();
+  step(2);
+  expect(kit.bars!()).toHaveLength(9);
 });
 
 it('Cleave: turret shots hurt the other enemies within 350 of the target for 40% per pick', () => {

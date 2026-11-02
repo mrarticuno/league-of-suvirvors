@@ -2,8 +2,8 @@
 // HeimerTBlue: DataValues, mSpellCalculations, cooldowns, costs, missile specs, cast frames) and the LoL Wiki for what
 // the bins leave to scripts (turret attack speed 1.75 / Apex 1.05, beam charge 1.1%/s / Apex 12.5%/s + 20% per attack,
 // the 8s deactivation timer, Hextech Affinity's 300 radius).
-// H-28G Evolution Turret: Turret Kits recharge every 20s (ability haste shortens it), 3 at most; up to 10 turrets (League: 3, buffed for hordes), an 11th
-// destroys the oldest. A turret fires cannon shots at the enemy Heimerdinger last hit (a 3s mark), else the nearest one,
+// H-28G Evolution Turret: Turret Kits recharge every 20s (ability haste shortens it), 3 at most; up to 10 turrets (League: 3, a 4th replacing
+// the oldest; here at 10 Q builds no more: it only levels up, moves or removes one). A turret fires cannon shots at the enemy Heimerdinger last hit (a 3s mark), else the nearest one,
 // and fires its beam at full charge. Out of Heimerdinger's reach (900) for 8s, it shuts down and loses its charge.
 // Hextech Micro-Rockets / CH-2 grenade charge nearby turrets when they hit a champion: elite and epic monsters stand in
 // for champions here (20% per rocket, 100% per grenade). UPGRADE!!! empowers the next basic ability (no mana), can be
@@ -57,7 +57,8 @@ const TURRET = {
 
 /**
  * Not from LoL: Q cast on one of his Evolution Turrets (or tapping it on a touch screen) spends the Kit and the Mana to
- * level it up instead of building another, from level 1 up to 10; each level picks one of three upgrades.
+ * level it up instead of building another, from level 1 up to 10; each level picks one of three upgrades. The same popup
+ * moves it (the next Q, free, places it) or takes it down. Only the option picked spends the Kit; declining spends nothing.
  */
 const UPGRADES = {
   max: 10, pick: 120, tap: 140, // pointer / tap reach around a turret
@@ -184,6 +185,9 @@ function heimerdingerKit(g: Game): ChampionKit {
   let ammo: { n: number; o: THREE.Object3D } | null = null;
   let manaReady = 0;
   let attack2 = false;
+  let moving: Turret | null = null; // picked to move: the next Q places it
+  let qIntent: 'build' | 'manage' | 'move' = 'build'; // what the Q being cast does (set when it is pressed)
+  let qTurret: Turret | null = null;
 
   const after = (s: number, run: () => void) => later.push({ at: g.time + s, run });
   const alive = (e: Enemy) => e.deadFor < 0;
@@ -237,33 +241,51 @@ function heimerdingerKit(g: Game): ChampionKit {
     ? SKILLS.R.qUltBeam[rRank()] + SKILLS.R.qUltBeamAp * g.ap
     : SKILLS.Q.beam[qRank()] + SKILLS.Q.beamAp * (g.ap + tu.ap);
   const attackSpeedOf = (tu: Turret) => TURRET[tu.kind].attackSpeed * (1 + tu.attackSpeed);
-  /** The Evolution Turret within `reach` of `point` that can still level up, nearest first. */
-  const upgradable = (point: THREE.Vector3, reach: number) => {
+  /** The Evolution Turret within `reach` of `point`, nearest first. */
+  const ownAt = (point: THREE.Vector3, reach: number) => {
     let best: Turret | null = null, d = reach;
     for (const tu of turrets) {
-      if (tu.kind !== 'yellow' || tu.dying >= 0 || tu.level + tu.pending >= UPGRADES.max) continue;
+      if (tu.kind !== 'yellow' || tu.dying >= 0) continue;
       const dist = Math.hypot(tu.pos.x - point.x, tu.pos.z - point.z);
       if (dist <= d) { d = dist; best = tu; }
     }
     return best;
   };
   const UPGRADE_ICON: Record<Upgrade, string> = { ap: `${ICON}/item/1058.png`, attackSpeed: `${ICON}/item/1043.png`, cleave: `${ICON}/item/3077.png` };
-  const levelUp = (tu: Turret) => {
+  const spendKit = () => {
+    if (kits === SKILLS.Q.kits) kitTimer = 0;
+    kits = Math.max(0, kits - 1);
+    g.vfx.playAt('Heimerdinger_Q_Ammo_Spend', g.pos.clone().setY(0), g.facing);
+  };
+  const ownCount = () => turrets.reduce((n, x) => n + (x.kind === 'yellow' && x.dying < 0 ? 1 : 0), 0);
+  /** Q on one of his turrets: a popup to level it up, move it or take it down; only the option picked spends a Turret Kit. */
+  const manage = (tu: Turret) => {
     tu.pending++;
-    g.vfx.playAt('Heimerdinger_Q_Turret_Spawn', tu.pos, tu.actor?.root.rotation.y ?? 0);
-    audio.playAt('heimerdinger_turret_spawn', tu.pos, g.pos);
+    const canLevel = tu.level + tu.pending <= UPGRADES.max;
     const values: Record<Upgrade, number> = { ap: UPGRADES.ap, attackSpeed: UPGRADES.attackSpeed * 100, cleave: UPGRADES.cleave * 100 };
     const apply: Record<Upgrade, () => void> = {
       ap: () => { tu.ap += UPGRADES.ap; },
       attackSpeed: () => { tu.attackSpeed += UPGRADES.attackSpeed; },
       cleave: () => { tu.cleave += UPGRADES.cleave; },
     };
+    const upgrades = canLevel ? (['ap', 'attackSpeed', 'cleave'] as const).map((u) => ({
+      name: t(`champion.heimerdinger.upgrade.${u}`), text: t(`champion.heimerdinger.upgrade.${u}.desc`, { n: values[u] }), icon: UPGRADE_ICON[u],
+      run: () => {
+        spendKit();
+        apply[u]();
+        tu.level++;
+        g.vfx.playAt('Heimerdinger_Q_Turret_Spawn', tu.pos, tu.actor?.root.rotation.y ?? 0);
+        audio.playAt('heimerdinger_turret_spawn', tu.pos, g.pos);
+      },
+    })) : [];
     g.choices.push({
-      title: t('champion.heimerdinger.upgrade', { level: tu.level + tu.pending }),
-      options: (['ap', 'attackSpeed', 'cleave'] as const).map((u) => ({
-        name: t(`champion.heimerdinger.upgrade.${u}`), text: t(`champion.heimerdinger.upgrade.${u}.desc`, { n: values[u] }), icon: UPGRADE_ICON[u],
-        run: () => { apply[u](); tu.level++; },
-      })),
+      title: canLevel ? t('champion.heimerdinger.upgrade', { level: tu.level + tu.pending }) : t('champion.heimerdinger.manage', { level: tu.level }),
+      options: [...upgrades,
+        { name: t('champion.heimerdinger.move'), text: t('champion.heimerdinger.move.desc'), icon: `${CD_ICON}/heimerdinger_q1.png`,
+          run: () => { spendKit(); moving = tu; g.float(tu.pos, t('champion.heimerdinger.moveHint'), 'xp'); } },
+        { name: t('champion.heimerdinger.remove'), text: t('champion.heimerdinger.remove.desc'), icon: `${CD_ICON}/heimerdinger_techmaturgicalrepairbots.png`,
+          run: () => { spendKit(); destroy(tu); } },
+      ],
     });
     // the popup shows on the next frame; a declined one leaves the level free again
     after(0, () => { tu.pending = Math.max(0, tu.pending - 1); });
@@ -276,11 +298,27 @@ function heimerdingerKit(g: Game): ChampionKit {
     return o;
   };
   const clearFx = (tu: Turret) => { for (const o of tu.fx) o.removeFromParent(); tu.fx = []; };
-  const deploy = (kind: Kind, point: THREE.Vector3) => {
-    if (kind === 'yellow') {
-      const own = turrets.filter((x) => x.kind === 'yellow' && x.dying < 0);
-      if (own.length >= TURRET.max) destroy(own[0]);
+  /** Move: the turret folds up where it stood and is rebuilt at `to` (its level, upgrades and charge kept). */
+  const relocate = (tu: Turret, to: THREE.Vector3) => {
+    clearFx(tu);
+    tu.ring?.removeFromParent();
+    tu.ring = null;
+    g.vfx.playAt('Heimerdinger_Q_Turret_Spawn', tu.pos, 0);
+    tu.pos.copy(to).setY(0);
+    tu.born = g.time;
+    tu.next = g.time + TURRET.spawn;
+    tu.shot = null;
+    tu.away = 0;
+    tu.dormant = false;
+    if (tu.actor) {
+      tu.actor.root.position.copy(tu.pos);
+      tu.actor.root.rotation.y = g.facing;
+      tu.actor.play('heimerturret_spawn', { loop: false });
     }
+    g.vfx.playAt('Heimerdinger_Q_Turret_Spawn', tu.pos, g.facing);
+    audio.playAt('heimerdinger_turret_spawn', tu.pos, g.pos);
+  };
+  const deploy = (kind: Kind, point: THREE.Vector3) => {
     let actor: Actor | null = null;
     try { actor = new Actor(kind === 'yellow' ? 'heimertyellow' : 'heimertblue', TURRET.scale); } catch { /* model still downloading */ }
     const pos = point.clone().setY(0);
@@ -306,6 +344,7 @@ function heimerdingerKit(g: Game): ChampionKit {
   };
   function destroy(tu: Turret) {
     if (tu.dying >= 0) return;
+    if (moving === tu) moving = null;
     clearFx(tu);
     tu.ring?.removeFromParent();
     tu.ring = null;
@@ -612,8 +651,21 @@ function heimerdingerKit(g: Game): ChampionKit {
       return { icon: `${CD_ICON}/heimerdinger_${n}.png`, name: t(`champion.heimerdinger.${k}2`) };
     },
     moveSpeedBonus: () => (turrets.some((x) => x.dying < 0 && x.pos.distanceTo(flat.copy(g.pos).setY(0)) <= PASSIVE.radius) ? PASSIVE.moveSpeed : 0),
-    cost: () => (upgraded ? 0 : undefined),
-    canCast: (k) => k !== 'Q' || upgraded || kits > 0,
+    cost: (k) => (upgraded || (k === 'Q' && qIntent !== 'build') ? 0 : undefined),
+    canCast: (k) => k !== 'Q' || upgraded || qIntent === 'move' || kits > 0,
+    press(key, point) {
+      if (key !== 'Q') return undefined;
+      qIntent = 'build';
+      if (upgraded) return undefined; // the Apex Turret: a turret of its own, outside the limit
+      if (moving && moving.dying < 0) { qIntent = 'move'; return undefined; }
+      qTurret = ownAt(point, UPGRADES.pick);
+      if (qTurret) { qIntent = 'manage'; return undefined; }
+      if (ownCount() >= TURRET.max) { // the limit: no more turrets, only upgrades, moves and removals
+        g.float(g.pos, t('champion.heimerdinger.turretLimit', { max: TURRET.max }), 'xp');
+        return null;
+      }
+      return undefined;
+    },
     cooldownBase: (k) => (k === 'R' && !consuming ? SKILLS.R.recast : undefined),
     castAnim: (k) => (k === 'R' && upgraded ? 'heimerdinger_spell4_windown' : undefined),
 
@@ -625,11 +677,7 @@ function heimerdingerKit(g: Game): ChampionKit {
       if (bone) g.vfx.playOn(fx, bone, g.facing, g.player.root);
       if (upgraded) endUpgrade(true);
       if (ult.E && key === 'E') audio.play('heimerdinger_E_ult');
-      if (key === 'Q' && !ult.Q) {
-        if (kits === SKILLS.Q.kits) kitTimer = 0;
-        kits--;
-        g.vfx.playAt('Heimerdinger_Q_Ammo_Spend', g.pos.clone().setY(0), g.facing);
-      }
+      if (key === 'Q' && !ult.Q && qIntent === 'build') spendKit();
     },
 
     cast(key, r, point) {
@@ -643,9 +691,11 @@ function heimerdingerKit(g: Game): ChampionKit {
       const up = !!ult[key];
       ult[key] = false;
       if (key === 'Q') {
-        const target = up ? null : upgradable(point, UPGRADES.pick);
-        if (target) levelUp(target);
-        else deploy(up ? 'blue' : 'yellow', within(point, up ? SKILLS.Q.ultRange : SKILLS.Q.range));
+        if (up) deploy('blue', within(point, SKILLS.Q.ultRange));
+        else if (qIntent === 'move' && moving) { relocate(moving, within(point, SKILLS.Q.range)); moving = null; }
+        else if (qIntent === 'manage' && qTurret && qTurret.dying < 0) manage(qTurret);
+        else if (qIntent === 'build' && ownCount() < TURRET.max) deploy('yellow', within(point, SKILLS.Q.range));
+        qIntent = 'build';
       }
       else if (key === 'W') {
         const perEnemy = new Map<Enemy, number>();
@@ -658,20 +708,20 @@ function heimerdingerKit(g: Game): ChampionKit {
 
     bars() {
       const out: KitBar[] = [];
-      const hover = g.cursor && !upgraded ? upgradable(g.cursor, UPGRADES.pick) : null;
+      const hover = moving ?? (g.cursor && !upgraded ? ownAt(g.cursor, UPGRADES.pick) : null);
       for (const tu of turrets) {
         if (tu.dying >= 0) continue;
         const h = tu === hover;
         out.push({
           pos: tu.pos, height: (tu.kind === 'yellow' ? 95 : 190) * TURRET.scale * sizeOf(tu), fill: tu.charge, ready: tu.charge >= 1, dim: tu.dormant,
-          hover: h, hint: h ? t('champion.heimerdinger.upgradeHint') : undefined,
+          hover: h, hint: h ? t(tu === moving ? 'champion.heimerdinger.moveHint' : 'champion.heimerdinger.upgradeHint') : undefined,
           level: tu.kind === 'yellow' ? tu.level : undefined,
         });
       }
       return out;
     },
     tap(point) {
-      const tu = upgradable(point, UPGRADES.tap);
+      const tu = moving ? null : ownAt(point, UPGRADES.tap);
       if (!tu) return false;
       g.cast('Q', tu.pos.clone());
       return true;
@@ -718,7 +768,7 @@ function heimerdingerKit(g: Game): ChampionKit {
       }
       for (let i = turrets.length - 1; i >= 0; i--) if (!updateTurret(turrets[i], dt)) turrets.splice(i, 1);
       // the turret under the pointer shows its range ring (League's, on hover), the way to level it up with Q
-      const hover = g.cursor && !upgraded ? upgradable(g.cursor, UPGRADES.pick) : null;
+      const hover = moving ?? (g.cursor && !upgraded ? ownAt(g.cursor, UPGRADES.pick) : null);
       for (const tu of turrets) {
         if ((tu === hover) === !!tu.ring) continue;
         if (tu.ring) { tu.ring.removeFromParent(); tu.ring = null; continue; }
@@ -773,6 +823,7 @@ function heimerdingerKit(g: Game): ChampionKit {
       turrets.length = bolts.length = lobs.length = later.length = 0;
       antennaFx = [];
       ammo = null;
+      moving = null;
       marks.clear();
     },
   };

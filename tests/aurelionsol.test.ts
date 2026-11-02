@@ -1,5 +1,5 @@
 // Aurelion Sol (src/champions/aurelionsol.ts): orbiting stars, Celestial Expansion's mana drain, Starsurge's growth
-// and detonation, Falling Star's knock-up.
+// and detonation, Voice of Light's line, slow and knock-back.
 import * as THREE from 'three';
 import { expect, it, vi } from 'vitest';
 import { AURELIONSOL } from '../src/champions/aurelionsol';
@@ -12,9 +12,9 @@ function rig() {
   const g = {
     time: 0, level: 1, ap: 0, hp: 500, mana: 100, maxMana: 500, facing: 0, pos: new THREE.Vector3(), scene: new THREE.Scene(),
     ranks: { Q: 1, W: 1, E: 1, R: 1 },
-    vfx: { attach: () => new THREE.Group(), playAt: vi.fn(), playOn: vi.fn() },
+    vfx: { attach: () => new THREE.Group(), play: vi.fn(), playAt: vi.fn(), playOn: vi.fn() },
     player: { bone: () => null, root: new THREE.Group() },
-    hurtEnemy: vi.fn(), stunEnemy: vi.fn(), knockUp: vi.fn(),
+    hurtEnemy: vi.fn(), stunEnemy: vi.fn(), knockUp: vi.fn(), slow: vi.fn(), knockBack: vi.fn(),
     enemiesNear: (p: THREE.Vector3, r: number) => enemies.filter((e) => e.pos.distanceTo(p) <= r + 50),
     nearestEnemy: () => enemies[0] ?? null,
   };
@@ -65,16 +65,20 @@ it('Starsurge grows while Aurelion stays close and detonates once he leaves, stu
   expect(g.stunEnemy).toHaveBeenCalledWith(e, expect.any(Number));
 });
 
-it('Falling Star lands after 1s and knocks up enemies in its area', () => {
-  const { g, kit, enemies, step } = rig();
-  const e = enemy(300);
-  enemies.push(e);
-  kit.cast('R', 0, new THREE.Vector3(300, 0, 0));
-  step(0.9);
-  expect(g.knockUp).not.toHaveBeenCalled();
-  step(0.2);
-  expect(hitsOn(g, e, 'ability')).toBe(1);
-  expect(g.knockUp).toHaveBeenCalledWith(e, 1);
+it('Voice of Light hits and slows the line, knocking near enemies back to the Outer Limit', () => {
+  const { g, kit, enemies } = rig();
+  const near = enemy(300), far = enemy(1400), aside = enemy(800, 400), behind = enemy(-300);
+  enemies.push(near, far, aside, behind);
+  kit.cast('R', 0, new THREE.Vector3(1000, 0, 0));
+  expect(hitsOn(g, near, 'ability')).toBe(1);
+  expect(hitsOn(g, far, 'ability')).toBe(1);
+  expect(hitsOn(g, aside, 'ability')).toBe(0);
+  expect(hitsOn(g, behind, 'ability')).toBe(0);
+  expect(g.slow).toHaveBeenCalledWith(far, 0.4, 2);
+  expect(g.knockBack).toHaveBeenCalledTimes(1);
+  const [who, offset] = g.knockBack.mock.calls[0];
+  expect(who).toBe(near);
+  expect(offset.x).toBeCloseTo(350); // 300 out to 650
 });
 
 it('Comet of Legend flies through walls and units, faster and unable to attack, for 3s', () => {

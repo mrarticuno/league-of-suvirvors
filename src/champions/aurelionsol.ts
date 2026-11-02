@@ -1,5 +1,6 @@
 // Aurelion Sol: today's model, VFX and sounds with the kit he had before his 2023 rework (Data Dragon 13.1.1),
-// except the ultimate, which is today's meteor (Falling Star) instead of Voice of Light. Stats are the 13.1.1 ones.
+// ultimate included (Voice of Light: a line of starfire that slows, knocking nearby enemies back to the Outer Limit).
+// Stats are the 13.1.1 ones. Voice of Light wears today's Breath of Light beam (the old one's systems are gone from the client).
 // Adapted for hordes: each star hits an enemy once per pass over it; star kills restore a bit of
 // mana (0.5s cooldown against minions and small monsters, always from elite and epic ones) because Celestial
 // Expansion drains mana per second (6-10/s, no activation cost) and the old kit had no other mana source.
@@ -12,6 +13,7 @@ import { audio } from '../audio';
 import type { ChampionDef, ChampionKit, Hit, SkillDef, SkillKey } from '../champion';
 import type { Enemy, Game } from '../game';
 import { t } from '../i18n';
+import { facingQuat } from '../particles';
 
 const ICON = 'https://ddragon.leagueoflegends.com/cdn/16.21.1/img';
 const OLD_ICON = 'https://ddragon.leagueoflegends.com/cdn/13.1.1/img'; // the pre-rework kit's icons
@@ -52,10 +54,13 @@ const SKILLS = {
     aim: 'move', castTime: 0.05,
   },
   R: {
-    name: t('champion.aurelionsol.R'), desc: t('champion.aurelionsol.R.desc'), damageType: 'magic', maxRank: 3, anim: 'aurelionsol_spell4_base', icon: `${ICON}/spell/AurelionSolR.png`,
-    cooldown: [100, 85, 70], cost: [100, 100, 100],
-    damage: [200, 325, 450], apRatio: 0.75, radius: 450, knockUp: 1, delay: 1,
-    range: 1250, aim: 1250, castTime: 0.35,
+    name: t('champion.aurelionsol.R'), desc: t('champion.aurelionsol.R.desc'), damageType: 'magic', maxRank: 3, anim: 'aurelionsol_channel_windup', icon: `${OLD_ICON}/spell/AurelionSolR.png`,
+    cooldown: [110, 90, 70], cost: [100, 100, 100],
+    damage: [150, 250, 350], apRatio: 0.7, slow: [0.4, 0.5, 0.6], slowTime: 2,
+    extra: { label: t('champion.aurelionsol.slow'), values: [0.4, 0.5, 0.6], percent: true },
+    range: 1500, width: 120, // half width of the blast
+    outer: 650, push: 0.4, // enemies hit closer than the Outer Limit are knocked back to it over 0.4s
+    beamLife: 0.6, aim: 1500, castTime: 0.35,
   },
 } as const satisfies Record<SkillKey, SkillDef & Record<string, unknown>>; // extra fields are the kit's own numbers
 
@@ -127,7 +132,6 @@ function aurelionSolKit(g: Game): ChampionKit {
   for (const s of stars) g.scene.add(s);
   const touching = stars.map(() => new Map<Enemy, number>()); // per star: enemy -> last run time in contact
   const surges: Surge[] = [];
-  const meteors: { at: THREE.Vector3; rank: number; fall: number }[] = [];
   let angle = 0, orbit: number = STARS.radius;
   let expanded = false;
   let expandFx: THREE.Object3D | null = null;
@@ -143,12 +147,6 @@ function aurelionSolKit(g: Game): ChampionKit {
   };
   const inReach = (e: Enemy, from: THREE.Vector3, r: number) => e.deadFor < 0 && e.pos.distanceTo(from) - e.def.radius <= r;
   const flying = () => g.time < flightUntil;
-  /** Where Falling Star lands: the cursor, within range. */
-  const landing = (point: THREE.Vector3) => {
-    const off = flat.copy(point).sub(g.pos).setY(0);
-    if (off.length() > SKILLS.R.range) off.setLength(SKILLS.R.range);
-    return g.pos.clone().add(off).setY(0);
-  };
   const follow = (key: string) => {
     const o = g.vfx.attach(key, { owner: g.player.root }); // W_Buff redraws his body glowing
     o.position.copy(g.pos);
@@ -191,16 +189,33 @@ function aurelionSolKit(g: Game): ChampionKit {
     s.center.removeFromParent();
   };
 
-  const impact = (m: { at: THREE.Vector3; rank: number }) => {
+  /** Voice of Light: a blast of starfire along `dir` from his mouth. */
+  const voice = (dir: THREE.Vector3, rank: number) => {
     const R = SKILLS.R;
-    g.vfx.playAt('AurelionSol_R_Calamity_Impact', m.at);
-    g.vfx.playAt('AurelionSol_R_Calamity_Shockwave', m.at);
-    audio.playAt('aurelionsol_R_hit', m.at, g.pos);
-    const damage = R.damage[m.rank] + R.apRatio * g.ap;
-    for (const e of g.enemiesNear(m.at, R.radius, near)) {
-      if (!inReach(e, m.at, R.radius)) continue;
+    const jaw = g.player.bone('Jaw');
+    const from = jaw ? jaw.getWorldPosition(new THREE.Vector3()) : g.pos.clone().setY(150);
+    const to = from.clone().addScaledVector(dir, R.range);
+    const facing = Math.atan2(dir.x, dir.z);
+    g.vfx.play('AurelionSol_Q_Beam_Buffed', from, facingQuat(facing), { target: to, life: R.beamLife });
+    g.vfx.play('AurelionSol_Q_Beam_End', to.clone().setY(0), facingQuat(facing), { life: R.beamLife });
+    audio.play('aurelionsol_R_hit');
+    const damage = R.damage[rank] + R.apRatio * g.ap;
+    const mid = g.pos.clone().addScaledVector(dir, R.range / 2).setY(0);
+    for (const e of g.enemiesNear(mid, R.range / 2 + R.width, near)) {
+      if (e.deadFor >= 0) continue;
+      const dx = e.pos.x - g.pos.x, dz = e.pos.z - g.pos.z;
+      const along = dx * dir.x + dz * dir.z;
+      if (along < -e.def.radius || along > R.range + e.def.radius) continue;
+      if (Math.abs(dx * dir.z - dz * dir.x) > R.width + e.def.radius) continue;
+      g.vfx.playAt('AurelionSol_R_tar', e.pos, facing, { size: e.def.radius * 2 });
       g.hurtEnemy(e, damage, HITS.R);
-      if (e.deadFor < 0) g.knockUp(e, R.knockUp);
+      if (e.deadFor >= 0) continue;
+      g.slow(e, R.slow[rank], R.slowTime);
+      const dist = Math.hypot(dx, dz);
+      if (dist >= R.outer) continue;
+      // pushed straight away from him (along the blast if right on top of him) out to the Outer Limit
+      const away = dist > 1 ? new THREE.Vector3(dx / dist, 0, dz / dist) : dir.clone();
+      g.knockBack(e, away.multiplyScalar(R.outer - dist), R.push);
     }
   };
 
@@ -219,19 +234,18 @@ function aurelionSolKit(g: Game): ChampionKit {
   return {
     hud: () => (expanded ? t('champion.aurelionsol.hud.on', { n: SKILLS.W.drain[Math.max(0, g.ranks.W - 1)] }) : t('champion.aurelionsol.hud.off')),
 
-    canCast: (key) => key !== 'R' || g.nearestEnemy(g.pos, SKILLS.R.range) !== null,
     ghost: flying,
     disarmed: flying,
     steer: () => (flying() ? flightDir : undefined),
     onMoveOrder() { if (flying()) flightUntil = g.time; }, // walking ends the flight
     moveSpeedBonus: () => (flying() ? SKILLS.E.speed[Math.max(0, g.ranks.E - 1)] : 0),
     moveAnims: () => (flying() ? { idle: 'aurelionsol_dashing02', run: 'aurelionsol_dashing02' } : undefined),
-    castTime: (key) => (key === 'R' && flying() ? 0.01 : undefined), // Falling Star mid-flight does not stop the comet
+    castTime: (key) => (key === 'R' && flying() ? 0.01 : undefined), // Voice of Light mid-flight does not stop the comet
 
     castStart(key, point) {
-      // the cast clips' particle events: Singularity's hands on Q's clip, the Skies Descend's on R's
+      // Singularity's cast hands on Q's clip; Voice of Light gathers light in his mouth
       if (key === 'Q') hands('AurelionSol_E_Cas_Hands');
-      if (key === 'R') { hands('AurelionSol_R_Calamity_Cas'); g.vfx.playAt('AurelionSol_R_Calamity_Tell', landing(point)); }
+      if (key === 'R') { const jaw = g.player.bone('Jaw'); if (jaw) g.vfx.playOn('AurelionSol_R_cas', jaw, Math.atan2(point.x - g.pos.x, point.z - g.pos.z), g.player.root); }
     },
 
     cast(key, r, point) {
@@ -253,10 +267,7 @@ function aurelionSolKit(g: Game): ChampionKit {
         flightFx?.removeFromParent();
         flightFx = follow('AurelionSol_W_FlightTarget');
       } else {
-        const at = landing(point);
-        g.vfx.playAt('AurelionSol_R_Calamity_Mis', at);
-        audio.playAt('aurelionsol_R_launch', at, g.pos);
-        meteors.push({ at, rank: r, fall: g.time + SKILLS.R.delay });
+        voice(toward(point), r);
       }
     },
 
@@ -312,12 +323,6 @@ function aurelionSolKit(g: Game): ChampionKit {
         detonate(s);
         surges.splice(i, 1);
       }
-
-      for (let i = meteors.length - 1; i >= 0; i--) {
-        if (g.time < meteors[i].fall) continue;
-        impact(meteors[i]);
-        meteors.splice(i, 1);
-      }
     },
 
     dispose() {
@@ -326,7 +331,6 @@ function aurelionSolKit(g: Game): ChampionKit {
       expandFx?.removeFromParent();
       flightFx?.removeFromParent();
       surges.length = 0;
-      meteors.length = 0;
       for (const t of touching) t.clear();
     },
   };
