@@ -7,6 +7,7 @@ const BASE = 'assets/sfx/';
 const SETTINGS = 'los-audio';
 const HEARING = 2200; // world units where positional sounds fade out
 const MAX_VOICES = 32;
+const DEFAULT_VOLUME = 0.1; // first visit: quiet, the player raises it
 const MIN_REPEAT = 0.05; // seconds before the same key can play again (hordes dying together)
 
 /** Linear falloff by distance from the listener (Ezreal): 1 next to him, 0 at HEARING. */
@@ -22,8 +23,8 @@ class GameAudio {
   private tracks: string[] = [];
   private paused = false;
   /** Player volume sliders, 0..1 (0 = off). */
-  musicVolume = 1;
-  sfxVolume = 1;
+  musicVolume = DEFAULT_VOLUME;
+  sfxVolume = DEFAULT_VOLUME;
 
   constructor() {
     this.out.connect(this.ctx.destination);
@@ -31,7 +32,7 @@ class GameAudio {
     try {
       const s = JSON.parse(localStorage.getItem(SETTINGS) ?? '{}');
       // older saves stored on/off booleans
-      const vol = (v: unknown) => (typeof v === 'number' ? v : v === false ? 0 : 1);
+      const vol = (v: unknown) => (typeof v === 'number' ? v : v === false ? 0 : DEFAULT_VOLUME);
       this.musicVolume = vol(s.music);
       this.sfxVolume = vol(s.sfx);
     } catch { /* storage blocked: keep defaults */ }

@@ -12,12 +12,14 @@ import { CHAMPIONS } from './champions';
 import type { Page } from './progress';
 import { Cinematic } from './cinematic';
 import { initTooltips } from './tooltip';
+import { initSoundControl, syncSoundControl } from './soundControl';
 import type { ChampionDef, SkillKey } from './champion';
 
 // LoL-style camera: high, pitched ~56°, looking down at the champion
 const CAMERA_OFFSET = new THREE.Vector3(0, 1900, 1250);
 
 initTooltips();
+initSoundControl();
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 document.getElementById('app')!.appendChild(renderer.domElement);
@@ -170,6 +172,7 @@ function enterMenus() {
   cine?.dispose();
   cine = null;
   document.body.classList.add('menus');
+  syncSoundControl();
   keys.clear();
 }
 

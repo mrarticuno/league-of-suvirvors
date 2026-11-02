@@ -88,6 +88,14 @@
       /* ---------- in-run HUD ---------- */
       #hud { position: fixed; inset: 0; pointer-events: none; transition: opacity 0.6s; }
       #hud button { pointer-events: auto; }
+      #snd { position: fixed; z-index: 40; right: 52px; bottom: 112px; display: none; align-items: center; gap: 6px; height: 44px; padding: 0 14px 0 4px;
+        background: var(--panel); border: 1px solid var(--gold-dim); }
+      body.menus #snd { display: flex; }
+      #snd button { display: grid; place-items: center; width: 40px; height: 40px; border: 0; background: transparent; color: var(--gold); cursor: pointer; }
+      #snd button:hover { color: var(--gold-hi); }
+      #snd svg { width: 24px; height: 24px; }
+      #snd input { width: 110px; accent-color: var(--gold); cursor: pointer; }
+      @media (max-width: 760px) { #snd { right: 8px; bottom: auto; top: 8px; } #snd input { width: 80px; } }
       body.menus #hud, body.menus #touch, body.menus #floaters { display: none; }
       body.cine #hud, body.cine #touch, body.cine #floaters { opacity: 0; transition: opacity 0.6s; }
       #hud-tl { position: fixed; left: 24px; top: 20px; display: flex; flex-direction: column; gap: 14px; }
