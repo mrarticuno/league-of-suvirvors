@@ -12,6 +12,8 @@ import {
   type ItemStats, type Offer,
 } from './items';
 import { RUNES, TREES } from './runes';
+import { bootsTip, itemTip, passiveTip, skillTip } from './tips';
+import { registerTip, tipText, type Tip } from './tooltip';
 
 const els = new Map<string, HTMLElement>();
 const $ = (id: string) => {
@@ -71,7 +73,7 @@ export class Hud {
     $('pause-btn').setAttribute('aria-label', t('hud.pause'));
     $('auto').onclick = onAuto;
     $('skills').innerHTML = SKILL_KEYS.map((k) => `
-      <div class="skill" id="skill-${k}" title="${champ.skills[k].name}">
+      <div class="skill" id="skill-${k}" data-tip="hud:skill:${k}">
         <div class="sf"><img src="${champ.skills[k].icon}" alt=""><div class="sweep"></div></div>
         <div class="cd-text"></div><span class="key">${k}</span><span class="cost"></span><span class="badge"></span><div class="pips"></div>
       </div>`).join('');
@@ -83,16 +85,35 @@ export class Hud {
       cost: part(k, '.cost'), badge: part(k, '.badge'), cooling: false,
     }])) as Hud['skillEls'];
     $('gauge').querySelector('img')!.src = champ.passive.icon;
-    $('gauge').title = champ.passive.name;
+    $('gauge').dataset.tip = 'hud:passive';
+    registerTip('hud', (a) => this.tip(a));
     $('portrait').querySelector('img')!.src = champ.icon;
     $('flash-slot').querySelector('img')!.src = RUNES['hextech-flashtraption'].icon;
     $('stats').innerHTML = STATS.map(([k, c]) => `<div class="st"><i style="--c:${c}"></i><span>${t(`hud.stat.${k}` as Key)}</span><b id="st-${k}"></b></div>`).join('')
       + '<div id="passive-text"></div>';
-    $('buffs').innerHTML = (['blue', 'red'] as const).map((k) => `<div class="buff" id="buff-${k}" title="${BUFF.names[k]}" style="--bc:${k === 'blue' ? '#4a95f5' : '#ff6b4e'};display:none">
+    $('buffs').innerHTML = (['blue', 'red'] as const).map((k) => `<div class="buff" id="buff-${k}" ${tipText(BUFF.names[k])} style="--bc:${k === 'blue' ? '#4a95f5' : '#ff6b4e'};display:none">
       <i><svg viewBox="0 0 24 24" aria-hidden="true">${BUFF_GLYPH[k]}</svg></i><b></b></div>`).join('');
     els.clear(); // the rebuilt pieces above replaced some cached nodes
     shown.clear(); // a new HUD (new champion) redraws everything
     this.level = 0;
+  }
+
+  /** Card for `data-tip="hud:<kind>:<arg>"`: a skill or the passive (with the champion's live numbers), an item slot, the boots. */
+  private tip(spec: string): Tip | null {
+    const g = this.game;
+    if (!g) return null;
+    const [kind, arg] = spec.split(':');
+    if (kind === 'passive') return passiveTip(g.champ.id, g.champ.passive);
+    if (kind === 'boots') return g.boots ? bootsTip(g.boots) : null;
+    if (kind === 'item') {
+      const slot = g.slots[Number(arg)];
+      return slot ? itemTip(slot.id, slot.level, g.legendary === Number(arg)) : null;
+    }
+    const k = arg as SkillKey;
+    const view = g.kit.skillView?.(k);
+    const s = view?.as === undefined ? k : view.as; // null: a free action, no numbers
+    const stats = { ad: g.ad, bonusAd: g.bonusAd, ap: g.ap, haste: g.abilityHaste };
+    return skillTip(g.champ.skills[s ?? k], { key: k, rank: g.ranks[s ?? k], stats, name: view?.name, icon: view?.icon, numbers: s !== null });
   }
 
   update(g: Game) {
@@ -166,7 +187,6 @@ export class Hud {
       cls.toggle('ready', on && cd <= 0);
       if (changed(`view-${k}`, `${view?.icon}|${view?.name}|${view?.badge}`)) {
         el.img.src = view?.icon ?? g.champ.skills[k].icon;
-        el.root.title = view?.name ?? g.champ.skills[k].name;
         el.badge.textContent = view?.badge ?? '';
       }
       if (el.cooling && cd <= 0) { // back off cooldown: a short pop
@@ -196,9 +216,9 @@ export class Hud {
       }
     }
     if (changed('inventory', `${g.slots.map((s) => `${s.id}:${s.level}:${g.itemStacks(s.id)}`).join(',')}|${g.legendary}|${g.boots}`)) {
-      $('inventory').innerHTML = slotsHtml(g, (i, cls, title) =>
-        `<b class="${cls}" title="${title}"><img src="${itemIcon(g.slots[i].id)}" alt="">${lvBadge(g.slots[i].level)}${stackBadge(g.itemStacks(g.slots[i].id))}${legTag(g, i)}</b>`, '<span></span>')
-        + (g.boots ? `<b class="boots" title="${bootsTitle(g.boots)}"><img src="${itemIcon(g.boots)}" alt=""></b>` : `<span class="boots" title="${t('boots.empty', { time: fmt(BOOTS_AT) })}"></span>`);
+      $('inventory').innerHTML = slotsHtml(g, (i, cls) =>
+        `<b class="${cls}" data-tip="hud:item:${i}"><img src="${itemIcon(g.slots[i].id)}" alt="">${lvBadge(g.slots[i].level)}${stackBadge(g.itemStacks(g.slots[i].id))}${legTag(g, i)}</b>`, '<span></span>')
+        + (g.boots ? `<b class="boots" data-tip="hud:boots"><img src="${itemIcon(g.boots)}" alt=""></b>` : `<span class="boots" ${tipText(t('boots.empty', { time: fmt(BOOTS_AT) }))}></span>`);
     }
     const hordeIn = g.nextHordeAt - g.time;
     style('horde', 'display', hordeIn <= HORDE.warning ? 'block' : 'none');
@@ -377,7 +397,7 @@ export class Hud {
       const s = g.slots[i];
       if (!s) return `<div class="slot empty" data-cell="${i}"></div>`;
       const state = slotState(g, i);
-      return `<div class="slot ${state} ${burst === i ? 'burst' : ''}" data-cell="${i}" title="${slotTitle(g, i)}"><img src="${itemIcon(s.id)}" alt="">${lvBadge(s.level)}${legTag(g, i)}
+      return `<div class="slot ${state} ${burst === i ? 'burst' : ''}" data-cell="${i}" data-tip="hud:item:${i}"><img src="${itemIcon(s.id)}" alt="">${lvBadge(s.level)}${legTag(g, i)}
         ${burst === i ? '<i class="ring"></i><i class="ring r2"></i>' : ''}</div>`;
     }).join('');
   }
@@ -497,7 +517,7 @@ export class Hud {
       .filter(Boolean).join(' · ');
     $('end-time').textContent = fmt(g.time);
     $('end-level').textContent = String(g.level);
-    $('end-items').innerHTML = g.inventory.map((id) => `<img src="${itemIcon(id)}" title="${ITEMS[id].name}" alt="">`).join('');
+    $('end-items').innerHTML = g.inventory.map((id) => `<img src="${itemIcon(id)}" ${tipText(ITEMS[id].name)} alt="">`).join('');
     $('end-reward-label').textContent = t(won ? 'end.reward' : 'end.keep');
     $('end-runes').textContent = t('end.runes', { kills: KILLS_PER_POINT - progress.killRemainder });
     $('end-bonus').textContent = baronBonus ? t('end.baronBonus', { n: baronBonus, boss: ENEMIES.baron.name ?? '', champ: g.champ.name }) : '';
@@ -542,15 +562,10 @@ function hook(p: Progress, page: Page) {
 }
 
 /** Six inventory cells; `cell` renders an owned slot with its state class and tooltip. */
-function slotsHtml(g: Game, cell: (i: number, cls: string, title: string) => string, empty: string) {
-  return Array.from({ length: MAX_ITEMS }, (_, i) => (g.slots[i] ? cell(i, slotState(g, i), slotTitle(g, i)) : empty)).join('');
+function slotsHtml(g: Game, cell: (i: number, cls: string) => string, empty: string) {
+  return Array.from({ length: MAX_ITEMS }, (_, i) => (g.slots[i] ? cell(i, slotState(g, i)) : empty)).join('');
 }
 const slotState = (g: Game, i: number) => (g.legendary === i ? 'legendary' : g.slots[i].level >= MAX_LEVEL ? 'final' : '');
-function slotTitle(g: Game, i: number) {
-  const { id, level } = g.slots[i];
-  const state = slotState(g, i);
-  return state ? t(`slot.${state}`, { item: ITEMS[id].name }) : t('slot.level', { item: ITEMS[id].name, level, max: MAX_LEVEL });
-}
 /** ESC menu: every champion stat, then each item with its stats and passive at its level. */
 function menuInfo(g: Game) {
   const it = g.items;
@@ -582,7 +597,6 @@ function menuInfo(g: Game) {
 }
 
 const bootsText = (id: string) => [describeStats(BOOTS[id].stats), PLATING.has(id) ? t('boots.plating') : ''].filter(Boolean).join(' · ');
-const bootsTitle = (id: string) => `${BOOTS[id].name}: ${bootsText(id)}`;
 const lvBadge = (level: number) => `<i class="lv">${level}</i>`;
 const stackBadge = (n: number) => (n > 0 ? `<i class="stk">${n}</i>` : '');
 /** Animated "Legendary" ribbon over the slot the blueprint upgraded. */
@@ -662,4 +676,4 @@ function skillCard(g: Game, k: SkillKey, n: number, best: boolean, st: SkillStat
   </article>`;
 }
 
-const fmtExtra = (e: NonNullable<SkillDef['extra']>, r: number) => (e.percent ? `${Math.round(e.values[r] * 100)}%` : num(e.values[r], e.values[r] % 1 ? 1 : 0));
+export const fmtExtra = (e: NonNullable<SkillDef['extra']>, r: number) => (e.percent ? `${Math.round(e.values[r] * 100)}%` : num(e.values[r], e.values[r] % 1 ? 1 : 0));

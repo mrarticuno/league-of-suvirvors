@@ -11,11 +11,13 @@ import { clearRun, loadRun, saveRun, type RunSave } from './runSave';
 import { CHAMPIONS } from './champions';
 import type { Page } from './progress';
 import { Cinematic } from './cinematic';
+import { initTooltips } from './tooltip';
 import type { ChampionDef, SkillKey } from './champion';
 
 // LoL-style camera: high, pitched ~56°, looking down at the champion
 const CAMERA_OFFSET = new THREE.Vector3(0, 1900, 1250);
 
+initTooltips();
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 document.getElementById('app')!.appendChild(renderer.domElement);
