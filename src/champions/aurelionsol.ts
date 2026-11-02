@@ -5,7 +5,7 @@
 // Expansion drains mana per second (6-10/s, no activation cost) and the old kit had no other mana source.
 // Comet of Legend is a 3s flight along the cast direction, ended by a move order (+60-100% Move Speed, through walls and units, no attacks) on a 20-12s
 // cooldown instead of a long locked line on 80-60s. Starsurge grows while Aurelion stays within 650 units and
-// detonates past that, after 5s or at its full size; the bigger it got, the more it deals (+50%) and stuns (0.55-1.1s).
+// detonates past that or after 5s (full size only stops its growth); the bigger it got, the more it deals (+50%) and stuns (0.55-1.1s).
 // It wears today's Singularity vortex, scaled to its radius.
 import * as THREE from 'three';
 import { audio } from '../audio';
@@ -226,6 +226,7 @@ function aurelionSolKit(g: Game): ChampionKit {
     onMoveOrder() { if (flying()) flightUntil = g.time; }, // walking ends the flight
     moveSpeedBonus: () => (flying() ? SKILLS.E.speed[Math.max(0, g.ranks.E - 1)] : 0),
     moveAnims: () => (flying() ? { idle: 'aurelionsol_dashing02', run: 'aurelionsol_dashing02' } : undefined),
+    castTime: (key) => (key === 'R' && flying() ? 0.01 : undefined), // Falling Star mid-flight does not stop the comet
 
     castStart(key, point) {
       // the cast clips' particle events: Singularity's hands on Q's clip, the Skies Descend's on R's
@@ -307,7 +308,7 @@ function aurelionSolKit(g: Game): ChampionKit {
         const close = Math.hypot(s.pos.x - g.pos.x, s.pos.z - g.pos.z) <= q.leash;
         if (close) s.radius = Math.min(q.radius[1], s.radius + q.grow * dt);
         place(s);
-        if (close && s.age < q.life && s.radius < q.radius[1] && alive) continue;
+        if (close && s.age < q.life && alive) continue;
         detonate(s);
         surges.splice(i, 1);
       }

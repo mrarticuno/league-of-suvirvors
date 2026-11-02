@@ -252,9 +252,9 @@ WASD is not used because it clashes with Q/W/E.
   - Not from LoL: what targets champions targets any enemy (the R beam stops on the first enemy, Severum's R heal and Crescendum's chakram refresh); enemies do not attack the sentry (it lasts its timer).
 - **Aurelion Sol** (today's model, VFX and sounds; the pre-rework kit from Data Dragon 13.1.1 and its stats; R is today's meteor): 550 range.
   - **Passive (Center of the Universe)**: 3 stars orbit him (250 units, one turn per 6 s) and hit every enemy they pass over for 20–120 (level) + W rank bonus + 25% AP magic damage (once per star per pass). Star kills restore 4–12 mana (0.5 s cooldown against minions and small monsters).
-  - **Q (Starsurge)**: a star flies forward (600 speed) growing from 150 to 450 radius while Aurelion stays within 650; it detonates when he leaves, after 5 s or at full size: 70–230 + 65% AP (up to +50% by size) and a 0.55–1.1 s stun.
+  - **Q (Starsurge)**: a star flies forward (600 speed) growing from 150 to 450 radius while Aurelion stays within 650; it detonates when he leaves, or after 5 s: 70–230 + 65% AP (up to +50% by size) and a 0.55–1.1 s stun.
   - **W (Celestial Expansion)**: passive +5–25 damage per star hit. Toggle: stars fly out to 650, orbit three times as fast (one turn per 2 s) and deal 40% more, draining 6–10 mana per second (switches off when mana runs out).
-  - **E (Comet of Legend)**: 3 s flight along the cast direction over walls and units with +60–100% Move Speed, no attacks; a move order (click or arrow keys) ends it.
+  - **E (Comet of Legend)**: 3 s flight along the cast direction over walls and units with +60–100% Move Speed, no attacks; a move order (click or arrow keys) ends it. Falling Star cast mid-flight does not stop it.
   - **R (Falling Star)**: a meteor lands on the target area after 1 s: 200/325/450 + 75% AP within 450 and a 1 s knock-up.
   - Not from LoL: costs Q 50–70, R 100, W has no activation cost; E is steerable and on a 20–12 s cooldown (was a long locked line on 80–60 s); the star mana restore; Starsurge wears today's Singularity vortex (E), growing with its radius, and blasts with Falling Star's impact particles (today's kit has no growing star).
 - **Teemo** (LoL stats; Guerrilla Warfare without invisibility): 500 range, ability power items.

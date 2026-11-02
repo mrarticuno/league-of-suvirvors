@@ -175,6 +175,7 @@ export const AP_PASSIVES: Record<string, ItemPassive> = {
       const stacks = () => Math.min(10, Math.floor(owned / 60));
       return {
         tick: (dt) => { owned += dt; },
+        stacks,
         saved: () => owned,
         restore: (v) => { owned = Number(v) || 0; },
         stat: (k) => stacks() * power() * (k === 'hp' ? 10 : k === 'mana' ? 30 : k === 'ap' ? 3 : 0),
@@ -188,7 +189,18 @@ export const AP_PASSIVES: Record<string, ItemPassive> = {
   },
   '3116': { // Rylai's Crystal Scepter
     desc: t('item.3116.passive'),
-    effect: (g, power) => ({ onDealt: (e, hit) => { if (isAbility(hit)) g.slow(e, 0.3 * power(), 1); } }),
+    effect: (g, power) => {
+      const shownAt = new WeakMap<Enemy, number>(); // the client's 1 s frost burst, once per slow (hordes take many hits)
+      return {
+        onDealt: (e, hit) => {
+          if (!isAbility(hit)) return;
+          g.slow(e, 0.3 * power(), 1);
+          if (e.deadFor >= 0 || g.time - (shownAt.get(e) ?? -Infinity) < 1) return;
+          shownAt.set(e, g.time);
+          g.vfx.hit('3116_Slow_Hit', e.pos, 0, { owner: e.actor.root, size: boundSize(e) });
+        },
+      };
+    },
   },
   '4645': { // Shadowflame
     desc: t('item.4645.passive'),

@@ -511,6 +511,9 @@ export class Game {
     return [...out, ...best.values(), ...this.runeFx, ...this.buffFx];
   }
 
+  /** Stack count of an owned item's passive (ItemEffect.stacks), 0 when it has none or is still locked. */
+  itemStacks(id: string) { return this.passivePower(id) ? this.fxCache.get(id)?.stacks?.() ?? 0 : 0; }
+
   /** Strength (0..1) of an owned item's passive at its current level. */
   passivePower(id: string) {
     const s = this.slots.find((x) => x.id === id);

@@ -150,6 +150,7 @@ export const TANK_PASSIVES: Record<string, ItemPassive> = {
           return dmg;
         },
         stat: (k) => (k === 'hp' ? gained : 0),
+        stacks: () => Math.floor(gained), // LoL counts its stacks in max Health gained
         saved: () => gained,
         restore: (v) => { gained = Number(v) || 0; },
       };

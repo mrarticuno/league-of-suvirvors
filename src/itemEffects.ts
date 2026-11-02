@@ -35,6 +35,8 @@ export interface ItemEffect {
   /** Run save (src/runSave.ts): state that outlives a fight (permanent stacks), as JSON, and putting it back on load. */
   saved?(): unknown;
   restore?(v: unknown): void;
+  /** Stack count shown on the item's inventory slot (Rod of Ages, Heartsteel). */
+  stacks?(): number;
   /** The champion took lethal damage: return true if this effect saved them. */
   onLethal?(): boolean;
   /** Multiplier on the attack cooldown of an enemy `dist` units away when it starts an attack. */

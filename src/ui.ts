@@ -195,9 +195,9 @@ export class Hud {
         $('flash-slot').classList.toggle('cooling', fcd > 0);
       }
     }
-    if (changed('inventory', `${g.slots.map((s) => `${s.id}:${s.level}`).join(',')}|${g.legendary}|${g.boots}`)) {
+    if (changed('inventory', `${g.slots.map((s) => `${s.id}:${s.level}:${g.itemStacks(s.id)}`).join(',')}|${g.legendary}|${g.boots}`)) {
       $('inventory').innerHTML = slotsHtml(g, (i, cls, title) =>
-        `<b class="${cls}" title="${title}"><img src="${itemIcon(g.slots[i].id)}" alt="">${lvBadge(g.slots[i].level)}${legTag(g, i)}</b>`, '<span></span>')
+        `<b class="${cls}" title="${title}"><img src="${itemIcon(g.slots[i].id)}" alt="">${lvBadge(g.slots[i].level)}${stackBadge(g.itemStacks(g.slots[i].id))}${legTag(g, i)}</b>`, '<span></span>')
         + (g.boots ? `<b class="boots" title="${bootsTitle(g.boots)}"><img src="${itemIcon(g.boots)}" alt=""></b>` : `<span class="boots" title="${t('boots.empty', { time: fmt(BOOTS_AT) })}"></span>`);
     }
     const hordeIn = g.nextHordeAt - g.time;
@@ -584,6 +584,7 @@ function menuInfo(g: Game) {
 const bootsText = (id: string) => [describeStats(BOOTS[id].stats), PLATING.has(id) ? t('boots.plating') : ''].filter(Boolean).join(' · ');
 const bootsTitle = (id: string) => `${BOOTS[id].name}: ${bootsText(id)}`;
 const lvBadge = (level: number) => `<i class="lv">${level}</i>`;
+const stackBadge = (n: number) => (n > 0 ? `<i class="stk">${n}</i>` : '');
 /** Animated "Legendary" ribbon over the slot the blueprint upgraded. */
 const legTag = (g: Game, i: number) => (g.legendary === i ? `<em class="leg">${t('slot.legendaryTag')}</em>` : '');
 
