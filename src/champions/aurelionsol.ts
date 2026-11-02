@@ -24,7 +24,7 @@ const VORTEX_RADIUS = 450;
 const STARS = {
   count: 3, radius: 250, expandedRadius: 650,
   hitRadius: 150, // matches the comet's glow (its head flare is 150 across the radius)
-  head: 62, tail: 380, tailWidth: 40, // comet head glow radius, tail length and half width at its root
+  head: 62, tail: 560, tailWidth: 52, // comet head glow radius, tail length and half width at its root
   period: 6, expandedPeriod: 2, // seconds per revolution
   reach: 1400, // units per second the orbit widens and shrinks
   damage: [20, 120], apRatio: 0.25, expandedMult: 1.4, // base damage by level, Celestial Expansion multiplier
@@ -202,8 +202,7 @@ function aurelionSolKit(g: Game): ChampionKit {
     const R = SKILLS.R;
     const jaw = g.player.bone('Jaw');
     const from = jaw ? jaw.getWorldPosition(new THREE.Vector3()) : g.pos.clone().setY(150);
-    const facing = Math.atan2(dir.x, dir.z);
-    const blast = new Blast(from, dir, R.range, R.width * 1.4, R.range / R.speed);
+    const blast = new Blast(from, dir, R.range, R.width * 2, R.range / R.speed);
     g.scene.add(blast.root);
     blasts.push(blast);
     audio.play('aurelionsol_R_hit');

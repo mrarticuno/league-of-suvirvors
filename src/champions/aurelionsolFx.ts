@@ -77,10 +77,10 @@ export class Comet {
       fragmentShader: /* glsl */ `
         varying float vT; varying float vSide;
         void main() {
-          vec3 c = mix(vec3(1.0, 0.97, 0.95), vec3(1.0, 0.62, 0.85), smoothstep(0.0, 0.35, vT));
-          c = mix(c, vec3(0.55, 0.38, 1.0), smoothstep(0.35, 0.9, vT));
+          vec3 c = mix(vec3(1.0, 0.95, 0.97), vec3(1.0, 0.55, 0.82), smoothstep(0.0, 0.2, vT));
+          c = mix(c, vec3(0.6, 0.35, 1.0), smoothstep(0.3, 0.85, vT));
           float across = 1.0 - vSide * vSide;
-          float a = pow(1.0 - vT, 1.6) * across * (0.35 + 0.65 * exp(-vSide * vSide * 6.0));
+          float a = pow(1.0 - vT, 1.2) * across * (0.4 + 0.6 * exp(-vSide * vSide * 5.0));
           gl_FragColor = vec4(c * a, 1.0);
         }`,
       transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
@@ -144,8 +144,10 @@ export class Blast {
     const geo = new THREE.PlaneGeometry(length, width * 2, 1, 1);
     geo.rotateX(-Math.PI / 2); // flat on the ground plane, length along +X
     geo.translate(length / 2, 0, 0);
-    this.band = new THREE.Mesh(geo, new THREE.ShaderMaterial({
-      uniforms: { uHead: { value: 0 }, uFade: { value: 0 }, uTime: { value: 0 }, uSeed: { value: Math.random() * 50 }, uAspect: { value: length / (width * 2) } },
+    // two passes over the same band: violet paint (it darkens the ground like the old blast's smoke), then additive light
+    const uniforms = { uHead: { value: 0 }, uFade: { value: 0 }, uTime: { value: 0 }, uSeed: { value: Math.random() * 50 }, uAspect: { value: length / (width * 2) } };
+    const material = (glow: boolean) => new THREE.ShaderMaterial({
+      uniforms, defines: glow ? { GLOW: '' } : {},
       vertexShader: /* glsl */ `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
       fragmentShader: NOISE + /* glsl */ `
         uniform float uHead, uFade, uTime, uSeed, uAspect; varying vec2 vUv;
@@ -154,21 +156,29 @@ export class Blast {
           float spread = 0.55 + 0.45 * smoothstep(0.0, 0.35, x); // widens out of the mouth
           float n = fbm(vec2(x * uAspect * 1.6 - uTime * 3.0, vUv.y * 3.0) + uSeed);
           float wisp = fbm(vec2(x * uAspect * 0.7 - uTime * 1.2, vUv.y * 5.0) + uSeed * 1.7);
-          float edge = y / spread + (n - 0.5) * 0.55;
+          float edge = y / spread + (n - 0.5) * 0.9;
           if (edge > 1.0) discard;
-          float body = 1.0 - smoothstep(0.35, 1.0, edge);
-          float core = exp(-edge * edge * 9.0);
-          vec3 c = mix(vec3(0.28, 0.14, 0.65), vec3(0.62, 0.36, 1.0), body);
-          c = mix(c, vec3(0.95, 0.88, 1.0), core * 0.85);
+          float body = 1.0 - smoothstep(0.2, 1.0, edge);
+          float core = exp(-edge * edge * 14.0) * (0.55 + 0.45 * n);
+          vec3 c = mix(vec3(0.22, 0.1, 0.55), vec3(0.58, 0.3, 1.0), body);
+          c = mix(c, vec3(0.92, 0.82, 1.0), core * 0.7);
           float front = smoothstep(uHead, uHead - 0.06, x);
           float fray = smoothstep(uFade - 0.15, uFade + 0.25, wisp * 0.6 + n * 0.6 - 0.1 + (1.0 - edge) * 0.25);
           float a = body * front * (1.0 - uFade * 0.6) * mix(1.0, fray, step(0.001, uFade)) * (0.55 + 0.45 * wisp);
           a *= smoothstep(0.0, 0.03, x) * (1.0 - smoothstep(0.92, 1.0, x));
-          gl_FragColor = vec4(c * a * 1.4, 1.0);
+          #ifdef GLOW
+            vec3 light = mix(vec3(0.5, 0.25, 1.0) * body * 0.45, vec3(1.0, 0.92, 1.0), core);
+            gl_FragColor = vec4(light * a * (1.0 + 1.5 * (1.0 - smoothstep(0.0, 0.3, x))), 1.0); // hottest at the mouth
+          #else
+            gl_FragColor = vec4(c, clamp(a * 1.15, 0.0, 0.9));
+          #endif
         }`,
-      transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
-    }));
+      transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: glow ? THREE.AdditiveBlending : THREE.NormalBlending,
+    });
+    this.band = new THREE.Mesh(geo, material(false));
+    this.band.add(new THREE.Mesh(geo, material(true)));
     this.band.frustumCulled = false;
+    (this.band.children[0] as THREE.Mesh).frustumCulled = false;
     this.band.position.set(from.x, 60, from.z);
     this.band.rotation.y = Math.atan2(-dir.z, dir.x);
     (this.flash.material as THREE.ShaderMaterial).uniforms.uRadius.value = width * 1.6;
@@ -191,6 +201,7 @@ export class Blast {
 
   dispose() {
     this.root.removeFromParent();
+    ((this.band.children[0] as THREE.Mesh).material as THREE.Material).dispose();
     for (const o of [this.band, this.flash]) { o.geometry.dispose(); (o.material as THREE.Material).dispose(); }
   }
 }
