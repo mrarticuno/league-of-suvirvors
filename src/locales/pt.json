@@ -597,7 +597,7 @@
  "champion.aurelionsol.slow": "Lentidão",
  "champion.aurelionsol.Q.desc": "Lança uma estrela que cresce enquanto Aurelion Sol fica a até 650 unidades. Ela explode quando ele se afasta ou após 5s, causando dano mágico e Atordoamento de 0,55–1,1s nos inimigos da área. Quanto maior ficou, mais dano causa (até +50%).",
  "champion.aurelionsol.W.desc": "Passiva: cada acerto das estrelas causa mais dano. Ativa: as estrelas se afastam até 650 unidades, giram três vezes mais rápido e causam 40% a mais de dano, gastando mana a cada segundo.",
- "champion.aurelionsol.E.desc": "Levanta voo por 3s na direção conjurada, passando por cima de paredes e unidades com 60–100% de Velocidade de Movimento adicional. Andar (clique ou setas) encerra o voo. Não pode atacar enquanto voa.",
+ "champion.aurelionsol.E.desc": "Levanta voo por 3s na direção conjurada, passando bem alto por cima de paredes e unidades na velocidade da Oscilação Estelar (600). Andar (clique ou setas) encerra o voo. Não pode atacar enquanto voa.",
  "champion.aurelionsol.R.desc": "Sopra uma explosão de fogo estelar de 1500 unidades, causando dano mágico e aplicando 40/50/60% de Lentidão aos inimigos atingidos por 2s. Inimigos atingidos a menos de 650 unidades são empurrados até essa distância (o Limite Exterior).",
  "champion.aurelionsol.passive.desc": "Três estrelas orbitam a 250 unidades dele, uma volta a cada 6s, e atingem todo inimigo por onde passam, causando 20–120 (por nível) + o bônus de rank do W + 25% do PdH de dano mágico (uma vez por estrela a cada passagem). Abates das estrelas restauram 4–12 de mana.",
  "champion.teemo.name": "Teemo",

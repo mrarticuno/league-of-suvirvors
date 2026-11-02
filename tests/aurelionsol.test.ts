@@ -10,7 +10,7 @@ vi.mock('../src/audio', () => ({ audio: { play: vi.fn(), playAt: vi.fn() } }));
 function rig() {
   const enemies: Enemy[] = [];
   const g = {
-    time: 0, level: 1, ap: 0, hp: 500, mana: 100, maxMana: 500, facing: 0, pos: new THREE.Vector3(), scene: new THREE.Scene(),
+    time: 0, level: 1, ap: 0, moveSpeed: 300, hp: 500, mana: 100, maxMana: 500, facing: 0, pos: new THREE.Vector3(), scene: new THREE.Scene(),
     ranks: { Q: 1, W: 1, E: 1, R: 1 },
     vfx: { attach: () => new THREE.Group(), play: vi.fn(), playAt: vi.fn(), playOn: vi.fn() },
     player: { bone: () => null, root: new THREE.Group() },
@@ -81,15 +81,21 @@ it('Voice of Light hits and slows the line, knocking near enemies back to the Ou
   expect(offset.x).toBeCloseTo(350); // 300 out to 650
 });
 
-it('Comet of Legend flies through walls and units, faster and unable to attack, for 3s', () => {
-  const { kit, step } = rig();
+it('Comet of Legend flies high through walls and units, at Starsurge speed and unable to attack, for 3s', () => {
+  const { g, kit, step } = rig();
   kit.cast('E', 0, new THREE.Vector3());
   expect(kit.ghost!()).toBe(true);
   expect(kit.disarmed!()).toBe(true);
-  expect(kit.moveSpeedBonus!()).toBeCloseTo(0.6);
-  step(3.1);
+  expect(kit.moveSpeedBonus!()).toBeCloseTo(1); // 300 -> Starsurge's 600
+  step(0.5);
+  expect(g.player.root.position.y).toBe(150); // up in the sky
+  step(2.6);
   expect(kit.ghost!()).toBe(false);
   expect(kit.moveSpeedBonus!()).toBe(0);
+  step(0.5);
+  g.player.root.position.y = 0; // the Game puts the root back on the ground each frame
+  step(0.05);
+  expect(g.player.root.position.y).toBe(0); // landed: the kit no longer lifts it
 });
 
 it('Comet of Legend keeps flying toward the cast point until a move order ends it', () => {

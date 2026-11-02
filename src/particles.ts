@@ -786,8 +786,12 @@ class Emitter {
     }
     points.reverse();
     if (points.length < 2) return;
-    const tile = val(e.primitive.mTrail?.mBirthTilingSize, et)?.[0] || 200;
+    // the texture repeats along the ribbon every `tile`, stretched with the system like its width (a scaled-up star)
+    const tile = (val(e.primitive.mTrail?.mBirthTilingSize, et)?.[0] || 200) * this.sys.scale * this.sys.authoredScale;
     const side = new THREE.Vector3(1, 0, 0).applyQuaternion(this.sys.quat);
+    // the ribbon widens across its own path, in the plane of the system's up axis: a fixed side folded it into a
+    // zigzag wherever the path ran along that side (stars orbiting Aurelion Sol); a missile's frame gives the same side
+    const up = new THREE.Vector3(0, 1, 0).applyQuaternion(this.sys.quat);
     // ground-layer trails lie flat on the terrain, like ground beams (Hwei's QE path is authored 75 below its missile)
     const ground = !!e.isGroundLayer;
     if (ground) side.setY(0).normalize();
@@ -799,7 +803,12 @@ class Emitter {
       b.palU = e.paletteDefinition?.PaletteUAnimationCurve ? val(e.paletteDefinition.PaletteUAnimationCurve, pt) ?? 1 : 1;
       if (i > 0) dist += p.pos.distanceTo(points[i - 1].p.pos);
       let sv = side;
-      if (this.kind === 'camtrail' && camera) {
+      if (this.kind === 'trail') {
+        const next = points[Math.min(i + 1, points.length - 1)].p.pos, prev = points[Math.max(i - 1, 0)].p.pos;
+        _fwd.crossVectors(up, _w.subVectors(next, prev)); // up x forward: a missile's own +X, as before
+        if (ground) _fwd.setY(0);
+        if (_fwd.lengthSq() > 1e-6) sv = _fwd.normalize();
+      } else if (this.kind === 'camtrail' && camera) {
         const next = points[Math.min(i + 1, points.length - 1)].p.pos, prev = points[Math.max(i - 1, 0)].p.pos;
         _fwd.subVectors(next, prev);
         _w.setFromMatrixPosition(camera.matrixWorld).sub(p.pos);

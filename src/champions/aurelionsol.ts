@@ -1,10 +1,10 @@
 // Aurelion Sol: today's model, VFX and sounds with the kit he had before his 2023 rework (Data Dragon 13.1.1),
 // ultimate included (Voice of Light: a line of starfire that slows, knocking nearby enemies back to the Outer Limit).
-// Stats are the 13.1.1 ones. Voice of Light wears today's Breath of Light beam (the old one's systems are gone from the client).
+// Stats are the 13.1.1 ones. The comets and Voice of Light's blast are drawn by aurelionsolFx.ts (gone from today's client).
 // Adapted for hordes: each star hits an enemy once per pass over it; star kills restore a bit of
 // mana (0.5s cooldown against minions and small monsters, always from elite and epic ones) because Celestial
 // Expansion drains mana per second (6-10/s, no activation cost) and the old kit had no other mana source.
-// Comet of Legend is a 3s flight along the cast direction, ended by a move order (+60-100% Move Speed, through walls and units, no attacks) on a 20-12s
+// Comet of Legend is a 3s flight high above the ground along the cast direction, ended by a move order (at Starsurge's speed, through walls and units, no attacks) on a 20-12s
 // cooldown instead of a long locked line on 80-60s. Starsurge grows while Aurelion stays within 650 units and
 // detonates past that or after 5s (full size only stops its growth); the bigger it got, the more it deals (+50%) and stuns (0.55-1.1s).
 // It wears today's Singularity vortex, scaled to its radius.
@@ -13,7 +13,7 @@ import { audio } from '../audio';
 import type { ChampionDef, ChampionKit, Hit, SkillDef, SkillKey } from '../champion';
 import type { Enemy, Game } from '../game';
 import { t } from '../i18n';
-import { facingQuat } from '../particles';
+import { Blast, Comet } from './aurelionsolFx';
 
 const ICON = 'https://ddragon.leagueoflegends.com/cdn/16.21.1/img';
 const OLD_ICON = 'https://ddragon.leagueoflegends.com/cdn/13.1.1/img'; // the pre-rework kit's icons
@@ -22,7 +22,9 @@ const HANDS = ['Star1', 'Star2']; // the bones of the stars he holds
 const VORTEX_RADIUS = 450;
 
 const STARS = {
-  count: 3, radius: 250, expandedRadius: 650, hitRadius: 80,
+  count: 3, radius: 250, expandedRadius: 650,
+  hitRadius: 150, // matches the comet's glow (its head flare is 150 across the radius)
+  head: 62, tail: 380, tailWidth: 40, // comet head glow radius, tail length and half width at its root
   period: 6, expandedPeriod: 2, // seconds per revolution
   reach: 1400, // units per second the orbit widens and shrinks
   damage: [20, 120], apRatio: 0.25, expandedMult: 1.4, // base damage by level, Celestial Expansion multiplier
@@ -50,7 +52,7 @@ const SKILLS = {
     name: t('champion.aurelionsol.E'), desc: t('champion.aurelionsol.E.desc'), damageType: 'magic', maxRank: 5, anim: 'aurelionsol_spell2_takeoff', icon: `${OLD_ICON}/spell/AurelionSolE.png`,
     cooldown: [20, 18, 16, 14, 12], cost: [60, 60, 60, 60, 60],
     damage: [0, 0, 0, 0, 0], duration: 3,
-    speed: [0.6, 0.7, 0.8, 0.9, 1], extra: { label: t('stat.ms'), values: [0.6, 0.7, 0.8, 0.9, 1], percent: true },
+    height: 150, rise: 600, // flight altitude and how fast he climbs to it or lands (units per second); he flies at Starsurge's speed
     aim: 'move', castTime: 0.05,
   },
   R: {
@@ -60,7 +62,8 @@ const SKILLS = {
     extra: { label: t('champion.aurelionsol.slow'), values: [0.4, 0.5, 0.6], percent: true },
     range: 1500, width: 120, // half width of the blast
     outer: 650, push: 0.4, // enemies hit closer than the Outer Limit are knocked back to it over 0.4s
-    beamLife: 0.6, aim: 1500, castTime: 0.35,
+    speed: 4500, // the blast runs out at its missile's speed
+    aim: 1500, castTime: 0.35,
   },
 } as const satisfies Record<SkillKey, SkillDef & Record<string, unknown>>; // extra fields are the kit's own numbers
 
@@ -128,8 +131,11 @@ interface Surge { pos: THREE.Vector3; dir: THREE.Vector3; rank: number; radius: 
 function aurelionSolKit(g: Game): ChampionKit {
   const near: Enemy[] = []; // own query array: hurtEnemy may run item effects that query too
   const flat = new THREE.Vector3();
-  const stars = Array.from({ length: STARS.count }, () => g.vfx.attach('AurelionSol_Z_Idle_Star'));
-  for (const s of stars) g.scene.add(s);
+  // the old kit's comets (today's client has only the hand stars, whose particle trail does not look like them)
+  const stars = Array.from({ length: STARS.count }, () => new Comet(STARS.tail, STARS.tailWidth, STARS.head));
+  for (const s of stars) g.scene.add(s.root);
+  const starPos = stars.map(() => new THREE.Vector3());
+  const blasts: Blast[] = [];
   const touching = stars.map(() => new Map<Enemy, number>()); // per star: enemy -> last run time in contact
   const surges: Surge[] = [];
   let angle = 0, orbit: number = STARS.radius;
@@ -139,6 +145,8 @@ function aurelionSolKit(g: Game): ChampionKit {
   const flightDir = new THREE.Vector3(); // Comet of Legend keeps this course until a move order
   let flightFx: THREE.Object3D | null = null;
   let manaReady = 0;
+  let lift = 0; // Comet of Legend's altitude
+  let speedProbe = false; // moveSpeedBonus is reading his speed without itself
 
   const toward = (point: THREE.Vector3) => {
     const dir = flat.copy(point).sub(g.pos).setY(0);
@@ -194,10 +202,10 @@ function aurelionSolKit(g: Game): ChampionKit {
     const R = SKILLS.R;
     const jaw = g.player.bone('Jaw');
     const from = jaw ? jaw.getWorldPosition(new THREE.Vector3()) : g.pos.clone().setY(150);
-    const to = from.clone().addScaledVector(dir, R.range);
     const facing = Math.atan2(dir.x, dir.z);
-    g.vfx.play('AurelionSol_Q_Beam_Buffed', from, facingQuat(facing), { target: to, life: R.beamLife });
-    g.vfx.play('AurelionSol_Q_Beam_End', to.clone().setY(0), facingQuat(facing), { life: R.beamLife });
+    const blast = new Blast(from, dir, R.range, R.width * 1.4, R.range / R.speed);
+    g.scene.add(blast.root);
+    blasts.push(blast);
     audio.play('aurelionsol_R_hit');
     const damage = R.damage[rank] + R.apRatio * g.ap;
     const mid = g.pos.clone().addScaledVector(dir, R.range / 2).setY(0);
@@ -207,7 +215,6 @@ function aurelionSolKit(g: Game): ChampionKit {
       const along = dx * dir.x + dz * dir.z;
       if (along < -e.def.radius || along > R.range + e.def.radius) continue;
       if (Math.abs(dx * dir.z - dz * dir.x) > R.width + e.def.radius) continue;
-      g.vfx.playAt('AurelionSol_R_tar', e.pos, facing, { size: e.def.radius * 2 });
       g.hurtEnemy(e, damage, HITS.R);
       if (e.deadFor >= 0) continue;
       g.slow(e, R.slow[rank], R.slowTime);
@@ -238,14 +245,20 @@ function aurelionSolKit(g: Game): ChampionKit {
     disarmed: flying,
     steer: () => (flying() ? flightDir : undefined),
     onMoveOrder() { if (flying()) flightUntil = g.time; }, // walking ends the flight
-    moveSpeedBonus: () => (flying() ? SKILLS.E.speed[Math.max(0, g.ranks.E - 1)] : 0),
+    moveSpeedBonus() {
+      // the comet keeps pace with Starsurge: whatever his speed, it becomes the star's
+      if (!flying() || speedProbe) return 0;
+      speedProbe = true;
+      const own = g.moveSpeed;
+      speedProbe = false;
+      return SKILLS.Q.speed / own - 1;
+    },
     moveAnims: () => (flying() ? { idle: 'aurelionsol_dashing02', run: 'aurelionsol_dashing02' } : undefined),
     castTime: (key) => (key === 'R' && flying() ? 0.01 : undefined), // Voice of Light mid-flight does not stop the comet
 
-    castStart(key, point) {
-      // Singularity's cast hands on Q's clip; Voice of Light gathers light in his mouth
+    castStart(key) {
+      // Singularity's cast hands on Q's clip
       if (key === 'Q') hands('AurelionSol_E_Cas_Hands');
-      if (key === 'R') { const jaw = g.player.bone('Jaw'); if (jaw) g.vfx.playOn('AurelionSol_R_cas', jaw, Math.atan2(point.x - g.pos.x, point.z - g.pos.z), g.player.root); }
     },
 
     cast(key, r, point) {
@@ -287,6 +300,11 @@ function aurelionSolKit(g: Game): ChampionKit {
         else { flightFx.removeFromParent(); flightFx = null; audio.play('aurelionsol_E_end'); }
       }
       expandFx?.position.copy(g.pos);
+      const E = SKILLS.E;
+      const high = flying() ? E.height : 0;
+      lift += Math.sign(high - lift) * Math.min(Math.abs(high - lift), E.rise * dt);
+      if (lift > 0) g.player.root.position.y = lift; // the Game set the root on the ground this frame
+      if (flightFx) flightFx.position.y = lift;
 
       // Center of the Universe
       const target = expanded ? STARS.expandedRadius : STARS.radius;
@@ -296,13 +314,13 @@ function aurelionSolKit(g: Game): ChampionKit {
       const damage = starDamage();
       for (let i = 0; i < stars.length; i++) {
         const a = angle + (i * Math.PI * 2) / stars.length;
-        const s = stars[i];
-        s.position.set(g.pos.x + Math.sin(a) * orbit, 110, g.pos.z + Math.cos(a) * orbit);
-        s.visible = alive;
+        const s = starPos[i].set(g.pos.x + Math.sin(a) * orbit, 110, g.pos.z + Math.cos(a) * orbit);
+        stars[i].visible = alive;
         if (!alive) continue;
+        stars[i].update(s);
         const touch = touching[i];
-        for (const e of g.enemiesNear(s.position, STARS.hitRadius, near)) {
-          if (!inReach(e, s.position, STARS.hitRadius)) continue;
+        for (const e of g.enemiesNear(s, STARS.hitRadius, near)) {
+          if (!inReach(e, s, STARS.hitRadius)) continue;
           const last = touch.get(e);
           touch.set(e, g.time);
           if (last === undefined) g.hurtEnemy(e, damage, HITS.star);
@@ -323,10 +341,14 @@ function aurelionSolKit(g: Game): ChampionKit {
         detonate(s);
         surges.splice(i, 1);
       }
+
+      for (let i = blasts.length - 1; i >= 0; i--) if (!blasts[i].update(dt)) { blasts[i].dispose(); blasts.splice(i, 1); }
     },
 
     dispose() {
-      for (const s of stars) s.removeFromParent();
+      for (const s of stars) s.dispose();
+      for (const b of blasts) b.dispose();
+      blasts.length = 0;
       for (const s of surges) { s.vortex.removeFromParent(); s.center.removeFromParent(); }
       expandFx?.removeFromParent();
       flightFx?.removeFromParent();
